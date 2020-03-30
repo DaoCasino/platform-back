@@ -1,0 +1,8 @@
+{
+  "loglevel": "debug",
+  "port": "8080",
+  "dbConfig": {
+    "host": "localhost",
+    "port": "3030"
+  }
+}
