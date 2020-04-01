@@ -5,13 +5,21 @@ import (
 	"io/ioutil"
 )
 
+type DbConfig struct {
+	Url          string `json:"url"`
+	MaxPoolConns int32  `json:"maxPoolConns"`
+	MinPoolConns int32  `json:"minPoolConns"`
+}
+
+type AuthConfig struct {
+	JwtSecret string `json:"jwtSecret"`
+}
+
 type Config struct {
-	DbConfig struct {
-		Host string `json:"host"`
-		Port string `json:"port"`
-	} `json:"dbConfig"`
-	LogLevel string `json:"loglevel"`
-	Port     string `json:"port"`
+	DbConfig   DbConfig   `json:"dbConfig"`
+	AuthConfig AuthConfig `json:"authConfig"`
+	LogLevel   string     `json:"loglevel"`
+	Port       string     `json:"port"`
 }
 
 func FromFile(fileName string) (*Config, error) {

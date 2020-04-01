@@ -2,8 +2,6 @@ package usecase
 
 import (
 	"context"
-	"crypto/sha1"
-	"fmt"
 	"platform-backend/auth"
 	"platform-backend/models"
 )
@@ -26,31 +24,22 @@ func NewAuthUseCase(
 	}
 }
 
-func (a *AuthUseCase) SignUp(ctx context.Context, username, password string) error {
-	pwd := sha1.New()
-	pwd.Write([]byte(password))
-	pwd.Write([]byte(a.hashSalt))
-
+// TODO sign up via DAOWallet token (like oauth)
+func (a *AuthUseCase) SignUp(ctx context.Context, accountName, password string) error {
 	user := &models.User{
-		Username: username,
-		Password: fmt.Sprintf("%x", pwd.Sum(nil)),
+		AccountName: accountName,
 	}
 
 	return a.userRepo.CreateUser(ctx, user)
 }
 
-func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (string, error) {
-	pwd := sha1.New()
-	pwd.Write([]byte(password))
-	pwd.Write([]byte(a.hashSalt))
-	password = fmt.Sprintf("%x", pwd.Sum(nil))
-
-	user, err := a.userRepo.GetUser(ctx, username, password)
+func (a *AuthUseCase) SignIn(ctx context.Context, accountName, password string) (string, error) {
+	user, err := a.userRepo.GetUser(ctx, accountName)
 	if err != nil {
 		return "", auth.ErrUserNotFound
 	}
 
-	return user.Username, nil
+	return user.AccountName, nil
 
 	//claims := AuthClaims{
 	//	User: user,
