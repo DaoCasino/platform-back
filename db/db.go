@@ -1,4 +1,4 @@
-package models
+package db
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"platform-backend/config"
 )
 
-var dbPool *pgxpool.Pool
+var DbPool *pgxpool.Pool
 
 func migrateDatabase(pgxCfg *pgx.ConnConfig) error {
 	connStr := stdlib.RegisterConnConfig(pgxCfg)
@@ -78,9 +78,11 @@ func InitDB(ctx context.Context, config *config.DbConfig) error {
 	if err != nil {
 		return err
 	}
-	dbPool = pool
+	DbPool = pool
 
 	log.Info().Msgf("Database initialized")
 
 	return nil
 }
+
+

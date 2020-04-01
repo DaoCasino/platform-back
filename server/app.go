@@ -3,14 +3,16 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"github.com/auth0/go-jwt-middleware"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 	"net/http"
 	"os"
 	"os/signal"
+	"platform-backend/auth"
+	authPgRepo "platform-backend/auth/repository/postgres"
+	authUC "platform-backend/auth/usecase"
 	"platform-backend/config"
+	"platform-backend/db"
 	"platform-backend/logger"
 	"platform-backend/models"
 	"platform-backend/server/sessions"
@@ -22,13 +24,26 @@ type App struct {
 	config         *config.Config
 	wsUpgrader     websocket.Upgrader
 	sessionManager *sessions.SessionManager
+
+	authUC auth.UseCase
 }
 
 func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New connect request")
 
-	user := r.Context().Value("user")
-	jwtData := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	token, err := r.Cookie("token")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("Token cookie not found")
+		return
+	}
+
+	user, err := app.authUC.ParseToken(context.Background(), token.Value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		log.Debug().Msgf("Invalid auth token")
+		return
+	}
 
 	c, err := app.wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -38,7 +53,7 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
 
-	app.sessionManager.NewConnection(jwtData["account_name"].(string), c)
+	app.sessionManager.NewConnection(user.AccountName, c)
 }
 
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -51,33 +66,13 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims = jwt.MapClaims{"account_name": user.AccountName}
-
-	signed, err := token.SignedString([]byte(app.config.AuthConfig.JwtSecret))
+	signedToken, err := app.authUC.SignUp(context.Background(), &user)
 	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
-		log.Debug().Msgf("JWT token sign error, %s", err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	hasUser, err := models.HasUser(context.Background(), user.AccountName)
-	if err != nil {
-		http.Error(w, "", http.StatusInternalServerError)
-		log.Debug().Msgf("User existing check error, %s", err.Error())
-		return
-	}
-
-	if !hasUser {
-		err = models.AddUser(context.Background(), &user)
-		if err != nil {
-			http.Error(w, "", http.StatusInternalServerError)
-			log.Debug().Msgf("User create error, %s", err.Error())
-			return
-		}
-	}
-
-	authCookie := &http.Cookie{Name: "token", Value: signed, HttpOnly: true}
+	authCookie := &http.Cookie{Name: "token", Value: signedToken, HttpOnly: true}
 	http.SetCookie(w, authCookie)
 	w.WriteHeader(http.StatusOK)
 }
@@ -85,7 +80,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 func NewApp(config *config.Config) (*App, error) {
 	logger.InitLogger(config.LogLevel)
 
-	err := models.InitDB(context.Background(), &config.DbConfig)
+	err := db.InitDB(context.Background(), &config.DbConfig)
 	if err != nil {
 		log.Fatal().Msgf("Database init error, %s", err.Error())
 		return nil, err
@@ -97,25 +92,15 @@ func NewApp(config *config.Config) (*App, error) {
 			return true
 		}},
 		sessionManager: sessions.NewSessionManager(),
+		authUC: authUC.NewAuthUseCase(
+			authPgRepo.NewUserPostgresRepo(db.DbPool),
+			[]byte(config.AuthConfig.JwtSecret),
+		),
 	}
 
-	jwtMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
-		ValidationKeyGetter: func(token *jwt.Token) (i interface{}, err error) {
-			return []byte(config.AuthConfig.JwtSecret), nil
-		},
-		SigningMethod: jwt.SigningMethodHS256,
-		Extractor: func(r *http.Request) (string, error) {
-			token, err := r.Cookie("token")
-			if err != nil {
-				return "", err
-			}
-			return token.Value, nil
-		},
-	})
-
-	wsHandler := jwtMiddleware.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		wsClientHandler(app, w, r)
-	}))
+	})
 
 	authHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHandler(app, w, r)
