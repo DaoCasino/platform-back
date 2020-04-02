@@ -2,88 +2,116 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 	"net/http"
 	"os"
 	"os/signal"
 	"platform-backend/auth"
-	"platform-backend/auth/repository/localstorage"
+	authPgRepo "platform-backend/auth/repository/postgres"
+	authUC "platform-backend/auth/usecase"
 	"platform-backend/config"
+	"platform-backend/db"
 	"platform-backend/logger"
+	"platform-backend/models"
+	"platform-backend/server/sessions"
 	"time"
-
-	authusecase "platform-backend/auth/usecase"
 )
 
 type App struct {
-	httpServer *http.Server
-	config     *config.Config
-	upgrader   websocket.Upgrader
+	httpServer     *http.Server
+	config         *config.Config
+	wsUpgrader     websocket.Upgrader
+	sessionManager *sessions.SessionManager
 
 	authUC auth.UseCase
 }
 
-func wsMessageHandler(app *App, ws *websocket.Conn) {
-	defer ws.Close()
-	ws.SetReadLimit(512)
-	for {
-		messageType, message, err := ws.ReadMessage()
-		if err != nil {
-			// There is error or client is disconnected
-			log.Info().Msgf("Client with ip %q disconnected", ws.RemoteAddr())
-			break
-		}
-		log.Info().Msgf("Type: %d, message: %s", messageType, message)
-
-		if string(message) == "auth" {
-			app.authUC.SignIn(context.Background(), "petya", "qwerty")
-		}
-
-		//err = ws.WriteMessage(websocket.TextMessage, []byte("Hello, my client!"))
-		//if err != nil {
-		//	log.Info().Msgf("Client with ip %q disconnected", ws.RemoteAddr())
-		//	break
-		//}
-	}
-}
-
 func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	c, err := app.upgrader.Upgrade(w, r, nil)
+	log.Debug().Msgf("New connect request")
+
+	token, err := r.Cookie("token")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("Token cookie not found")
+		return
+	}
+
+	user, err := app.authUC.ParseToken(context.Background(), token.Value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		log.Debug().Msgf("Invalid auth token")
+		return
+	}
+
+	c, err := app.wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Err(err)
 		return
 	}
+
 	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
-	go wsMessageHandler(app, c)
+
+	app.sessionManager.NewConnection(user.AccountName, c)
 }
 
-func NewApp(config *config.Config) *App {
+func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New auth request")
+
+	var user models.User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("Http body parse error, %s", err.Error())
+		return
+	}
+
+	signedToken, err := app.authUC.SignUp(context.Background(), &user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	authCookie := &http.Cookie{Name: "token", Value: signedToken, HttpOnly: true}
+	http.SetCookie(w, authCookie)
+	w.WriteHeader(http.StatusOK)
+}
+
+func NewApp(config *config.Config) (*App, error) {
 	logger.InitLogger(config.LogLevel)
 
-	//db := initDB()
+	err := db.InitDB(context.Background(), &config.DbConfig)
+	if err != nil {
+		log.Fatal().Msgf("Database init error, %s", err.Error())
+		return nil, err
+	}
 
-	//userRepo := authmongo.NewUserRepository(db, viper.GetString("mongo.user_collection"))
-
-	userRepo := localstorage.NewUserLocalStorage()
 	app := &App{
 		config: config,
-		upgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
+		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		authUC: authusecase.NewAuthUseCase(
-			userRepo,
-			"test_hash_salt",
+		sessionManager: sessions.NewSessionManager(),
+		authUC: authUC.NewAuthUseCase(
+			authPgRepo.NewUserPostgresRepo(db.DbPool),
+			[]byte(config.AuthConfig.JwtSecret),
 		),
 	}
 
-	http.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
+	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		wsClientHandler(app, w, r)
 	})
 
+	authHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHandler(app, w, r)
+	})
+
+	http.Handle("/connect", wsHandler)
+	http.HandleFunc("/auth", authHandler)
+
 	log.Info().Msg("App created")
 
-	return app
+	return app, nil
 }
 
 func (a *App) Run(port string) error {
@@ -101,29 +129,4 @@ func (a *App) Run(port string) error {
 	defer shutdown()
 
 	return a.httpServer.Shutdown(ctx)
-}
-
-func initDB() {
-	// Init db here
-	// Below is example for postgres
-
-	//client, err := mongo.NewClient(options.Client().ApplyURI(viper.GetString("mongo.uri")))
-	//if err != nil {
-	//	log.Fatalf("Error occured while establishing connection to mongoDB")
-	//}
-	//
-	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	//defer cancel()
-	//
-	//err = client.Connect(ctx)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//err = client.Ping(context.Background(), nil)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//return client.Database(viper.GetString("mongo.name"))
 }

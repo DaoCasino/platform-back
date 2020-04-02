@@ -2,83 +2,73 @@ package usecase
 
 import (
 	"context"
-	"crypto/sha1"
-	"fmt"
+	"errors"
+	"github.com/dgrijalva/jwt-go"
+	"github.com/rs/zerolog/log"
 	"platform-backend/auth"
 	"platform-backend/models"
 )
 
-type AuthClaims struct {
-	User *models.User `json:"user"`
-}
-
 type AuthUseCase struct {
 	userRepo auth.UserRepository
-	hashSalt string
+	jwtSecret []byte
 }
 
-func NewAuthUseCase(
-	userRepo auth.UserRepository,
-	hashSalt string) *AuthUseCase {
+func NewAuthUseCase(userRepo auth.UserRepository, jwtSecret []byte) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo: userRepo,
-		hashSalt: hashSalt,
+		jwtSecret: jwtSecret,
 	}
 }
 
-func (a *AuthUseCase) SignUp(ctx context.Context, username, password string) error {
-	pwd := sha1.New()
-	pwd.Write([]byte(password))
-	pwd.Write([]byte(a.hashSalt))
+func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS256)
+	token.Claims = jwt.MapClaims{"account_name": user.AccountName}
 
-	user := &models.User{
-		Username: username,
-		Password: fmt.Sprintf("%x", pwd.Sum(nil)),
-	}
-
-	return a.userRepo.CreateUser(ctx, user)
-}
-
-func (a *AuthUseCase) SignIn(ctx context.Context, username, password string) (string, error) {
-	pwd := sha1.New()
-	pwd.Write([]byte(password))
-	pwd.Write([]byte(a.hashSalt))
-	password = fmt.Sprintf("%x", pwd.Sum(nil))
-
-	user, err := a.userRepo.GetUser(ctx, username, password)
+	signed, err := token.SignedString(a.jwtSecret)
 	if err != nil {
-		return "", auth.ErrUserNotFound
+		log.Debug().Msgf("JWT token sign error, %s", err.Error())
+		return "", err
 	}
 
-	return user.Username, nil
+	hasUser, err := a.userRepo.HasUser(context.Background(), user.AccountName)
+	if err != nil {
+		log.Debug().Msgf("User existing check error, %s", err.Error())
+		return "", err
+	}
+	if !hasUser {
+		if err := a.userRepo.AddUser(ctx, user); err != nil {
+			return "", err
+		}
+	}
 
-	//claims := AuthClaims{
-	//	User: user,
-	//	StandardClaims: jwt.StandardClaims{
-	//		ExpiresAt: jwt.At(time.Now().Add(a.expireDuration)),
-	//	},
-	//}
-	//
-	//token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	//
-	//return token.SignedString(a.signingKey)
+	return signed, nil
 }
 
 func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*models.User, error) {
-	//token, err := jwt.ParseWithClaims(accessToken, &AuthClaims{}, func(token *jwt.Token) (interface{}, error) {
-	//	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-	//		return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-	//	}
-	//	return a.signingKey, nil
-	//})
-	//
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//if claims, ok := token.Claims.(*AuthClaims); ok && token.Valid {
-	//	return claims.User, nil
-	//}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	return nil, auth.ErrInvalidAccessToken
+	token, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("invalid signing method")
+		}
+		return a.jwtSecret, nil
+	})
+
+	if err != nil {
+		return nil, auth.ErrInvalidAccessToken
+	}
+
+	claimsMap := token.Claims.(jwt.MapClaims)
+	if _, ok := claimsMap["account_name"]; !ok {
+		return nil, auth.ErrInvalidAccessToken
+	}
+
+	user, err := a.userRepo.GetUser(ctx, claimsMap["account_name"].(string))
+	if err != nil {
+		return nil, auth.ErrUserNotFound
+	}
+
+	return user, nil
 }

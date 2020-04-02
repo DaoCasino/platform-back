@@ -1,6 +1,17 @@
 version: '3.4'
 
 services:
+  database:
+    image: postgres:11.1-alpine
+    restart: always
+    ports:
+      - ${POSTGRES_PORT}:5432
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./.data/db:/var/lib/postgresql/data
 
   server:
     image: go-clean-architecture
@@ -10,17 +21,4 @@ services:
     ports:
       - 8000:8000
     depends_on:
-      - mongodb
-
-  mongodb:
-    image: mongo:latest
-    container_name: "mongodb"
-    environment:
-      - MONGO_DATA_DIR=/data/db
-      - MONGO_LOG_DIR=/dev/null
-      - MONGODB_DATABASE=testdb
-    volumes:
-      - ./.data/db:/data/db
-    ports:
-      - 27017:27017
-    command: mongod --smallfiles --logpath=/dev/null # --quiet
+      - database

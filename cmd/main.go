@@ -12,7 +12,11 @@ func main() {
 		log.Fatalf("%s", err.Error())
 	}
 
-	app := server.NewApp(appConfig)
+	var app *server.App
+	app, err = server.NewApp(appConfig)
+	if err != nil {
+		log.Fatalf("%s", err.Error())
+	}
 
 	if err := app.Run(appConfig.Port); err != nil {
 		log.Fatalf("%s", err.Error())

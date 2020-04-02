@@ -2,7 +2,11 @@
   "loglevel": "debug",
   "port": "8080",
   "dbConfig": {
-    "host": "localhost",
-    "port": "3030"
+    "url": "postgresql://postgres:postgres@localhost:5432/test_platform",
+    "maxPoolConns": 10,
+    "minPoolConns": 1
+  },
+  "authConfig": {
+    "jwtSecret": "top_secret"
   }
 }

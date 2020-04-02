@@ -1,8 +1,10 @@
 package models
 
 type GameSession struct {
-	ID       string
-	UserID   string
-	CasinoID string
-	GameID   string
+	ID              uint64
+	Player          string
+	CasinoID        uint64
+	GameID          uint64
+	BlockchainSesID uint64
+	State           uint16
 }
