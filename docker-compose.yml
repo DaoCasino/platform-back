@@ -2,6 +2,9 @@ version: '3.4'
 
 services:
   database:
+    container_name: platform-backend-database
+    networks:
+      - platform-backend
     image: postgres:11.1-alpine
     restart: always
     ports:
@@ -14,11 +17,21 @@ services:
       - ./.data/db:/var/lib/postgresql/data
 
   server:
-    image: go-clean-architecture
-    container_name: "go-clean-architecture"
-    build: ./
-    command: ./app
+    networks:
+      - platform-backend
+    container_name: platform-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        port: ${PLATFORM_BACKEND_PORT}
     ports:
-      - 8000:8000
+      - ${PLATFORM_BACKEND_PORT}:${PLATFORM_BACKEND_PORT}
     depends_on:
       - database
+    volumes:
+      - ./migrations:/root/migrations
+      - ./config.json:/root/config.json
+
+networks:
+  platform-backend:
