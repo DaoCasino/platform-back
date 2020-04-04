@@ -73,20 +73,19 @@ func (e *EventListener) processMessage(message []byte) error {
 		return err
 	}
 
+	log.Debug().Msgf("%+v", response)
+
 	if response.ID != nil {
-		if ch, ok := e.process[*response.ID]; ok {
-			if ch != nil {
-				ch <- response
-				close(ch)
-			}
-			delete(e.process, *response.ID)
-		}
+		e.response <- response
 	} else {
 		eventMessage := new(EventMessage)
 		if err := json.Unmarshal(response.Result, eventMessage); err != nil {
 			return err
 		}
-		e.event <- eventMessage
+
+		if e.event != nil {
+			e.event <- eventMessage
+		}
 	}
 	return nil
 }

@@ -39,10 +39,52 @@ func (e *EventListener) readPump(parentContext context.Context) {
 	}
 }
 
+func (e *EventListener) responsePump(ctx context.Context, send <-chan *responseQueue) {
+	process := make(map[string]chan *responseMessage)
+	defer func() {
+		for ID, ch := range process {
+			if ch != nil {
+				close(ch)
+			}
+			delete(process, ID)
+		}
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case message, ok := <-send:
+			if !ok {
+				return
+			}
+			if message.response != nil { // Add wait response
+				process[message.ID] = message.response
+			}
+
+		case response, ok := <-e.response:
+			if !ok {
+				return
+			}
+			ID := *response.ID
+			if ch, ok := process[ID]; ok {
+				if ch != nil {
+					ch <- response
+					close(ch)
+				}
+				delete(process, ID)
+			}
+		}
+	}
+}
+
 func (e *EventListener) writePump(parentContext context.Context) {
 	ticker := time.NewTicker(e.PingPeriod)
+	waitResponse := make(chan *responseQueue)
+
+	go e.responsePump(parentContext, waitResponse)
 
 	defer func() {
+		close(waitResponse)
 		ticker.Stop()
 		e.conn.Close()
 
@@ -67,8 +109,8 @@ func (e *EventListener) writePump(parentContext context.Context) {
 				// TODO: log
 				return
 			}
-			if message.response != nil { // Add wait response
-				e.process[message.ID] = message.response
+			if message.response != nil {
+				waitResponse <- message
 			}
 		case <-ticker.C:
 			pingMessage(e.conn, e.WriteWait)

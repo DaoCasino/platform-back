@@ -24,10 +24,11 @@ type EventListener struct {
 	PongWait       time.Duration // Time allowed to read the next pong message from the peer.
 	PingPeriod     time.Duration // Send pings to peer with this period. Must be less than pongWait.
 
-	conn    *websocket.Conn
-	event   chan<- *EventMessage
-	send    chan *responseQueue
-	process map[string]chan *responseMessage
+	conn  *websocket.Conn
+	event chan<- *EventMessage
+
+	send     chan *responseQueue
+	response chan *responseMessage
 }
 
 func NewEventListener(addr string, event chan<- *EventMessage) *EventListener {
@@ -38,9 +39,9 @@ func NewEventListener(addr string, event chan<- *EventMessage) *EventListener {
 		PongWait:       pongWait,
 		PingPeriod:     pingPeriod,
 
-		event:   event,
-		send:    make(chan *responseQueue, 512),
-		process: make(map[string]chan *responseMessage),
+		event:    event,
+		send:     make(chan *responseQueue, 512),
+		response: make(chan *responseMessage, 512),
 	}
 }
 

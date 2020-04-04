@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 const (
@@ -88,11 +89,24 @@ func TestEventListener_EventsMessage(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ok)
 
-	for event := range events {
-		if len(event.Events) == 0 {
-			t.Error("received 0 events; want more")
+	waitContext, cancelWait := context.WithTimeout(parentContext, 2*time.Second)
+
+loop:
+	for {
+		select {
+		case <-waitContext.Done():
+			t.Log("no events")
+			break loop
+		case event := <-events:
+			if len(event.Events) == 0 {
+				t.Error("received 0 events; want more")
+				break loop
+			}
+			t.Logf("%+v", event.Events[0])
+			break loop
+
 		}
-		t.Logf("%+v", event.Events[0])
-		break
 	}
+
+	cancelWait()
 }
