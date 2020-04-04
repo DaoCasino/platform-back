@@ -115,7 +115,9 @@ func (e *EventListener) writePump(parentContext context.Context) {
 		}
 
 		ticker.Stop()
-		e.conn.Close()
+		if err := e.conn.Close(); err != nil {
+			log.Error().Err(err).Str("func", "conn.Close").Send()
+		}
 
 		log.Info().Msg(msgPumpStopped)
 	}()
