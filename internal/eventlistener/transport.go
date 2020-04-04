@@ -32,8 +32,9 @@ func (e *EventListener) readPump(parentContext context.Context) {
 				return
 			}
 
-			// TODO: process message
-			log.Debug().Msg(string(message))
+			if err := e.processMessage(message); err != nil {
+				// TODO: log error
+			}
 		}
 	}
 }
@@ -61,7 +62,14 @@ func (e *EventListener) writePump(parentContext context.Context) {
 				closeMessage(e.conn, e.WriteWait)
 				return
 			}
-			writeMessage(e.conn, e.WriteWait, message)
+			err := writeMessage(e.conn, e.WriteWait, message.message)
+			if err != nil {
+				// TODO: log
+				return
+			}
+			if message.response != nil { // Add wait response
+				e.process[message.ID] = message.response
+			}
 		case <-ticker.C:
 			pingMessage(e.conn, e.WriteWait)
 		}

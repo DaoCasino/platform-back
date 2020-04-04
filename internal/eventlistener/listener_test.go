@@ -5,7 +5,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
-	"time"
 )
 
 func TestNewEventListener(t *testing.T) {
@@ -30,17 +29,66 @@ func TestEventListener_ListenAndServe(t *testing.T) {
 
 func TestEventListener_Subscribe(t *testing.T) {
 	parentContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	listener := NewEventListener(":8888", nil)
 	if err := listener.ListenAndServe(parentContext); err != nil {
 		t.Skip("listen error", err.Error())
+		return
 	}
 
-	time.Sleep(2 * time.Second)
-	cancel()
+	ok, err := listener.Subscribe(0, 0)
+	require.NoError(t, err)
+	assert.True(t, ok)
 }
 
-//
-//func TestEventListener_Unsubscribe(t *testing.T) {
-//	t.Skip("need write")
-//}
+func TestEventListener_Unsubscribe(t *testing.T) {
+	parentContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	listener := NewEventListener(":8888", nil)
+	if err := listener.ListenAndServe(parentContext); err != nil {
+		t.Skip("listen error", err.Error())
+		return
+	}
+
+	// Unsubscribing from a topic that is not subscribed to
+	ok, err := listener.Unsubscribe(666)
+	require.Error(t, err)
+	assert.False(t, ok)
+
+	ok, err = listener.Subscribe(0, 0)
+	require.NoError(t, err)
+	assert.True(t, ok)
+
+	ok, err = listener.Unsubscribe(0)
+	require.NoError(t, err)
+	assert.True(t, ok)
+}
+
+func TestEventListener_EventsMessage(t *testing.T) {
+	parentContext, cancel := context.WithCancel(context.Background())
+	events := make(chan *EventMessage)
+	defer func() {
+		close(events)
+		cancel()
+	}()
+
+	listener := NewEventListener(":8888", events)
+	if err := listener.ListenAndServe(parentContext); err != nil {
+		t.Skip("listen error", err.Error())
+		return
+	}
+
+	ok, err := listener.Subscribe(0, 0)
+	require.NoError(t, err)
+	assert.True(t, ok)
+
+	for event := range events {
+		if len(event.Events) == 0 {
+			t.Error("received 0 events; want more")
+		}
+		t.Logf("%+v", event.Events[0])
+		break
+	}
+}
