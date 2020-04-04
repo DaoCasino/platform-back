@@ -68,8 +68,8 @@ func (e *EventListener) ListenAndServe(parentContext context.Context) error {
 
 func (e *EventListener) Subscribe(eventType EventType, offset uint64) (bool, error) {
 	params := struct {
-		Topic  string
-		Offset uint64
+		Topic  string `json:"topic"`
+		Offset uint64 `json:"offset"`
 	}{
 		eventType.ToString(),
 		offset,
@@ -92,7 +92,7 @@ func (e *EventListener) Subscribe(eventType EventType, offset uint64) (bool, err
 
 func (e *EventListener) Unsubscribe(eventType EventType) (bool, error) {
 	params := struct {
-		Topic string
+		Topic string `json:"topic"`
 	}{
 		eventType.ToString(),
 	}
