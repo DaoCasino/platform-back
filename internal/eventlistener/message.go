@@ -23,3 +23,7 @@ type eventMessage struct {
 	Offset uint64   `json:"offset"` // last event.offset
 	Events []*Event `json:"events"`
 }
+
+func (e *EventListener) processMessage(message []byte) error {
+	return nil
+}
