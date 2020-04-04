@@ -3,7 +3,6 @@ package eventlistener
 import (
 	"encoding/json"
 	"github.com/lucsky/cuid"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -59,7 +58,7 @@ func (e *EventListener) sendRequest(req *requestMessage) (*responseMessage, erro
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Msgf("%+v", req)
+	logger.Debug().Str("func", "sendRequest").RawJSON("request", message).Send()
 
 	wait := newResponseQueue(req.ID, message)
 	e.send <- wait
@@ -72,6 +71,7 @@ func (e *EventListener) processMessage(message []byte) error {
 	if err := json.Unmarshal(message, response); err != nil {
 		return err
 	}
+	logger.Debug().Str("func", "processMessage").RawJSON("response", message).Send()
 
 	if response.ID != nil {
 		e.response <- response

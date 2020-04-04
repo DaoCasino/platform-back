@@ -17,7 +17,7 @@ func (e *EventListener) readPump(parentContext context.Context) {
 
 	defer func() {
 		if err := e.conn.Close(); err != nil {
-			log.Error().Err(err).Str("func", "conn.Close")
+			log.Error().Err(err).Str("func", "conn.Close").Send()
 		}
 		log.Info().Msg(msgPumpStopped)
 	}()
@@ -26,7 +26,7 @@ func (e *EventListener) readPump(parentContext context.Context) {
 
 	e.conn.SetReadLimit(e.MaxMessageSize)
 	if err := e.conn.SetReadDeadline(time.Now().Add(e.PongWait)); err != nil {
-		log.Error().Err(err).Str("func", "conn.SetReadDeadline")
+		log.Error().Err(err).Str("func", "conn.SetReadDeadline").Send()
 	}
 	e.conn.SetPongHandler(func(string) error { return e.conn.SetReadDeadline(time.Now().Add(e.PongWait)) })
 
@@ -39,13 +39,13 @@ func (e *EventListener) readPump(parentContext context.Context) {
 			_, message, err := e.conn.ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Error().Err(err).Str("func", "conn.ReadMessage")
+					log.Error().Err(err).Str("func", "conn.ReadMessage").Send()
 				}
 				return
 			}
 
 			if err := e.processMessage(message); err != nil {
-				log.Error().Err(err).Str("func", "processMessage")
+				log.Error().Err(err).Str("func", "processMessage").Send()
 			}
 		}
 	}
@@ -133,13 +133,13 @@ func (e *EventListener) writePump(parentContext context.Context) {
 				// The session closed the channel.
 				log.Debug().Msg("close send channel")
 				if err := closeMessage(e.conn, e.WriteWait); err != nil {
-					log.Error().Err(err).Str("func", "closeMessage")
+					log.Error().Err(err).Str("func", "closeMessage").Send()
 				}
 				return
 			}
 			err := writeMessage(e.conn, e.WriteWait, message.message)
 			if err != nil {
-				log.Error().Err(err).Str("func", "writeMessage")
+				log.Error().Err(err).Str("func", "writeMessage").Send()
 				return
 			}
 			if message.response != nil {
@@ -147,7 +147,7 @@ func (e *EventListener) writePump(parentContext context.Context) {
 			}
 		case <-ticker.C:
 			if err := pingMessage(e.conn, e.WriteWait); err != nil {
-				log.Error().Err(err).Str("func", "pingMessage")
+				log.Error().Err(err).Str("func", "pingMessage").Send()
 			}
 		}
 	}
