@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+const (
+	actionMonitorAddr = ":8888"
+)
+
 func TestNewEventListener(t *testing.T) {
 	addr := ":1234"
 	listener := NewEventListener(addr, nil)
@@ -31,7 +35,7 @@ func TestEventListener_Subscribe(t *testing.T) {
 	parentContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	listener := NewEventListener(":8888", nil)
+	listener := NewEventListener(actionMonitorAddr, nil)
 	if err := listener.ListenAndServe(parentContext); err != nil {
 		t.Skip("listen error", err.Error())
 		return
@@ -46,7 +50,7 @@ func TestEventListener_Unsubscribe(t *testing.T) {
 	parentContext, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	listener := NewEventListener(":8888", nil)
+	listener := NewEventListener(actionMonitorAddr, nil)
 	if err := listener.ListenAndServe(parentContext); err != nil {
 		t.Skip("listen error", err.Error())
 		return

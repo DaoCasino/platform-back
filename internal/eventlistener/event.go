@@ -1,7 +1,6 @@
 package eventlistener
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
@@ -24,13 +23,4 @@ type EventMessage struct {
 
 func (e EventType) ToString() string {
 	return fmt.Sprintf("event_%d", e)
-}
-
-func parseEvent(data []byte) (*Event, error) {
-	fields := new(Event)
-	if err := json.Unmarshal(data, fields); err != nil {
-		return nil, err
-	}
-
-	return fields, nil
 }
