@@ -89,6 +89,8 @@ func (e *EventListener) writePump(parentContext context.Context) {
 
 	defer func() {
 		close(waitResponse)
+		close(e.event) // <- events can not be expected
+
 		ticker.Stop()
 		e.conn.Close()
 
