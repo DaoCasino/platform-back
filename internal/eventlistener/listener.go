@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"net/url"
 	"time"
@@ -16,6 +17,8 @@ const (
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 1024 * 4
 )
+
+var logger *zerolog.Logger
 
 type EventListener struct {
 	Addr           string        // TCP address to listen.
@@ -45,9 +48,12 @@ func NewEventListener(addr string, event chan<- *EventMessage) *EventListener {
 	}
 }
 
-func (e *EventListener) ListenAndServe(ctx context.Context) error {
+func (e *EventListener) ListenAndServe(parentContext context.Context) error {
 	u := url.URL{Scheme: "ws", Host: e.Addr, Path: "/"}
-	log.Info().Msgf("event listener connecting to %s", u.String())
+
+	log.Logger = log.With().Str("package", "EventListener").Logger()
+	ctx := log.Logger.WithContext(parentContext)
+	logger = log.Ctx(ctx)
 
 	var err error
 	e.conn, _, err = websocket.DefaultDialer.DialContext(ctx, u.String(), nil)

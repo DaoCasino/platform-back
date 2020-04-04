@@ -75,7 +75,6 @@ func TestEventListener_EventsMessage(t *testing.T) {
 	parentContext, cancel := context.WithCancel(context.Background())
 	events := make(chan *EventMessage)
 	defer func() {
-		close(events)
 		cancel()
 	}()
 

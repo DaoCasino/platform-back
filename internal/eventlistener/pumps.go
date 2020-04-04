@@ -3,43 +3,57 @@ package eventlistener
 import (
 	"context"
 	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog/log"
 	"time"
 )
 
+const (
+	msgPumpStopped       = "pump stopped"
+	msgPumpRunning       = "pump running"
+	msgParentContextDone = "parent context done"
+)
+
 func (e *EventListener) readPump(parentContext context.Context) {
+	log := logger.With().Str("gorutine", "readPump").Logger()
+
 	defer func() {
-		log.Debug().Msg("event listener read stop")
-		e.conn.Close()
+		if err := e.conn.Close(); err != nil {
+			log.Error().Err(err).Str("func", "conn.Close")
+		}
+		log.Info().Msg(msgPumpStopped)
 	}()
 
-	log.Debug().Msg("event listener read start")
+	log.Info().Msg(msgPumpRunning)
 
 	e.conn.SetReadLimit(e.MaxMessageSize)
-	e.conn.SetReadDeadline(time.Now().Add(e.PongWait))
+	if err := e.conn.SetReadDeadline(time.Now().Add(e.PongWait)); err != nil {
+		log.Error().Err(err).Str("func", "conn.SetReadDeadline")
+	}
 	e.conn.SetPongHandler(func(string) error { return e.conn.SetReadDeadline(time.Now().Add(e.PongWait)) })
 
 	for {
 		select {
 		case <-parentContext.Done():
+			log.Debug().Msg(msgParentContextDone)
 			return
 		default:
 			_, message, err := e.conn.ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Error().Msgf("event listener socket error: %s", err.Error())
+					log.Error().Err(err).Str("func", "conn.ReadMessage")
 				}
 				return
 			}
 
 			if err := e.processMessage(message); err != nil {
-				// TODO: log error
+				log.Error().Err(err).Str("func", "processMessage")
 			}
 		}
 	}
 }
 
 func (e *EventListener) responsePump(ctx context.Context, send <-chan *responseQueue) {
+	log := logger.With().Str("gorutine", "responsePump").Logger()
+
 	process := make(map[string]chan *responseMessage)
 	defer func() {
 		for ID, ch := range process {
@@ -49,16 +63,18 @@ func (e *EventListener) responsePump(ctx context.Context, send <-chan *responseQ
 			delete(process, ID)
 		}
 
-		log.Debug().Msg("event listener response wait stop")
+		log.Info().Msg(msgPumpStopped)
 	}()
 
-	log.Debug().Msg("event listener response wait start")
+	log.Info().Msg(msgPumpStopped)
 	for {
 		select {
 		case <-ctx.Done():
+			log.Debug().Msg(msgParentContextDone)
 			return
 		case message, ok := <-send:
 			if !ok {
+				log.Debug().Msg("close send channel")
 				return
 			}
 			if message.response != nil { // Add wait response
@@ -67,6 +83,7 @@ func (e *EventListener) responsePump(ctx context.Context, send <-chan *responseQ
 
 		case response, ok := <-e.response:
 			if !ok {
+				log.Debug().Msg("close response channel")
 				return
 			}
 			ID := *response.ID
@@ -82,6 +99,8 @@ func (e *EventListener) responsePump(ctx context.Context, send <-chan *responseQ
 }
 
 func (e *EventListener) writePump(parentContext context.Context) {
+	log := logger.With().Str("gorutine", "writePump").Logger()
+
 	ticker := time.NewTicker(e.PingPeriod)
 	waitResponse := make(chan *responseQueue)
 
@@ -89,37 +108,47 @@ func (e *EventListener) writePump(parentContext context.Context) {
 
 	defer func() {
 		close(waitResponse)
-		close(e.event) // <- events can not be expected
+
+		if e.event != nil {
+			close(e.event) // <- events can not be expected
+			log.Debug().Msg("close event channel")
+		}
 
 		ticker.Stop()
 		e.conn.Close()
 
-		log.Debug().Msg("event listener write stop")
+		log.Info().Msg(msgPumpStopped)
 	}()
 
-	log.Debug().Msg("event listener write start")
+	log.Info().Msg(msgPumpRunning)
 
 	for {
 		select {
 		case <-parentContext.Done():
+			log.Debug().Msg(msgParentContextDone)
 			return
 
 		case message, ok := <-e.send:
 			if !ok {
 				// The session closed the channel.
-				closeMessage(e.conn, e.WriteWait)
+				log.Debug().Msg("close send channel")
+				if err := closeMessage(e.conn, e.WriteWait); err != nil {
+					log.Error().Err(err).Str("func", "closeMessage")
+				}
 				return
 			}
 			err := writeMessage(e.conn, e.WriteWait, message.message)
 			if err != nil {
-				// TODO: log
+				log.Error().Err(err).Str("func", "writeMessage")
 				return
 			}
 			if message.response != nil {
 				waitResponse <- message
 			}
 		case <-ticker.C:
-			pingMessage(e.conn, e.WriteWait)
+			if err := pingMessage(e.conn, e.WriteWait); err != nil {
+				log.Error().Err(err).Str("func", "pingMessage")
+			}
 		}
 	}
 }
