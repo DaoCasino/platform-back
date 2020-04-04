@@ -73,8 +73,6 @@ func (e *EventListener) processMessage(message []byte) error {
 		return err
 	}
 
-	log.Debug().Msgf("%+v", response)
-
 	if response.ID != nil {
 		e.response <- response
 	} else {
