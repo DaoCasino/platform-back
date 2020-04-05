@@ -1,7 +1,12 @@
-FROM alpine:latest
+FROM golang:1.13.4 AS builder
+RUN go version
+WORKDIR /app
+COPY . ./
 
-RUN apk --no-cache add ca-certificates
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o app ./cmd/main.go
+
+FROM scratch
 WORKDIR /root/
-
-COPY ./.bin/app .
-COPY ./config/ ./config/
+COPY --from=builder /app/app .
+EXPOSE 8080
+ENTRYPOINT ["./app"]

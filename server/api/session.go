@@ -1,7 +1,8 @@
-package sessions
+package api
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
@@ -13,11 +14,15 @@ type Session struct {
 	// base context
 	baseCtx context.Context
 	// websocket connection
-	wsConn  *websocket.Conn
+	wsConn *websocket.Conn
 	// closing flag
-	closing	atomic.Bool
+	closing atomic.Bool
 	// on session close callback
 	onClose OnCloseCb
+
+	wsApi *WsApi
+
+	subscribed bool
 
 	// send msg to socket chan
 	Send chan []byte
@@ -25,7 +30,7 @@ type Session struct {
 
 func (s *Session) close() {
 	if !s.closing.Load() {
-		s.wsConn.Close()
+		_ = s.wsConn.Close()
 		s.onClose()
 		s.closing.Store(true)
 	}
@@ -47,13 +52,24 @@ func (s *Session) readLoop() {
 			return
 
 		default:
-			_, _, err := s.wsConn.ReadMessage()
+			messageType, message, err := s.wsConn.ReadMessage()
 			if err != nil {
 				log.Debug().Msgf("Websocket read error, disconnection, %s", err.Error())
 				return
 			}
 
-			//TODO process
+			resp, err := ProcessRequest(s.baseCtx, s.wsApi, s, messageType, message)
+			if err != nil {
+				log.Debug().Msgf("Websocket request parsing error, disconnection, %s", err.Error())
+				return
+			}
+
+			if marshal, err := json.Marshal(resp); err != nil {
+				log.Debug().Msgf("Websocket answer marshal error, %s", err.Error())
+				return
+			} else {
+				s.Send <- marshal
+			}
 		}
 	}
 }
@@ -85,12 +101,15 @@ func (s *Session) writeLoop() {
 	}
 }
 
-func NewSession(ctx context.Context, conn *websocket.Conn, onClose OnCloseCb) *Session {
+func NewSession(ctx context.Context, conn *websocket.Conn, onClose OnCloseCb, wsApi *WsApi) *Session {
 	session := new(Session)
 
 	session.baseCtx = ctx
 	session.wsConn = conn
 	session.onClose = onClose
+	session.wsApi = wsApi
+	session.subscribed = false
+	session.Send = make(chan []byte)
 	session.closing.Store(false)
 
 	return session
