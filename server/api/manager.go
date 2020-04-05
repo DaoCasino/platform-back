@@ -1,4 +1,4 @@
-package sessions
+package api
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 type SessionManager struct {
 	sync.Mutex
 	sessions map[string]*Session
+	wsApi    *WsApi
 }
 
 func (s *SessionManager) removeSession(userName string) {
@@ -19,8 +20,9 @@ func (s *SessionManager) removeSession(userName string) {
 	delete(s.sessions, userName)
 }
 
-func NewSessionManager() *SessionManager {
+func NewSessionManager(wsApi *WsApi) *SessionManager {
 	manager := new(SessionManager)
+	manager.wsApi = wsApi
 	manager.sessions = make(map[string]*Session)
 
 	return manager
@@ -32,7 +34,7 @@ func (s *SessionManager) NewConnection(userName string, wsConn *websocket.Conn) 
 
 	s.sessions[userName] = NewSession(context.Background(), wsConn, func() {
 		s.removeSession(userName)
-	})
+	}, s.wsApi)
 
 	s.sessions[userName].Run()
 
