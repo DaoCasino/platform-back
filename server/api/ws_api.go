@@ -82,10 +82,7 @@ func ProcessRequest(context context.Context, wsApi *WsApi, session *Session, mes
 		return nil, fmt.Errorf("invalid request JSON format")
 	}
 
-	for handlerMsg, handler := range handlers {
-		if handlerMsg != messageObj.Request {
-			continue
-		}
+	if handler, found := handlers[messageObj.Request]; found {
 		if handler.messageType != messageType {
 			return nil, fmt.Errorf("message type is wrong")
 		}
