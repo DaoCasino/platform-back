@@ -14,6 +14,11 @@ CREATE TABLE game_sessions
     state             SMALLINT NOT NULL
 );
 
+CREATE TABLE casinos
+(
+    id      NUMERIC PRIMARY KEY UNIQUE
+);
+
 CREATE TABLE game_session_updates
 (
     ses_id      NUMERIC REFERENCES game_sessions (id),

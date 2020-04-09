@@ -8,14 +8,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"platform-backend/auth"
 	authPgRepo "platform-backend/auth/repository/postgres"
 	authUC "platform-backend/auth/usecase"
+	casinoPgRepo "platform-backend/casino/repository/postgres"
+	casinoUC "platform-backend/casino/usecase"
 	"platform-backend/config"
 	"platform-backend/db"
 	"platform-backend/logger"
 	"platform-backend/models"
-	"platform-backend/server/sessions"
+	"platform-backend/server/api"
+	"platform-backend/usecases"
 	"time"
 )
 
@@ -23,9 +25,10 @@ type App struct {
 	httpServer     *http.Server
 	config         *config.Config
 	wsUpgrader     websocket.Upgrader
-	sessionManager *sessions.SessionManager
+	sessionManager *api.SessionManager
+	wsApi          *api.WsApi
 
-	authUC auth.UseCase
+	useCases *usecases.UseCases
 }
 
 func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -38,7 +41,7 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := app.authUC.ParseToken(context.Background(), token.Value)
+	user, err := app.useCases.Auth.ParseToken(context.Background(), token.Value)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		log.Debug().Msgf("Invalid auth token")
@@ -53,6 +56,7 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
 
+	//app.sessionManager.NewConnection("TestUser", c)
 	app.sessionManager.NewConnection(user.AccountName, c)
 }
 
@@ -66,7 +70,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signedToken, err := app.authUC.SignUp(context.Background(), &user)
+	signedToken, err := app.useCases.Auth.SignUp(context.Background(), &user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -86,16 +90,19 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	useCases := usecases.NewUseCases(
+		authUC.NewAuthUseCase(
+			authPgRepo.NewUserPostgresRepo(db.DbPool),
+			[]byte(config.AuthConfig.JwtSecret),
+		), casinoUC.NewCasinoUseCase(casinoPgRepo.NewCasinoPostgresRepo(db.DbPool)))
+
 	app := &App{
 		config: config,
 		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		sessionManager: sessions.NewSessionManager(),
-		authUC: authUC.NewAuthUseCase(
-			authPgRepo.NewUserPostgresRepo(db.DbPool),
-			[]byte(config.AuthConfig.JwtSecret),
-		),
+		sessionManager: api.NewSessionManager(api.NewWsApi(useCases)),
+		useCases:       useCases,
 	}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
