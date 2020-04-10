@@ -22,6 +22,8 @@ import (
 	"time"
 )
 
+type JsonResponse = map[string]interface{}
+
 type App struct {
 	httpServer     *http.Server
 	config         *config.Config
@@ -56,15 +58,26 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signedToken, err := app.useCases.Auth.SignUp(context.Background(), &user)
+	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), &user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("SignUp error: %s", err.Error())
 		return
 	}
 
-	authCookie := &http.Cookie{Name: "token", Value: signedToken, HttpOnly: true}
-	http.SetCookie(w, authCookie)
+	response, err := json.Marshal(JsonResponse{
+		"refreshToken": refreshToken,
+		"accessToken": accessToken,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Debug().Msgf("Response marshal error: %s", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
 
 func NewApp(config *config.Config) (*App, error) {

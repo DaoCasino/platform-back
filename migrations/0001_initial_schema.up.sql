@@ -1,7 +1,8 @@
 CREATE TABLE users
 (
     account_name VARCHAR(13) PRIMARY KEY UNIQUE,
-    email        VARCHAR(64) NOT NULL
+    email        VARCHAR(64) NOT NULL,
+    token_nonce  NUMERIC NOT NULL DEFAULT 0
 );
 
 CREATE TABLE game_sessions
