@@ -6,14 +6,12 @@ import (
 	"platform-backend/server/api/interfaces"
 )
 
-type FetchCasinosPayload struct {
-	Deposit  string `json:"deposit"`
-	CasinoId int32  `json:"casinoid"`
-	GameId   int32  `json:"gameid"`
+type AuthPayload struct {
+	Token string `json:"token"`
 }
 
-func ProcessFetchCasinosRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
-	var payload FetchCasinosPayload
+func ProcessAuth(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
+	var payload AuthPayload
 	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
 		return nil, err
 	}

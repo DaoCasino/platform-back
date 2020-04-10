@@ -1,6 +1,7 @@
 package interfaces
 
 import (
+	"encoding/json"
 	"platform-backend/models"
 	"platform-backend/usecases"
 )
@@ -8,11 +9,11 @@ import (
 type WsRequest struct {
 	Request string      `json:"request"`
 	Id      string      `json:"id"`
-	Payload interface{} `json:"payload"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 type ApiRequest struct {
 	UseCases *usecases.UseCases
 	User     *models.User
-	Message  []byte
+	Data     *WsRequest
 }

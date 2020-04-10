@@ -35,20 +35,6 @@ type App struct {
 func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New connect request")
 
-	token, err := r.Cookie("token")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Debug().Msgf("Token cookie not found")
-		return
-	}
-
-	user, err := app.useCases.Auth.ParseToken(context.Background(), token.Value)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		log.Debug().Msgf("Invalid auth token")
-		return
-	}
-
 	c, err := app.wsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Err(err)
@@ -57,8 +43,8 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
 
-	//app.sessionManager.NewConnection("TestUser", c)
-	app.sessionManager.NewConnection(user.AccountName, c)
+	app.sessionManager.NewConnection("TestUser", c) //TODO to be fixed later
+	//app.sessionManager.NewConnection(user.AccountName, c)
 }
 
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
