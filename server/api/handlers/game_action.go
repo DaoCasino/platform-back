@@ -1,13 +1,13 @@
-package api
+package handlers
 
 import (
 	"context"
 	"encoding/json"
-	"platform-backend/usecases"
+	"platform-backend/server/api/interfaces"
 )
 
 type GameActionPayload struct {
-	*WsRequest
+	*interfaces.WsRequest
 	Payload struct {
 		SessionId  string   `json:"sessionid"`
 		ActionType int32    `json:"actiontype"`
@@ -15,13 +15,13 @@ type GameActionPayload struct {
 	} `json:"payload"`
 }
 
-func ProcessGameActionRequest(context context.Context, useCases *usecases.UseCases, session *Session, message []byte) (*WsResponse, error) {
+func ProcessGameActionRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
 	var messageObj GameActionPayload
-	if err := json.Unmarshal(message, &messageObj); err != nil {
+	if err := json.Unmarshal(req.Message, &messageObj); err != nil {
 		return nil, err
 	}
 
-	return &WsResponse{
+	return &interfaces.WsResponse{
 		Type:    "response",
 		Id:      messageObj.Id,
 		Status:  "ok",

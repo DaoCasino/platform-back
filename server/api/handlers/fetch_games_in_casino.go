@@ -1,13 +1,13 @@
-package api
+package handlers
 
 import (
 	"context"
 	"encoding/json"
-	"platform-backend/usecases"
+	"platform-backend/server/api/interfaces"
 )
 
 type FetchGamesInCasinoPayload struct {
-	*WsRequest
+	*interfaces.WsRequest
 	Payload struct {
 		Deposit  string `json:"deposit"`
 		CasinoId int32  `json:"casinoid"`
@@ -15,13 +15,13 @@ type FetchGamesInCasinoPayload struct {
 	} `json:"payload"`
 }
 
-func ProcessFetchGamesInCasinoRequest(context context.Context, useCases *usecases.UseCases, session *Session, message []byte) (*WsResponse, error) {
+func ProcessFetchGamesInCasinoRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
 	var messageObj FetchGamesInCasinoPayload
-	if err := json.Unmarshal(message, &messageObj); err != nil {
+	if err := json.Unmarshal(req.Message, &messageObj); err != nil {
 		return nil, err
 	}
 
-	return &WsResponse{
+	return &interfaces.WsResponse{
 		Type:    "response",
 		Id:      messageObj.Id,
 		Status:  "ok",

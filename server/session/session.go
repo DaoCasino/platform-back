@@ -1,4 +1,4 @@
-package api
+package session
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
+	"platform-backend/models"
+	"platform-backend/server/api"
 	"time"
 )
 
@@ -34,10 +36,10 @@ type Session struct {
 	closing atomic.Bool
 	// on session close callback
 	onClose OnCloseCb
-
-	wsApi *WsApi
-
-	subscribed bool
+	// user ws api
+	wsApi *api.WsApi
+	// session user (nil before auth)
+	user *models.User
 
 	// send msg to socket chan
 	Send chan []byte
@@ -52,7 +54,7 @@ func (s *Session) close() {
 }
 
 func (s *Session) readLoop() {
-	_, cancel := context.WithCancel(s.baseCtx)
+	ctx, cancel := context.WithCancel(s.baseCtx)
 	defer func() {
 		cancel()
 		s.close()
@@ -75,7 +77,10 @@ func (s *Session) readLoop() {
 				return
 			}
 
-			resp, err := ProcessRequest(s.baseCtx, s.wsApi, s, messageType, message)
+			// add user info into context
+			ctx = context.WithValue(ctx, "user", s.user)
+
+			resp, err := s.wsApi.ProcessRawRequest(ctx, messageType, message)
 			if err != nil {
 				log.Debug().Msgf("Websocket request parsing error, disconnection, %s", err.Error())
 				return
@@ -126,14 +131,14 @@ func (s *Session) writeLoop() {
 	}
 }
 
-func NewSession(ctx context.Context, conn *websocket.Conn, onClose OnCloseCb, wsApi *WsApi) *Session {
+func NewSession(ctx context.Context, conn *websocket.Conn, wsApi *api.WsApi, onClose OnCloseCb) *Session {
 	session := new(Session)
 
 	session.baseCtx = ctx
 	session.wsConn = conn
 	session.onClose = onClose
 	session.wsApi = wsApi
-	session.subscribed = false
+	session.user = nil
 	session.Send = make(chan []byte)
 	session.closing.Store(false)
 
