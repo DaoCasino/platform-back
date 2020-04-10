@@ -2,53 +2,88 @@ package session
 
 import (
 	"context"
+	"errors"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
+	"platform-backend/models"
 	"platform-backend/server/api"
 	"sync"
 )
 
-type Manager struct {
+type ManagerImpl struct {
 	sync.Mutex
-	sessions map[string]*Session
-	wsApi    *api.WsApi
+	// main sessions registry
+	sessionById   map[uuid.UUID]*Session
+	// session by account name map
+	sessionByUser map[string]*Session
 }
 
-func (s *Manager) removeSession(userName string) {
-	s.Lock()
-	defer s.Unlock()
+func (m *ManagerImpl) removeSession(uid uuid.UUID) {
+	m.Lock()
+	defer m.Unlock()
 
-	delete(s.sessions, userName)
+	if _, ok := m.sessionById[uid]; !ok {
+		// session doesn't exists
+		return
+	}
+
+	// remove from by user map
+	if m.sessionById[uid].user != nil {
+		delete(m.sessionByUser, m.sessionById[uid].user.AccountName)
+	}
+
+	// remove from main map
+	delete(m.sessionById, uid)
 }
 
-func NewSessionManager(wsApi *api.WsApi) *Manager {
-	manager := new(Manager)
-	manager.wsApi = wsApi
-	manager.sessions = make(map[string]*Session)
+func NewSessionManager() *ManagerImpl {
+	manager := new(ManagerImpl)
+	manager.sessionById = make(map[uuid.UUID]*Session)
+	manager.sessionByUser = make(map[string]*Session)
 
 	return manager
 }
 
-func (s *Manager) NewConnection(userName string, wsConn *websocket.Conn) {
-	s.Lock()
+func (m *ManagerImpl) NewConnection(wsConn *websocket.Conn, wsApi *api.WsApi) {
+	m.Lock()
+
+	var session *Session
+
 	defer func() { // prevent potential dead-lock
-		s.Unlock()
-		s.sessions[userName].Run()
+		m.Unlock()
+		session.Run()
 	}()
 
-	s.sessions[userName] = NewSession(context.Background(), wsConn, s.wsApi, func() {
-		s.removeSession(userName)
+	session = NewSession(context.Background(), wsConn, wsApi, func() {
+		m.removeSession(session.uuid)
 	})
 
-	log.Debug().Msgf("New session started, user: %s", userName)
+	m.sessionById[session.uuid] = session
+
+	log.Debug().Msgf("New session started, uid: %m", session.uuid.String())
 }
 
-func (s *Manager) HasSession(userName string) bool {
-	s.Lock()
-	defer s.Unlock()
+func (m *ManagerImpl) HasSessionByUser(userName string) bool {
+	m.Lock()
+	defer m.Unlock()
 
-	if _, ok := s.sessions[userName]; ok {
+	if _, ok := m.sessionByUser[userName]; ok {
 		return true
 	}
 	return false
+}
+
+func (m *ManagerImpl) AuthUser(uid uuid.UUID, user *models.User) error {
+	m.Lock()
+	defer m.Unlock()
+
+	if _, ok := m.sessionById[uid]; !ok {
+		return errors.New("session not found")
+	}
+
+	// set user info
+	m.sessionById[uid].user = user
+
+	return nil
 }

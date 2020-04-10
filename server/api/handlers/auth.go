@@ -10,13 +10,13 @@ type AuthPayload struct {
 	Token string `json:"token"`
 }
 
-func ProcessAuth(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
+func ProcessAuthRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
 	var payload AuthPayload
 	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
 		return nil, err
 	}
 
-	casinos, err := req.UseCases.Casino.AllCasinos(context)
+	user, err := req.UseCases.Auth.SignIn(context, payload.Token)
 	if err != nil {
 		return nil, err
 	}
@@ -25,6 +25,6 @@ func ProcessAuth(context context.Context, req *interfaces.ApiRequest) (*interfac
 		Type:    "response",
 		Id:      req.Data.Id,
 		Status:  "ok",
-		Payload: casinos,
+		Payload: user,
 	}, nil
 }

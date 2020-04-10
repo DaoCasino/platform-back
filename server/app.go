@@ -26,7 +26,7 @@ type App struct {
 	httpServer     *http.Server
 	config         *config.Config
 	wsUpgrader     websocket.Upgrader
-	sessionManager *session.Manager
+	sessionManager session.Manager
 	wsApi          *api.WsApi
 
 	useCases *usecases.UseCases
@@ -43,8 +43,7 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
 
-	app.sessionManager.NewConnection("TestUser", c) //TODO to be fixed later
-	//app.sessionManager.NewConnection(user.AccountName, c)
+	app.sessionManager.NewConnection(c, app.wsApi)
 }
 
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -77,19 +76,27 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	sessionManager := session.NewSessionManager()
+
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			authPgRepo.NewUserPostgresRepo(db.DbPool),
+			sessionManager,
 			[]byte(config.AuthConfig.JwtSecret),
-		), casinoUC.NewCasinoUseCase(casinoPgRepo.NewCasinoPostgresRepo(db.DbPool)))
+		),
+		casinoUC.NewCasinoUseCase(
+			casinoPgRepo.NewCasinoPostgresRepo(db.DbPool),
+		),
+	)
 
 	app := &App{
 		config: config,
 		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		sessionManager: session.NewSessionManager(api.NewWsApi(useCases)),
+		sessionManager: sessionManager,
 		useCases:       useCases,
+		wsApi:          api.NewWsApi(useCases),
 	}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

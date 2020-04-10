@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
@@ -28,6 +29,8 @@ const (
 type OnCloseCb func()
 
 type Session struct {
+	// session uuid
+	uuid uuid.UUID
 	// base context
 	baseCtx context.Context
 	// websocket connection
@@ -76,6 +79,9 @@ func (s *Session) readLoop() {
 				log.Debug().Msgf("Websocket read error, disconnection, %s", err.Error())
 				return
 			}
+
+			// add session id into context
+			ctx = context.WithValue(ctx, "suid", s.uuid)
 
 			// add user info into context
 			ctx = context.WithValue(ctx, "user", s.user)
@@ -134,6 +140,7 @@ func (s *Session) writeLoop() {
 func NewSession(ctx context.Context, conn *websocket.Conn, wsApi *api.WsApi, onClose OnCloseCb) *Session {
 	session := new(Session)
 
+	session.uuid, _ = uuid.NewRandom()
 	session.baseCtx = ctx
 	session.wsConn = conn
 	session.onClose = onClose

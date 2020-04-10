@@ -4,19 +4,23 @@ import (
 	"context"
 	"errors"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"platform-backend/auth"
 	"platform-backend/models"
+	"platform-backend/server/session"
 )
 
 type AuthUseCase struct {
-	userRepo auth.UserRepository
-	jwtSecret []byte
+	userRepo       auth.UserRepository
+	sessionManager session.Manager
+	jwtSecret      []byte
 }
 
-func NewAuthUseCase(userRepo auth.UserRepository, jwtSecret []byte) *AuthUseCase {
+func NewAuthUseCase(userRepo auth.UserRepository, sessionManager session.Manager, jwtSecret []byte) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo: userRepo,
+		sessionManager: sessionManager,
 		jwtSecret: jwtSecret,
 	}
 }
@@ -45,7 +49,7 @@ func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User) (string, er
 	return signed, nil
 }
 
-func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*models.User, error) {
+func (a *AuthUseCase) SignIn(ctx context.Context, accessToken string) (*models.User, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -68,6 +72,16 @@ func (a *AuthUseCase) ParseToken(ctx context.Context, accessToken string) (*mode
 	user, err := a.userRepo.GetUser(ctx, claimsMap["account_name"].(string))
 	if err != nil {
 		return nil, auth.ErrUserNotFound
+	}
+
+	suid := ctx.Value("suid")
+	if suid == nil {
+		return nil, auth.ErrSessionNotFound
+	}
+
+	err = a.sessionManager.AuthUser(suid.(uuid.UUID), user)
+	if err != nil {
+		return nil, err
 	}
 
 	return user, nil

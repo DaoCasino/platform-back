@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/randallmlough/pgxscan"
 	"platform-backend/models"
 )
 
@@ -50,8 +49,10 @@ func (r *UserPostgresRepo) GetUser(ctx context.Context, accountName string) (*mo
 	}
 
 	user := new(User)
-	row := conn.QueryRow(ctx, selectUserByAccNameStmt, accountName)
-	err = pgxscan.NewScanner(row).Scan(user)
+	err = conn.QueryRow(ctx, selectUserByAccNameStmt, accountName).Scan(
+		&user.AccountName,
+		&user.Email,
+	)
 	if err != nil {
 		return nil, err
 	}

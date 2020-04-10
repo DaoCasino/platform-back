@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"github.com/randallmlough/pgxscan"
 	"platform-backend/db"
 	"platform-backend/models"
 )
@@ -45,8 +44,14 @@ func (r *GameSessionsPostgresRepo) GetGameSession(ctx context.Context, id uint64
 	}
 
 	session := new(GameSession)
-	row := conn.QueryRow(ctx, selectGameSessionByIdStmt, id)
-	err = pgxscan.NewScanner(row).Scan(session)
+	err = conn.QueryRow(ctx, selectGameSessionByIdStmt, id).Scan(
+		&session.ID,
+		&session.Player,
+		&session.CasinoID,
+		&session.GameID,
+		&session.BlockchainSesID,
+		&session.State,
+	)
 
 	if err != nil {
 		return nil, err

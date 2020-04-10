@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"github.com/randallmlough/pgxscan"
 	"platform-backend/db"
 	"platform-backend/models"
 	"time"
@@ -37,7 +36,13 @@ func (r *GameSessionsPostgresRepo) GetGameSessionUpdates(ctx context.Context, id
 
 	for rows.Next() {
 		upd := new(GameSessionUpdate)
-		if err := pgxscan.NewScanner(rows).Scan(upd); err != nil {
+		err := rows.Scan(
+			&upd.SessionID,
+			&upd.UpdateType,
+			&upd.Timestamp,
+			&upd.Data,
+		)
+		if err != nil {
 			return nil, err
 		}
 		sessionUpdates = append(sessionUpdates, toModelGameSessionUpdate(upd))

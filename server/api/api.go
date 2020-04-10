@@ -28,6 +28,11 @@ type RequestHandlerInfo struct {
 }
 
 var handlersMap = map[string]RequestHandlerInfo{
+	"auth": {
+		handler:     handlers.ProcessAuthRequest,
+		messageType: websocket.TextMessage,
+		needAuth:    false,
+	},
 	"subscribe": {
 		handler:     handlers.ProcessSubscribeRequest,
 		messageType: websocket.TextMessage,
