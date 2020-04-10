@@ -7,23 +7,20 @@ import (
 )
 
 type FetchGamesPayload struct {
-	*interfaces.WsRequest
-	Payload struct {
-		Deposit  string `json:"deposit"`
-		CasinoId int32  `json:"casinoid"`
-		GameId   int32  `json:"gameid"`
-	} `json:"payload"`
+	Deposit  string `json:"deposit"`
+	CasinoId int32  `json:"casinoid"`
+	GameId   int32  `json:"gameid"`
 }
 
 func ProcessFetchGamesRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
-	var messageObj FetchGamesPayload
-	if err := json.Unmarshal(req.Message, &messageObj); err != nil {
+	var payload FetchGamesPayload
+	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
 		return nil, err
 	}
 
 	return &interfaces.WsResponse{
 		Type:    "response",
-		Id:      messageObj.Id,
+		Id:      req.Data.Id,
 		Status:  "ok",
 		Payload: struct{}{},
 	}, nil

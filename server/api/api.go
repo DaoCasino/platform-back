@@ -88,7 +88,7 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 		return handler.handler(context, &interfaces.ApiRequest{
 			UseCases: api.useCases,
 			User:     user,
-			Message:  message,
+			Data:     &messageObj,
 		})
 	}
 

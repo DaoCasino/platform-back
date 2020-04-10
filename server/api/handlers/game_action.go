@@ -7,23 +7,20 @@ import (
 )
 
 type GameActionPayload struct {
-	*interfaces.WsRequest
-	Payload struct {
-		SessionId  string   `json:"sessionid"`
-		ActionType int32    `json:"actiontype"`
-		Params     []string `json:"params"`
-	} `json:"payload"`
+	SessionId  string   `json:"sessionid"`
+	ActionType int32    `json:"actiontype"`
+	Params     []string `json:"params"`
 }
 
 func ProcessGameActionRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
-	var messageObj GameActionPayload
-	if err := json.Unmarshal(req.Message, &messageObj); err != nil {
+	var payload GameActionPayload
+	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
 		return nil, err
 	}
 
 	return &interfaces.WsResponse{
 		Type:    "response",
-		Id:      messageObj.Id,
+		Id:      req.Data.Id,
 		Status:  "ok",
 		Payload: struct{}{},
 	}, nil

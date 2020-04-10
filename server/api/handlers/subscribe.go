@@ -7,12 +7,11 @@ import (
 )
 
 type SubscribePayload struct {
-	*interfaces.WsRequest
 }
 
 func ProcessSubscribeRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
 	var messageObj SubscribePayload
-	if err := json.Unmarshal(req.Message, &messageObj); err != nil {
+	if err := json.Unmarshal(req.Data.Payload, &messageObj); err != nil {
 		return nil, err
 	}
 
@@ -20,7 +19,7 @@ func ProcessSubscribeRequest(context context.Context, req *interfaces.ApiRequest
 
 	return &interfaces.WsResponse{
 		Type:    "response",
-		Id:      messageObj.Id,
+		Id:      req.Data.Id,
 		Status:  "ok",
 		Payload: struct{}{},
 	}, nil
