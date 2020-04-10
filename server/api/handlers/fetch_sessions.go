@@ -1,13 +1,13 @@
-package api
+package handlers
 
 import (
 	"context"
 	"encoding/json"
-	"platform-backend/usecases"
+	"platform-backend/server/api/interfaces"
 )
 
 type FetchSessionsPayload struct {
-	*WsRequest
+	*interfaces.WsRequest
 	Payload struct {
 		Deposit  string `json:"deposit"`
 		CasinoId int32  `json:"casinoid"`
@@ -15,13 +15,13 @@ type FetchSessionsPayload struct {
 	} `json:"payload"`
 }
 
-func ProcessFetchSessionsRequest(context context.Context, useCases *usecases.UseCases, session *Session, message []byte) (*WsResponse, error) {
+func ProcessFetchSessionsRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
 	var messageObj FetchSessionsPayload
-	if err := json.Unmarshal(message, &messageObj); err != nil {
+	if err := json.Unmarshal(req.Message, &messageObj); err != nil {
 		return nil, err
 	}
 
-	return &WsResponse{
+	return &interfaces.WsResponse{
 		Type:    "response",
 		Id:      messageObj.Id,
 		Status:  "ok",

@@ -17,6 +17,7 @@ import (
 	"platform-backend/logger"
 	"platform-backend/models"
 	"platform-backend/server/api"
+	"platform-backend/server/session"
 	"platform-backend/usecases"
 	"time"
 )
@@ -25,7 +26,7 @@ type App struct {
 	httpServer     *http.Server
 	config         *config.Config
 	wsUpgrader     websocket.Upgrader
-	sessionManager *api.SessionManager
+	sessionManager *session.Manager
 	wsApi          *api.WsApi
 
 	useCases *usecases.UseCases
@@ -101,7 +102,7 @@ func NewApp(config *config.Config) (*App, error) {
 		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		sessionManager: api.NewSessionManager(api.NewWsApi(useCases)),
+		sessionManager: session.NewSessionManager(api.NewWsApi(useCases)),
 		useCases:       useCases,
 	}
 
