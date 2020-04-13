@@ -18,7 +18,15 @@ func ProcessAuthRequest(context context.Context, req *interfaces.ApiRequest) (*i
 
 	user, err := req.UseCases.Auth.SignIn(context, payload.Token)
 	if err != nil {
-		return nil, err
+		return &interfaces.WsResponse{
+			Type:    "response",
+			Id:      req.Data.Id,
+			Status:  "error",
+			Payload: interfaces.WsError{
+				Code:    4003,
+				Message: err.Error(),
+			},
+		}, nil
 	}
 
 	return &interfaces.WsResponse{

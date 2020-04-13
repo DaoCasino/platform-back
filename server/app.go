@@ -24,6 +24,10 @@ import (
 
 type JsonResponse = map[string]interface{}
 
+type RefreshRequest struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
 type App struct {
 	httpServer     *http.Server
 	config         *config.Config
@@ -67,7 +71,39 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	response, err := json.Marshal(JsonResponse{
 		"refreshToken": refreshToken,
-		"accessToken": accessToken,
+		"accessToken":  accessToken,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Debug().Msgf("Response marshal error: %s", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
+func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New refresh_token request")
+
+	var req RefreshRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("Http body parse error, %s", err.Error())
+		return
+	}
+
+	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(context.Background(), req.RefreshToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("RefreshToken error: %s", err.Error())
+		return
+	}
+
+	response, err := json.Marshal(JsonResponse{
+		"refreshToken": refreshToken,
+		"accessToken":  accessToken,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -120,8 +156,13 @@ func NewApp(config *config.Config) (*App, error) {
 		authHandler(app, w, r)
 	})
 
+	refreshTokensHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		refreshTokensHandler(app, w, r)
+	})
+
 	http.Handle("/connect", wsHandler)
 	http.HandleFunc("/auth", authHandler)
+	http.HandleFunc("/refresh_token", refreshTokensHandler)
 
 	log.Info().Msg("App created")
 
