@@ -27,6 +27,7 @@ func (r *GameSessionsPostgresRepo) HasGameSession(ctx context.Context, id uint64
 	if err != nil {
 		return false, err
 	}
+	defer conn.Release()
 
 	var cnt uint
 	err = conn.QueryRow(ctx, selectGameSessionCntByIdStmt, id).Scan(&cnt)
@@ -42,6 +43,7 @@ func (r *GameSessionsPostgresRepo) GetGameSession(ctx context.Context, id uint64
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Release()
 
 	session := new(GameSession)
 	err = conn.QueryRow(ctx, selectGameSessionByIdStmt, id).Scan(
@@ -64,6 +66,7 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 	if err != nil {
 		return err
 	}
+	defer conn.Release()
 
 	_, err = conn.Exec(ctx, insertGameSessionStmt, ses.ID, ses.Player, ses.CasinoID, ses.GameID, ses.BlockchainSesID, ses.State)
 	return err
@@ -74,6 +77,7 @@ func (r *GameSessionsPostgresRepo) DeleteGameSession(ctx context.Context, id uin
 	if err != nil {
 		return err
 	}
+	defer conn.Release()
 
 	_, err = conn.Exec(ctx, deleteGameSessionByIdStmt, id)
 	return err

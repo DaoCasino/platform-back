@@ -34,6 +34,7 @@ func (r *UserPostgresRepo) HasUser(ctx context.Context, accountName string) (boo
 	if err != nil {
 		return false, err
 	}
+	defer conn.Release()
 
 	var cnt uint
 	err = conn.QueryRow(ctx, selectUserCntByAccNameStmt, accountName).Scan(&cnt)
@@ -49,6 +50,7 @@ func (r *UserPostgresRepo) GetUser(ctx context.Context, accountName string) (*mo
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Release()
 
 	user := new(User)
 	err = conn.QueryRow(ctx, selectUserByAccNameStmt, accountName).Scan(
@@ -68,6 +70,7 @@ func (r *UserPostgresRepo) AddUser(ctx context.Context, user *models.User) error
 	if err != nil {
 		return err
 	}
+	defer conn.Release()
 
 	_, err = conn.Exec(ctx, insertUserStmt, user.AccountName, user.Email)
 	return err
@@ -78,6 +81,7 @@ func (r *UserPostgresRepo) UpdateTokenNonce(ctx context.Context, accountName str
 	if err != nil {
 		return err
 	}
+	defer conn.Release()
 
 	_, err = conn.Exec(ctx, updateUserTokenNonce, accountName)
 	if err != nil {
@@ -92,6 +96,7 @@ func (r *UserPostgresRepo) GetTokenNonce(ctx context.Context, accountName string
 	if err != nil {
 		return 0, err
 	}
+	defer conn.Release()
 
 	user := User{}
 	err = conn.QueryRow(ctx, selectUserByAccNameStmt, accountName).Scan(
