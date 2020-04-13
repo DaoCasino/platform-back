@@ -132,6 +132,8 @@ func NewApp(config *config.Config) (*App, error) {
 			authPgRepo.NewUserPostgresRepo(db.DbPool),
 			sessionManager,
 			[]byte(config.AuthConfig.JwtSecret),
+			config.AuthConfig.AccessTokenTTL,
+			config.AuthConfig.RefreshTokenTTL,
 		),
 		casinoUC.NewCasinoUseCase(
 			casinoPgRepo.NewCasinoPostgresRepo(db.DbPool),

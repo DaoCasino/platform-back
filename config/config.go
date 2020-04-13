@@ -12,7 +12,9 @@ type DbConfig struct {
 }
 
 type AuthConfig struct {
-	JwtSecret string `json:"jwtSecret"`
+	JwtSecret       string `json:"jwtSecret"`
+	AccessTokenTTL  int64  `json:"accessTokenTTL"`
+	RefreshTokenTTL int64  `json:"refreshTokenTTL"`
 }
 
 type Config struct {

@@ -12,22 +12,22 @@ import (
 	"time"
 )
 
-const (
-	refreshTokenExpiresIn = 24 * 60 * 60 // 24h
-	accessTokenExpiresIn = 30 * 60 // 30 min
-)
-
 type AuthUseCase struct {
-	userRepo       auth.UserRepository
-	sessionManager session.Manager
-	jwtSecret      []byte
+	userRepo        auth.UserRepository
+	sessionManager  session.Manager
+	jwtSecret       []byte
+	refreshTokenTTL int64
+	accessTokenTTL  int64
 }
 
-func NewAuthUseCase(userRepo auth.UserRepository, sessionManager session.Manager, jwtSecret []byte) *AuthUseCase {
+func NewAuthUseCase(userRepo auth.UserRepository, sessionManager session.Manager,
+	jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64) *AuthUseCase {
 	return &AuthUseCase{
-		userRepo:       userRepo,
-		sessionManager: sessionManager,
-		jwtSecret:      jwtSecret,
+		userRepo:        userRepo,
+		sessionManager:  sessionManager,
+		jwtSecret:       jwtSecret,
+		accessTokenTTL:  accessTokenTTL,
+		refreshTokenTTL: refreshTokenTTL,
 	}
 }
 
@@ -96,7 +96,7 @@ func (a *AuthUseCase) generateTokens(ctx context.Context, accountName string) (s
 		return "", "", err
 	}
 
-	newNonce, err :=  a.userRepo.GetTokenNonce(ctx, accountName)
+	newNonce, err := a.userRepo.GetTokenNonce(ctx, accountName)
 	if err != nil {
 		return "", "", err
 	}
@@ -104,19 +104,19 @@ func (a *AuthUseCase) generateTokens(ctx context.Context, accountName string) (s
 	refreshToken := jwt.New(jwt.SigningMethodHS256)
 	refreshToken.Claims = jwt.MapClaims{
 		"account_name": accountName,
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Unix() + refreshTokenExpiresIn,
-		"nonce": newNonce,
-		"type": "refresh",
+		"iat":          time.Now().Unix(),
+		"exp":          time.Now().Unix() + a.refreshTokenTTL,
+		"nonce":        newNonce,
+		"type":         "refresh",
 	}
 
 	accessToken := jwt.New(jwt.SigningMethodHS256)
 	accessToken.Claims = jwt.MapClaims{
 		"account_name": accountName,
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Unix() + accessTokenExpiresIn,
-		"nonce": newNonce,
-		"type": "access",
+		"iat":          time.Now().Unix(),
+		"exp":          time.Now().Unix() + a.accessTokenTTL,
+		"nonce":        newNonce,
+		"type":         "access",
 	}
 
 	signedRefresh, err := refreshToken.SignedString(a.jwtSecret)

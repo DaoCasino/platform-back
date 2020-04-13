@@ -7,6 +7,8 @@
     "minPoolConns": 1
   },
   "authConfig": {
-    "jwtSecret": "top_secret"
+    "jwtSecret": "top_secret",
+    "accessTokenTTL": 1800,
+    "refreshTokenTTL": 86400
   }
 }
