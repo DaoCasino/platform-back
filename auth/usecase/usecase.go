@@ -8,23 +8,23 @@ import (
 	"github.com/rs/zerolog/log"
 	"platform-backend/auth"
 	"platform-backend/models"
-	"platform-backend/server/session"
+	"platform-backend/server/session_manager"
 	"time"
 )
 
 type AuthUseCase struct {
 	userRepo        auth.UserRepository
-	sessionManager  session.Manager
+	smRepo          session_manager.Repository
 	jwtSecret       []byte
 	refreshTokenTTL int64
 	accessTokenTTL  int64
 }
 
-func NewAuthUseCase(userRepo auth.UserRepository, sessionManager session.Manager,
+func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository,
 	jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:        userRepo,
-		sessionManager:  sessionManager,
+		smRepo:          smRepo,
 		jwtSecret:       jwtSecret,
 		accessTokenTTL:  accessTokenTTL,
 		refreshTokenTTL: refreshTokenTTL,
@@ -68,7 +68,7 @@ func (a *AuthUseCase) SignIn(ctx context.Context, accessToken string) (*models.U
 		return nil, auth.ErrSessionNotFound
 	}
 
-	err = a.sessionManager.AuthUser(suid.(uuid.UUID), user)
+	err = a.smRepo.SetUser(suid.(uuid.UUID), user)
 	if err != nil {
 		return nil, err
 	}

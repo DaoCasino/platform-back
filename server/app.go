@@ -17,7 +17,8 @@ import (
 	"platform-backend/logger"
 	"platform-backend/models"
 	"platform-backend/server/api"
-	"platform-backend/server/session"
+	"platform-backend/server/session_manager"
+	smLocalRepo "platform-backend/server/session_manager/repository/localstorage"
 	"platform-backend/usecases"
 	"time"
 )
@@ -29,12 +30,12 @@ type RefreshRequest struct {
 }
 
 type App struct {
-	httpServer     *http.Server
-	config         *config.Config
-	wsUpgrader     websocket.Upgrader
-	sessionManager session.Manager
-	wsApi          *api.WsApi
+	httpServer *http.Server
+	config     *config.Config
+	wsUpgrader websocket.Upgrader
+	wsApi      *api.WsApi
 
+	smRepo   session_manager.Repository
 	useCases *usecases.UseCases
 }
 
@@ -49,18 +50,18 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
 
-	app.sessionManager.NewConnection(c, app.wsApi)
+	app.smRepo.AddSession(context.Background(), c, app.wsApi)
 }
 
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msgf("New auth request")
-
 	var user models.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
+
+	log.Debug().Msgf("New auth request from %s", user.AccountName)
 
 	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), &user)
 	if err != nil {
@@ -125,12 +126,12 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	sessionManager := session.NewSessionManager()
+	smRepo := smLocalRepo.NewLocalRepository()
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			authPgRepo.NewUserPostgresRepo(db.DbPool),
-			sessionManager,
+			smRepo,
 			[]byte(config.AuthConfig.JwtSecret),
 			config.AuthConfig.AccessTokenTTL,
 			config.AuthConfig.RefreshTokenTTL,
@@ -145,9 +146,9 @@ func NewApp(config *config.Config) (*App, error) {
 		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		sessionManager: sessionManager,
-		useCases:       useCases,
-		wsApi:          api.NewWsApi(useCases),
+		smRepo:   smRepo,
+		useCases: useCases,
+		wsApi:    api.NewWsApi(useCases),
 	}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -29,8 +29,10 @@ const (
 type OnCloseCb func()
 
 type Session struct {
-	// session uuid
-	uuid uuid.UUID
+	// session Uuid
+	Uuid uuid.UUID
+	// session user (nil before auth)
+	User *models.User
 	// base context
 	baseCtx context.Context
 	// websocket connection
@@ -41,8 +43,6 @@ type Session struct {
 	onClose OnCloseCb
 	// user ws api
 	wsApi *api.WsApi
-	// session user (nil before auth)
-	user *models.User
 
 	// send msg to socket chan
 	Send chan []byte
@@ -81,10 +81,10 @@ func (s *Session) readLoop() {
 			}
 
 			// add session id into context
-			ctx = context.WithValue(ctx, "suid", s.uuid)
+			ctx = context.WithValue(ctx, "suid", s.Uuid)
 
 			// add user info into context
-			ctx = context.WithValue(ctx, "user", s.user)
+			ctx = context.WithValue(ctx, "user", s.User)
 
 			resp, err := s.wsApi.ProcessRawRequest(ctx, messageType, message)
 			if err != nil {
@@ -140,12 +140,12 @@ func (s *Session) writeLoop() {
 func NewSession(ctx context.Context, conn *websocket.Conn, wsApi *api.WsApi, onClose OnCloseCb) *Session {
 	session := new(Session)
 
-	session.uuid, _ = uuid.NewRandom()
+	session.Uuid, _ = uuid.NewRandom()
 	session.baseCtx = ctx
 	session.wsConn = conn
 	session.onClose = onClose
 	session.wsApi = wsApi
-	session.user = nil
+	session.User = nil
 	session.Send = make(chan []byte)
 	session.closing.Store(false)
 
