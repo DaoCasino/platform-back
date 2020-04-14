@@ -1,10 +1,13 @@
 {
   "loglevel": "debug",
-  "port": "8080",
+  "port": "8081",
   "dbConfig": {
     "url": "postgresql://postgres:postgres@localhost:5432/test_platform",
     "maxPoolConns": 10,
     "minPoolConns": 1
+  },
+  "amcConfig": {
+    "url": ":8888"
   },
   "authConfig": {
     "jwtSecret": "top_secret",

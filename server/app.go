@@ -3,8 +3,10 @@ package server
 import (
 	"context"
 	"encoding/json"
+	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 	"net/http"
 	"os"
 	"os/signal"
@@ -37,6 +39,7 @@ type App struct {
 
 	smRepo   session_manager.Repository
 	useCases *usecases.UseCases
+	events   chan *eventlistener.EventMessage
 }
 
 func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -141,6 +144,8 @@ func NewApp(config *config.Config) (*App, error) {
 		),
 	)
 
+	events := make(chan *eventlistener.EventMessage)
+
 	app := &App{
 		config: config,
 		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
@@ -149,6 +154,7 @@ func NewApp(config *config.Config) (*App, error) {
 		smRepo:   smRepo,
 		useCases: useCases,
 		wsApi:    api.NewWsApi(useCases),
+		events:   events,
 	}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -172,19 +178,84 @@ func NewApp(config *config.Config) (*App, error) {
 	return app, nil
 }
 
-func (a *App) Run(port string) error {
-	log.Info().Msgf("Server is listening on %s port", a.config.Port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+func startHttpServer(a *App, ctx context.Context) error {
+	srv := &http.Server{Addr: ":" + a.config.Port}
+	log.Info().Msgf("Server is starting on %s port", a.config.Port)
+
+	go func() {
+		<-ctx.Done()
+		timeoutCtx, shutdown := context.WithTimeout(context.Background(), 5*time.Second)
+		_ = srv.Shutdown(timeoutCtx)
+		shutdown()
+	}()
+
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		log.Error().Msgf("ListenAndServe(): %v", err)
 		return err
 	}
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, os.Interrupt)
+	log.Info().Msgf("Server is stopped")
 
-	<-quit
+	return nil
+}
 
-	ctx, shutdown := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdown()
+func startAmc(a *App, ctx context.Context) error {
+	listener := eventlistener.NewEventListener(a.config.AmcConfig.Url, a.events)
+	log.Info().Msgf("Connecting to the action monitor on %s", a.config.AmcConfig.Url)
 
-	return a.httpServer.Shutdown(ctx)
+	if err := listener.ListenAndServe(ctx); err != nil {
+		log.Error().Msgf("Action monitor connect error: %v", err)
+		return err
+	}
+
+	if ok, err := listener.Subscribe(0, 0); err != nil || !ok {
+		log.Error().Msgf("Action monitor subscribe error: %v", err)
+		return err
+	}
+
+	log.Info().Msgf("Connected to the action monitor")
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case eventMessage, ok := <-a.events:
+			if !ok {
+				return nil
+			}
+			for _, event := range eventMessage.Events {
+				// TODO: notify clients
+				log.Printf("%+v %s\n", event, event.Data)
+			}
+		}
+	}
+}
+
+// Should log errors by itself
+func (a *App) Run() error {
+	runCtx, cancelRun := context.WithCancel(context.Background())
+	errGroup, runCtx := errgroup.WithContext(runCtx)
+
+	errGroup.Go(func() error {
+		defer cancelRun()
+		return startHttpServer(a, runCtx)
+	})
+	errGroup.Go(func() error {
+		defer cancelRun()
+		return startAmc(a, runCtx)
+	})
+
+	errGroup.Go(func() error {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, os.Interrupt, os.Interrupt)
+		select {
+		case <-runCtx.Done():
+			return nil
+		case <-quit:
+			cancelRun()
+		}
+		return nil
+	})
+
+	return errGroup.Wait()
 }
