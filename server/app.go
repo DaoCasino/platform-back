@@ -12,12 +12,14 @@ import (
 	"os/signal"
 	authPgRepo "platform-backend/auth/repository/postgres"
 	authUC "platform-backend/auth/usecase"
-	casinoPgRepo "platform-backend/casino/repository/postgres"
+	"platform-backend/blockchain"
+	casinoBcRepo "platform-backend/casino/repository/blockchain"
 	casinoUC "platform-backend/casino/usecase"
 	"platform-backend/config"
 	"platform-backend/db"
 	"platform-backend/logger"
 	"platform-backend/models"
+	playerUC "platform-backend/player/usecases"
 	"platform-backend/server/api"
 	"platform-backend/server/session_manager"
 	smLocalRepo "platform-backend/server/session_manager/repository/localstorage"
@@ -129,7 +131,14 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	bc, err := blockchain.Init(config.BlockchainConfig.NodeUrl, config.BlockchainConfig.SponsorUrl)
+	if err != nil {
+		log.Fatal().Msgf("Blockchain init error, %s", err.Error())
+		return nil, err
+	}
+
 	smRepo := smLocalRepo.NewLocalRepository()
+	casinoRepo := casinoBcRepo.NewCasinoBlockchainRepo(bc, config.BlockchainConfig.Contracts.Platform)
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
@@ -140,8 +149,9 @@ func NewApp(config *config.Config) (*App, error) {
 			config.AuthConfig.RefreshTokenTTL,
 		),
 		casinoUC.NewCasinoUseCase(
-			casinoPgRepo.NewCasinoPostgresRepo(db.DbPool),
+			casinoRepo,
 		),
+		playerUC.NewPlayerUseCase(bc, casinoRepo),
 	)
 
 	events := make(chan *eventlistener.EventMessage)

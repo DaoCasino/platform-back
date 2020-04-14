@@ -11,6 +11,14 @@ type DbConfig struct {
 	MinPoolConns int32  `json:"minPoolConns"`
 }
 
+type BlockchainConfig struct {
+	NodeUrl    string `json:"nodeUrl"`
+	SponsorUrl string `json:"sponsorUrl"`
+	Contracts  struct {
+		Platform string `json:"platform"`
+	} `json:"contracts"`
+}
+
 type AuthConfig struct {
 	JwtSecret       string `json:"jwtSecret"`
 	AccessTokenTTL  int64  `json:"accessTokenTTL"`
@@ -23,11 +31,12 @@ type AmcConfig struct {
 }
 
 type Config struct {
-	DbConfig   DbConfig   `json:"dbConfig"`
-	AmcConfig  AmcConfig  `json:"amcConfig"`
-	AuthConfig AuthConfig `json:"authConfig"`
-	LogLevel   string     `json:"loglevel"`
-	Port       string     `json:"port"`
+	DbConfig         DbConfig         `json:"dbConfig"`
+	AmcConfig        AmcConfig        `json:"amcConfig"`
+	BlockchainConfig BlockchainConfig `json:"blockchainConfig"`
+	AuthConfig       AuthConfig       `json:"authConfig"`
+	LogLevel         string           `json:"loglevel"`
+	Port             string           `json:"port"`
 }
 
 func FromFile(fileName string) (*Config, error) {
