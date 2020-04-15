@@ -1,6 +1,6 @@
 {
   "loglevel": "debug",
-  "port": "8081",
+  "port": "8080",
   "dbConfig": {
     "url": "postgresql://postgres:postgres@localhost:5432/test_platform",
     "maxPoolConns": 10,
