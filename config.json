@@ -6,6 +6,9 @@
     "maxPoolConns": 10,
     "minPoolConns": 1
   },
+  "amcConfig": {
+    "url": ":8888"
+  },
   "authConfig": {
     "jwtSecret": "top_secret",
     "accessTokenTTL": 1800,

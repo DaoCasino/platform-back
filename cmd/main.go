@@ -18,7 +18,7 @@ func main() {
 		log.Fatalf("%s", err.Error())
 	}
 
-	if err := app.Run(appConfig.Port); err != nil {
-		log.Fatalf("%s", err.Error())
+	if err := app.Run(); err != nil {
+		//log.Fatalf("%s", err.Error())
 	}
 }

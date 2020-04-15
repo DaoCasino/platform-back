@@ -17,8 +17,14 @@ type AuthConfig struct {
 	RefreshTokenTTL int64  `json:"refreshTokenTTL"`
 }
 
+// Action monitor config
+type AmcConfig struct {
+	Url string `json:"url"`
+}
+
 type Config struct {
 	DbConfig   DbConfig   `json:"dbConfig"`
+	AmcConfig  AmcConfig  `json:"amcConfig"`
 	AuthConfig AuthConfig `json:"authConfig"`
 	LogLevel   string     `json:"loglevel"`
 	Port       string     `json:"port"`
