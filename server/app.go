@@ -85,7 +85,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -117,7 +117,7 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(response)
+	_, _ = w.Write(response)
 }
 
 func NewApp(config *config.Config) (*App, error) {
