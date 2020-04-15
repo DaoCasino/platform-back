@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
 	"platform-backend/models"
 	"platform-backend/server/api/handlers"
 	"platform-backend/server/api/interfaces"
@@ -30,6 +32,11 @@ type RequestHandlerInfo struct {
 var handlersMap = map[string]RequestHandlerInfo{
 	"auth": {
 		handler:     handlers.ProcessAuthRequest,
+		messageType: websocket.TextMessage,
+		needAuth:    false,
+	},
+	"account_info": {
+		handler:     handlers.ProcessAccountInfo,
 		messageType: websocket.TextMessage,
 		needAuth:    false,
 	},
@@ -90,6 +97,9 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 		if handler.needAuth && user == nil {
 			return nil, fmt.Errorf("user unauthorized")
 		}
+
+		log.Debug().Msgf("Started '%s' request from suid: %s", messageObj.Request, context.Value("suid").(uuid.UUID).String())
+
 		return handler.handler(context, &interfaces.ApiRequest{
 			UseCases: api.useCases,
 			User:     user,

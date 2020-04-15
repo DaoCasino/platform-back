@@ -9,6 +9,13 @@
   "amcConfig": {
     "url": ":8888"
   },
+  "blockchainConfig": {
+    "nodeUrl": "https://api.daobet.org",
+    "sponsorUrl": "",
+    "contracts": {
+      "platform": "tplatform"
+    }
+  },
   "authConfig": {
     "jwtSecret": "top_secret",
     "accessTokenTTL": 1800,
