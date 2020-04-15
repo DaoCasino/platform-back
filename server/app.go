@@ -17,18 +17,25 @@ import (
 	"platform-backend/logger"
 	"platform-backend/models"
 	"platform-backend/server/api"
-	"platform-backend/server/session"
+	"platform-backend/server/session_manager"
+	smLocalRepo "platform-backend/server/session_manager/repository/localstorage"
 	"platform-backend/usecases"
 	"time"
 )
 
-type App struct {
-	httpServer     *http.Server
-	config         *config.Config
-	wsUpgrader     websocket.Upgrader
-	sessionManager *session.Manager
-	wsApi          *api.WsApi
+type JsonResponse = map[string]interface{}
 
+type RefreshRequest struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
+type App struct {
+	httpServer *http.Server
+	config     *config.Config
+	wsUpgrader websocket.Upgrader
+	wsApi      *api.WsApi
+
+	smRepo   session_manager.Repository
 	useCases *usecases.UseCases
 }
 
@@ -43,13 +50,10 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
 
-	app.sessionManager.NewConnection("TestUser", c) //TODO to be fixed later
-	//app.sessionManager.NewConnection(user.AccountName, c)
+	app.smRepo.AddSession(context.Background(), c, app.wsApi)
 }
 
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msgf("New auth request")
-
 	var user models.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -57,15 +61,60 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signedToken, err := app.useCases.Auth.SignUp(context.Background(), &user)
+	log.Debug().Msgf("New auth request from %s", user.AccountName)
+
+	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), &user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("SignUp error: %s", err.Error())
 		return
 	}
 
-	authCookie := &http.Cookie{Name: "token", Value: signedToken, HttpOnly: true}
-	http.SetCookie(w, authCookie)
+	response, err := json.Marshal(JsonResponse{
+		"refreshToken": refreshToken,
+		"accessToken":  accessToken,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Debug().Msgf("Response marshal error: %s", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
+func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New refresh_token request")
+
+	var req RefreshRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("Http body parse error, %s", err.Error())
+		return
+	}
+
+	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(context.Background(), req.RefreshToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("RefreshToken error: %s", err.Error())
+		return
+	}
+
+	response, err := json.Marshal(JsonResponse{
+		"refreshToken": refreshToken,
+		"accessToken":  accessToken,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Debug().Msgf("Response marshal error: %s", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
 
 func NewApp(config *config.Config) (*App, error) {
@@ -77,19 +126,29 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	smRepo := smLocalRepo.NewLocalRepository()
+
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			authPgRepo.NewUserPostgresRepo(db.DbPool),
+			smRepo,
 			[]byte(config.AuthConfig.JwtSecret),
-		), casinoUC.NewCasinoUseCase(casinoPgRepo.NewCasinoPostgresRepo(db.DbPool)))
+			config.AuthConfig.AccessTokenTTL,
+			config.AuthConfig.RefreshTokenTTL,
+		),
+		casinoUC.NewCasinoUseCase(
+			casinoPgRepo.NewCasinoPostgresRepo(db.DbPool),
+		),
+	)
 
 	app := &App{
 		config: config,
 		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		sessionManager: session.NewSessionManager(api.NewWsApi(useCases)),
-		useCases:       useCases,
+		smRepo:   smRepo,
+		useCases: useCases,
+		wsApi:    api.NewWsApi(useCases),
 	}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -100,8 +159,13 @@ func NewApp(config *config.Config) (*App, error) {
 		authHandler(app, w, r)
 	})
 
+	refreshTokensHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		refreshTokensHandler(app, w, r)
+	})
+
 	http.Handle("/connect", wsHandler)
 	http.HandleFunc("/auth", authHandler)
+	http.HandleFunc("/refresh_token", refreshTokensHandler)
 
 	log.Info().Msg("App created")
 

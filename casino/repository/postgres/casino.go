@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/randallmlough/pgxscan"
 	"platform-backend/models"
 )
 
@@ -32,14 +31,15 @@ func (r *CasinoPostgresRepo) GetCasino(ctx context.Context, casinoId uint64) (*m
 		return nil, err
 	}
 
-	Casino := new(Casino)
-	row := conn.QueryRow(ctx, selectCasinoByIdStmt, casinoId)
-	err = pgxscan.NewScanner(row).Scan(Casino)
+	casino := new(Casino)
+	err = conn.QueryRow(ctx, selectCasinoByIdStmt, casinoId).Scan(
+		&casino.Id,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	return toModelCasino(Casino), nil
+	return toModelCasino(casino), nil
 }
 
 func (r *CasinoPostgresRepo) AllCasinos(ctx context.Context) ([]*models.Casino, error) {
@@ -48,18 +48,23 @@ func (r *CasinoPostgresRepo) AllCasinos(ctx context.Context) ([]*models.Casino, 
 		return nil, err
 	}
 
-	var dst []Casino
+	var ret []*models.Casino
 
 	rows, err := conn.Query(ctx, selectAllCasinosStmt)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	err = pgxscan.NewScanner(rows).Scan(&dst)
-
-	ret := make([]*models.Casino, len(dst))
-	for i, v := range dst {
-		ret[i] = toModelCasino(&v)
+	for rows.Next() {
+		casino := new(Casino)
+		err := rows.Scan(
+			&casino.Id,
+		)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, toModelCasino(casino))
 	}
 
 	return ret, nil

@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"github.com/randallmlough/pgxscan"
 	"platform-backend/db"
 	"platform-backend/models"
 	"time"
@@ -26,6 +25,7 @@ func (r *GameSessionsPostgresRepo) GetGameSessionUpdates(ctx context.Context, id
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Release()
 
 	rows, err := conn.Query(ctx, selectGameSessionUpdatesByIdStmt, id)
 	if err != nil {
@@ -37,7 +37,13 @@ func (r *GameSessionsPostgresRepo) GetGameSessionUpdates(ctx context.Context, id
 
 	for rows.Next() {
 		upd := new(GameSessionUpdate)
-		if err := pgxscan.NewScanner(rows).Scan(upd); err != nil {
+		err := rows.Scan(
+			&upd.SessionID,
+			&upd.UpdateType,
+			&upd.Timestamp,
+			&upd.Data,
+		)
+		if err != nil {
 			return nil, err
 		}
 		sessionUpdates = append(sessionUpdates, toModelGameSessionUpdate(upd))
@@ -51,6 +57,7 @@ func (r *GameSessionsPostgresRepo) AddGameSessionUpdate(ctx context.Context, upd
 	if err != nil {
 		return err
 	}
+	defer conn.Release()
 
 	_, err = conn.Exec(ctx, insertGameSessionUpdateStmt, upd.SessionID, upd.UpdateType, upd.Timestamp, upd.Data)
 	return err
@@ -61,6 +68,7 @@ func (r *GameSessionsPostgresRepo) DeleteGameSessionUpdates(ctx context.Context,
 	if err != nil {
 		return err
 	}
+	defer conn.Release()
 
 	_, err = conn.Exec(ctx, deleteGameSessionUpdatesByIdStmt, sesId)
 	return err

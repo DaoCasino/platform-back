@@ -27,3 +27,15 @@ func (s *UserStorageMock) AddUser(ctx context.Context, user *models.User) error 
 
 	return args.Error(0)
 }
+
+func (s *UserStorageMock) UpdateTokenNonce(ctx context.Context, accountName string) error {
+	args := s.Called(accountName)
+
+	return args.Error(0)
+}
+
+func (s *UserStorageMock) GetTokenNonce(ctx context.Context, accountName string) (int64, error) {
+	args := s.Called(accountName)
+
+	return args.Get(0).(int64), args.Error(1)
+}
