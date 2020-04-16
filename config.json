@@ -7,7 +7,7 @@
     "minPoolConns": 1
   },
   "amcConfig": {
-    "url": ":8888"
+    "url": ":8889"
   },
   "blockchainConfig": {
     "nodeUrl": "https://api.daobet.org",
