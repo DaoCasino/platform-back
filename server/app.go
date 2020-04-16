@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
 	"github.com/gorilla/websocket"
+	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"net/http"
@@ -34,10 +35,10 @@ type RefreshRequest struct {
 }
 
 type App struct {
-	httpServer *http.Server
-	config     *config.Config
-	wsUpgrader websocket.Upgrader
-	wsApi      *api.WsApi
+	httpHandler http.Handler
+	config      *config.Config
+	wsUpgrader  websocket.Upgrader
+	wsApi       *api.WsApi
 
 	smRepo   session_manager.Repository
 	useCases *usecases.UseCases
@@ -179,9 +180,13 @@ func NewApp(config *config.Config) (*App, error) {
 		refreshTokensHandler(app, w, r)
 	})
 
-	http.Handle("/connect", wsHandler)
-	http.HandleFunc("/auth", authHandler)
-	http.HandleFunc("/refresh_token", refreshTokensHandler)
+	mux := http.NewServeMux()
+
+	mux.Handle("/connect", wsHandler)
+	mux.HandleFunc("/auth", authHandler)
+	mux.HandleFunc("/refresh_token", refreshTokensHandler)
+
+	app.httpHandler = cors.Default().Handler(mux)
 
 	log.Info().Msg("App created")
 
@@ -189,7 +194,7 @@ func NewApp(config *config.Config) (*App, error) {
 }
 
 func startHttpServer(a *App, ctx context.Context) error {
-	srv := &http.Server{Addr: ":" + a.config.Port}
+	srv := &http.Server{Addr: ":" + a.config.Port, Handler: a.httpHandler}
 	log.Info().Msgf("Server is starting on %s port", a.config.Port)
 
 	go func() {
@@ -228,14 +233,16 @@ func startAmc(a *App, ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			log.Info().Msgf("Action monitor client is stopped")
 			return nil
 		case eventMessage, ok := <-a.events:
 			if !ok {
 				return nil
 			}
-			for _, event := range eventMessage.Events {
+			for range eventMessage.Events {
 				// TODO: notify clients
-				log.Printf("%+v %s\n", event, event.Data)
+				//event.CasinoID
+				//log.Printf("%+v %s\n", event, event.Data)
 			}
 		}
 	}

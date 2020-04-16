@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.2
 	github.com/jackc/pgx/v4 v4.5.0
+	github.com/rs/cors v1.7.0
 	github.com/rs/zerolog v1.18.0
 	github.com/stretchr/testify v1.5.1
 	go.uber.org/atomic v1.6.0
