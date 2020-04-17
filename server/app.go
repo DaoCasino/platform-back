@@ -20,6 +20,7 @@ import (
 	"platform-backend/db"
 	gameSesssionPgRepo "platform-backend/game_sessions/repository/postgres"
 	"platform-backend/eventprocessor"
+	gameSessionUC "platform-backend/game_sessions/usecase"
 	"platform-backend/logger"
 	"platform-backend/models"
 	"platform-backend/repositories"
@@ -142,6 +143,7 @@ func NewApp(config *config.Config) (*App, error) {
 	}
 
 	smRepo := smLocalRepo.NewLocalRepository()
+
 	repos := repositories.NewRepositories(
 		casinoBcRepo.NewCasinoBlockchainRepo(bc, config.BlockchainConfig.Contracts.Platform),
 		gameSesssionPgRepo.NewGameSessionsPostgresRepo(db.DbPool),
@@ -161,6 +163,7 @@ func NewApp(config *config.Config) (*App, error) {
 			bc,
 			config.BlockchainConfig.Permissions.GameAction,
 		),
+		gameSessionUC.NewGameSessionsUseCase(repos.GameSession),
 	)
 
 	events := make(chan *eventlistener.EventMessage)

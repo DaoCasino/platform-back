@@ -7,9 +7,8 @@ import (
 )
 
 type NewGamePayload struct {
-	Deposit  string `json:"deposit"`
-	CasinoId int32  `json:"casinoid"`
-	GameId   int32  `json:"gameid"`
+	Deposit string `json:"deposit"`
+	GameId  int32  `json:"gameid"`
 }
 
 func ProcessNewGameRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
@@ -17,6 +16,8 @@ func ProcessNewGameRequest(context context.Context, req *interfaces.ApiRequest) 
 	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
 		return nil, err
 	}
+
+	_ = req.UseCases.GameSession.NewSession(context, 0)
 
 	return &interfaces.WsResponse{
 		Type:    "response",
