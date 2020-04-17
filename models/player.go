@@ -6,7 +6,7 @@ import (
 
 type PlayerInfo struct {
 	Balance          eos.Asset      `json:"balance"`
-	ActivePermission *eos.Authority `json:"activePermission"`
-	OwnerPermission  *eos.Authority `json:"ownerPermission"`
+	ActivePermission eos.Authority `json:"activePermission"`
+	OwnerPermission  eos.Authority `json:"ownerPermission"`
 	LinkedCasinos    []*Casino      `json:"linkedCasinos"`
 }
