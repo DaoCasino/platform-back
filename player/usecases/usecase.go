@@ -30,11 +30,11 @@ func (p *PlayerUseCase) GetInfo(ctx context.Context, accountName string) (*model
 
 	for _, perm := range resp.Permissions {
 		if perm.PermName == "owner" {
-			info.OwnerPermission = &perm.RequiredAuth
+			info.OwnerPermission = perm.RequiredAuth
 			continue
 		}
 		if perm.PermName == "active" {
-			info.ActivePermission = &perm.RequiredAuth
+			info.ActivePermission = perm.RequiredAuth
 			continue
 		}
 	}

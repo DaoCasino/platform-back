@@ -7,11 +7,11 @@
     "minPoolConns": 1
   },
   "amcConfig": {
-    "url": ":8888"
+    "url": "localhost:8889"
   },
   "blockchainConfig": {
     "nodeUrl": "https://api.daobet.org",
-    "sponsorUrl": "",
+    "sponsorUrl": "http://localhost:3333",
     "contracts": {
       "platform": "tplatform"
     }
