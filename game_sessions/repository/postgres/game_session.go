@@ -16,8 +16,8 @@ const (
 type GameSession struct {
 	ID              uint64 `db:"id"`
 	Player          string `db:"player"`
-	CasinoID        uint64 `db:"casino_id"`
 	GameID          uint64 `db:"game_id"`
+	CasinoID        uint64 `db:"casino_id"`
 	BlockchainSesID uint64 `db:"blockchain_ses_id"`
 	State           uint16 `db:"state"`
 }
@@ -49,8 +49,8 @@ func (r *GameSessionsPostgresRepo) GetGameSession(ctx context.Context, id uint64
 	err = conn.QueryRow(ctx, selectGameSessionByIdStmt, id).Scan(
 		&session.ID,
 		&session.Player,
-		&session.CasinoID,
 		&session.GameID,
+		&session.CasinoID,
 		&session.BlockchainSesID,
 		&session.State,
 	)
