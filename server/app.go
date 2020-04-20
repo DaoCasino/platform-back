@@ -15,12 +15,11 @@ import (
 	authUC "platform-backend/auth/usecase"
 	"platform-backend/blockchain"
 	casinoBcRepo "platform-backend/casino/repository/blockchain"
-	casinoUC "platform-backend/casino/usecase"
 	"platform-backend/config"
 	"platform-backend/db"
 	"platform-backend/logger"
 	"platform-backend/models"
-	playerUC "platform-backend/player/usecases"
+	"platform-backend/repositories"
 	"platform-backend/server/api"
 	"platform-backend/server/session_manager"
 	smLocalRepo "platform-backend/server/session_manager/repository/localstorage"
@@ -139,7 +138,6 @@ func NewApp(config *config.Config) (*App, error) {
 	}
 
 	smRepo := smLocalRepo.NewLocalRepository()
-	casinoRepo := casinoBcRepo.NewCasinoBlockchainRepo(bc, config.BlockchainConfig.Contracts.Platform)
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
@@ -149,10 +147,10 @@ func NewApp(config *config.Config) (*App, error) {
 			config.AuthConfig.AccessTokenTTL,
 			config.AuthConfig.RefreshTokenTTL,
 		),
-		casinoUC.NewCasinoUseCase(
-			casinoRepo,
-		),
-		playerUC.NewPlayerUseCase(bc, casinoRepo),
+	)
+
+	repos := repositories.NewRepositories(
+		casinoBcRepo.NewCasinoBlockchainRepo(bc, config.BlockchainConfig.Contracts.Platform),
 	)
 
 	events := make(chan *eventlistener.EventMessage)
@@ -164,7 +162,7 @@ func NewApp(config *config.Config) (*App, error) {
 		}},
 		smRepo:   smRepo,
 		useCases: useCases,
-		wsApi:    api.NewWsApi(useCases),
+		wsApi:    api.NewWsApi(useCases, repos),
 		events:   events,
 	}
 
@@ -223,7 +221,11 @@ func startAmc(a *App, ctx context.Context) error {
 		return err
 	}
 
-	if ok, err := listener.Subscribe(0, 0); err != nil || !ok {
+	if a.config.LogLevel == "debug" {
+		eventlistener.EnableDebugLogging()
+	}
+
+	if ok, err := listener.Subscribe(1, 0); err != nil || !ok {
 		log.Error().Msgf("Action monitor subscribe error: %v", err)
 		return err
 	}
@@ -239,10 +241,9 @@ func startAmc(a *App, ctx context.Context) error {
 			if !ok {
 				return nil
 			}
-			for range eventMessage.Events {
+			for _, event := range eventMessage.Events {
 				// TODO: notify clients
-				//event.CasinoID
-				//log.Printf("%+v %s\n", event, event.Data)
+				log.Printf("%+v %s\n", event, event.EventType)
 			}
 		}
 	}

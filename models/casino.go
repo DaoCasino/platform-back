@@ -5,3 +5,14 @@ type Casino struct {
 	Contract string `json:"contract"`
 	Paused   bool   `json:"paused"`
 }
+
+type GameParam struct {
+	Type  uint16 `json:"type"`
+	Value uint32 `json:"value"`
+}
+
+type CasinoGame struct {
+	Id     uint64      `json:"game_id"`
+	Paused bool        `json:"paused"`
+	Params []GameParam `json:"params"`
+}

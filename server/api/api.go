@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 	"platform-backend/models"
+	"platform-backend/repositories"
 	"platform-backend/server/api/handlers"
 	"platform-backend/server/api/interfaces"
 	"platform-backend/usecases"
@@ -15,11 +16,13 @@ import (
 
 type WsApi struct {
 	useCases *usecases.UseCases
+	repos    *repositories.Repos
 }
 
-func NewWsApi(useCases *usecases.UseCases) *WsApi {
+func NewWsApi(useCases *usecases.UseCases, repos *repositories.Repos) *WsApi {
 	wsApi := new(WsApi)
 	wsApi.useCases = useCases
+	wsApi.repos = repos
 	return wsApi
 }
 
@@ -102,6 +105,7 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 
 		return handler.handler(context, &interfaces.ApiRequest{
 			UseCases: api.useCases,
+			Repos:    api.repos,
 			User:     user,
 			Data:     &messageObj,
 		})
