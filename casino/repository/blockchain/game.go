@@ -13,11 +13,10 @@ type Game struct {
 	Contract     string `json:"contract"`
 	ParamsCnt    uint16 `json:"params_cnt"`
 	Paused       int    `json:"paused"`
-	ProfitMargin uint32 `json:"profit_margin"`
+	ProfitMargin uint64 `json:"profit_margin"`
 	Beneficiary  string `json:"beneficiary"`
 	Meta         []byte `json:"bytes"`
 }
-
 
 func (r *CasinoBlockchainRepo) GetGame(ctx context.Context, gameId uint64) (*models.Game, error) {
 	resp, err := r.bc.Api.GetTableRows(eos.GetTableRowsRequest{
@@ -48,11 +47,11 @@ func (r *CasinoBlockchainRepo) GetGame(ctx context.Context, gameId uint64) (*mod
 
 func (r *CasinoBlockchainRepo) AllGames(ctx context.Context) ([]*models.Game, error) {
 	resp, err := r.bc.Api.GetTableRows(eos.GetTableRowsRequest{
-		Code:       r.platformContract,
-		Scope:      r.platformContract,
-		Table:      "game",
-		Limit:      100,
-		JSON:       true,
+		Code:  r.platformContract,
+		Scope: r.platformContract,
+		Table: "game",
+		Limit: 100,
+		JSON:  true,
 	})
 
 	if err != nil {
@@ -73,12 +72,11 @@ func (r *CasinoBlockchainRepo) AllGames(ctx context.Context) ([]*models.Game, er
 	return ret, nil
 }
 
-
 func toModelGame(g *Game) *models.Game {
 	return &models.Game{
-		Id: g.Id,
-		Contract: g.Contract,
+		Id:        g.Id,
+		Contract:  g.Contract,
 		ParamsCnt: g.ParamsCnt,
-		Paused: g.Paused,
+		Paused:    g.Paused,
 	}
 }

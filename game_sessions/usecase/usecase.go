@@ -16,7 +16,7 @@ func NewGameSessionsUseCase(repo gamesessions.Repository) *GameSessionsUseCase {
 	}
 }
 
-func (a *GameSessionsUseCase) NewSession(ctx context.Context, playerId uint32) error {
+func (a *GameSessionsUseCase) NewSession(ctx context.Context, playerId uint64) error {
 	gameSession := &models.GameSession{
 		ID:              0,
 		Player:          "",

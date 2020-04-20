@@ -7,8 +7,8 @@ import (
 
 type DbConfig struct {
 	Url          string `json:"url"`
-	MaxPoolConns int32  `json:"maxPoolConns"`
-	MinPoolConns int32  `json:"minPoolConns"`
+	MaxPoolConns int32 `json:"maxPoolConns"`
+	MinPoolConns int32 `json:"minPoolConns"`
 }
 
 type BlockchainConfig struct {

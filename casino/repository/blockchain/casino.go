@@ -19,7 +19,7 @@ type Casino struct {
 
 type GameParam struct {
 	Type  uint16 `json:"first"`
-	Value uint32 `json:"second"`
+	Value uint64 `json:"second"`
 }
 
 type CasinoGame struct {
@@ -27,7 +27,6 @@ type CasinoGame struct {
 	Paused int         `json:"paused"`
 	Params []GameParam `json:"params"`
 }
-
 
 type CasinoBlockchainRepo struct {
 	bc               *blockchain.Blockchain
@@ -121,7 +120,6 @@ func (r *CasinoBlockchainRepo) GetCasinoGames(ctx context.Context, casinoName st
 
 	return ret, nil
 }
-
 
 func toModelCasino(c *Casino) *models.Casino {
 	return &models.Casino{

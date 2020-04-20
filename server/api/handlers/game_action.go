@@ -13,7 +13,7 @@ type GameActionPayload struct {
 	Params     []uint32 `json:"params"`
 }
 
-func respondWithError(reqId string, code int32, message string) *interfaces.WsResponse {
+func respondWithError(reqId string, code uint64, message string) *interfaces.WsResponse {
 	return &interfaces.WsResponse{
 		Type:   "response",
 		Id:     reqId,

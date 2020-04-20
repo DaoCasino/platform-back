@@ -8,7 +8,7 @@ import (
 
 type NewGamePayload struct {
 	Deposit string `json:"deposit"`
-	GameId  int32  `json:"gameid"`
+	GameId  uint64 `json:"gameid"`
 }
 
 func ProcessNewGameRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
