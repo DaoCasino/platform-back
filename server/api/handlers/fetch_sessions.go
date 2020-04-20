@@ -7,9 +7,7 @@ import (
 )
 
 type FetchSessionsPayload struct {
-	Deposit  string `json:"deposit"`
-	CasinoId int32  `json:"casinoid"`
-	GameId   int32  `json:"gameid"`
+	Deposit  string `json:"sessionId"`
 }
 
 func ProcessFetchSessionsRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
