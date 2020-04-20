@@ -1,27 +1,13 @@
-package usecases
+package blockchain
 
 import (
 	"context"
 	"github.com/eoscanada/eos-go"
-	"platform-backend/blockchain"
-	casino "platform-backend/casino"
 	"platform-backend/models"
 )
 
-type PlayerUseCase struct {
-	blockchain *blockchain.Blockchain
-	casinoRepo casino.Repository
-}
-
-func NewPlayerUseCase(blockchain *blockchain.Blockchain, casinoRepo casino.Repository) *PlayerUseCase {
-	return &PlayerUseCase{
-		blockchain: blockchain,
-		casinoRepo: casinoRepo,
-	}
-}
-
-func (p *PlayerUseCase) GetInfo(ctx context.Context, accountName string) (*models.PlayerInfo, error) {
-	resp, err := p.blockchain.Api.GetAccount(eos.AN(accountName))
+func (r *CasinoBlockchainRepo) GetPlayerInfo(ctx context.Context, accountName string) (*models.PlayerInfo, error) {
+	resp, err := r.bc.Api.GetAccount(eos.AN(accountName))
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +28,7 @@ func (p *PlayerUseCase) GetInfo(ctx context.Context, accountName string) (*model
 	info.Balance = resp.CoreLiquidBalance
 	info.LinkedCasinos = make([]*models.Casino, 0)
 
-	casinos, err := p.casinoRepo.AllCasinos(ctx)
+	casinos, err := r.AllCasinos(ctx)
 
 	for _, cas := range casinos {
 		if casinoLinked(&resp.Permissions, cas.Contract) {

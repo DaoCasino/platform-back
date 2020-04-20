@@ -17,7 +17,7 @@ func ProcessFetchGamesInCasinoRequest(context context.Context, req *interfaces.A
 		return nil, err
 	}
 
-	cas, err := req.UseCases.Casino.GetCasino(context, payload.CasinoId)
+	cas, err := req.Repos.Casino.GetCasino(context, payload.CasinoId)
 	if err != nil {
 		if err == casino.CasinoNotFound {
 			return &interfaces.WsResponse{
@@ -41,7 +41,7 @@ func ProcessFetchGamesInCasinoRequest(context context.Context, req *interfaces.A
 		}, nil
 	}
 
-	games, err := req.UseCases.Casino.GetCasinoGames(context, cas.Contract)
+	games, err := req.Repos.Casino.GetCasinoGames(context, cas.Contract)
 	if err != nil {
 		return &interfaces.WsResponse{
 			Type:   "response",

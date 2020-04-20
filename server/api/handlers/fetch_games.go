@@ -6,7 +6,7 @@ import (
 )
 
 func ProcessFetchGamesRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
-	games, err := req.UseCases.Casino.AllGames(context)
+	games, err := req.Repos.Casino.AllGames(context)
 
 	if err != nil {
 		return &interfaces.WsResponse{

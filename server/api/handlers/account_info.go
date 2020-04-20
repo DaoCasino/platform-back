@@ -7,7 +7,7 @@ import (
 )
 
 func ProcessAccountInfo(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
-	player, err := req.UseCases.Player.GetInfo(context, req.User.AccountName)
+	player, err := req.Repos.Casino.GetPlayerInfo(context, req.User.AccountName)
 
 	if err != nil {
 		log.Debug().Msgf("Account info fetch error: %s", err.Error())
