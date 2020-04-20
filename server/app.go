@@ -223,7 +223,11 @@ func startAmc(a *App, ctx context.Context) error {
 		return err
 	}
 
-	if ok, err := listener.Subscribe(0, 0); err != nil || !ok {
+	if a.config.LogLevel == "debug" {
+		eventlistener.EnableDebugLogging()
+	}
+
+	if ok, err := listener.Subscribe(1, 0); err != nil || !ok {
 		log.Error().Msgf("Action monitor subscribe error: %v", err)
 		return err
 	}
@@ -239,10 +243,9 @@ func startAmc(a *App, ctx context.Context) error {
 			if !ok {
 				return nil
 			}
-			for range eventMessage.Events {
+			for _, event := range eventMessage.Events {
 				// TODO: notify clients
-				//event.CasinoID
-				//log.Printf("%+v %s\n", event, event.Data)
+				log.Printf("%+v %s\n", event, event.EventType)
 			}
 		}
 	}

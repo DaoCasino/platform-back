@@ -8,4 +8,8 @@ import (
 type UseCase interface {
 	GetCasino(ctx context.Context, casinoId uint64) (*models.Casino, error)
 	AllCasinos(ctx context.Context) ([]*models.Casino, error)
+	GetCasinoGames(ctx context.Context, casinoName string) ([]*models.CasinoGame, error)
+
+	GetGame(ctx context.Context, gameId uint64) (*models.Game, error)
+	AllGames(ctx context.Context) ([]*models.Game, error)
 }
