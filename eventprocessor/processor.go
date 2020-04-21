@@ -5,6 +5,7 @@ import (
 	"fmt"
 	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
 	"github.com/rs/zerolog/log"
+	"platform-backend/blockchain"
 	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 	"time"
@@ -24,11 +25,12 @@ const (
 type UpdateHandler = func(context.Context, *Processor, *eventlistener.Event) error
 
 type Processor struct {
-	gsRepo gamesessions.Repository
+	gsRepo     gamesessions.Repository
+	BlockChain *blockchain.Blockchain
 }
 
-func New(gsRepo gamesessions.Repository) *Processor {
-	return &Processor{gsRepo}
+func New(gsRepo gamesessions.Repository, blockchain *blockchain.Blockchain) *Processor {
+	return &Processor{gsRepo, blockchain}
 }
 
 func (p *Processor) Process(ctx context.Context, event *eventlistener.Event) {
