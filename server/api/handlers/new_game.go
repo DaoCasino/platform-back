@@ -18,7 +18,17 @@ func ProcessNewGameRequest(context context.Context, req *interfaces.ApiRequest) 
 		return nil, err
 	}
 
-	session, err := req.UseCases.GameSession.NewSession(context, payload.GameId, payload.CasinoID, payload.Deposit, req.User)
+	game, err := req.Repos.Casino.GetGame(context, payload.GameId)
+	if err != nil {
+		return nil, err
+	}
+
+	casino, err := req.Repos.Casino.GetCasino(context, payload.CasinoID)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := req.UseCases.GameSession.NewSession(context, casino, game, req.User, payload.Deposit)
 	if err != nil {
 		return nil, err
 	}

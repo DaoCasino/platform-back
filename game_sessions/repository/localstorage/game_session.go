@@ -23,6 +23,7 @@ func (r *GameSessionsLocalRepo) GetGameSession(ctx context.Context, id uint64) (
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 func (r *GameSessionsLocalRepo) GetSessionByBlockChainID(ctx context.Context, reqID uint64) (*models.GameSession, error) {
 	// TODO get session by reqID
 	return &models.GameSession{}, nil
@@ -33,11 +34,14 @@ func (r *GameSessionsLocalRepo) UpdateSessionState(ctx context.Context, id uint6
 	return nil
 }
 
+=======
+>>>>>>> cb9007c... [DPM-107] Fixed architecture issues
 func (r *GameSessionsLocalRepo) AddGameSession(ctx context.Context, ses *models.GameSession) error {
 	if _, ok := r.gameSessions[ses.ID]; ok {
 		return errors.New("session already exists")
 	}
 	r.gameSessions[ses.ID] = &GameSession{
+<<<<<<< HEAD
 		ID: ses.ID,
 		Player: ses.Player,
 		GameID: ses.GameID,
@@ -63,6 +67,17 @@ func (r *GameSessionsLocalRepo) AddGameSession(ctx context.Context, casino *mode
 	//}
 	return nil, errors.New("session not found")
 >>>>>>> 363ab24... [DPM-107] Added gamesession initialization
+=======
+		ID:              ses.ID,
+		Player:          ses.Player,
+		GameID:          ses.GameID,
+		CasinoID:        ses.CasinoID,
+		BlockchainSesID: ses.BlockchainSesID,
+		State:           ses.State,
+		Updates:         make([]*models.GameSessionUpdate, 0, 100),
+	}
+	return nil
+>>>>>>> cb9007c... [DPM-107] Fixed architecture issues
 }
 
 func (r *GameSessionsLocalRepo) DeleteGameSession(ctx context.Context, id uint64) error {

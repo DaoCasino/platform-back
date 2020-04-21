@@ -18,8 +18,8 @@ import (
 	casinoUC "platform-backend/casino/usecase"
 	"platform-backend/config"
 	"platform-backend/db"
-	gameSesssionPgRepo "platform-backend/game_sessions/repository/postgres"
 	"platform-backend/eventprocessor"
+	gameSesssionPgRepo "platform-backend/game_sessions/repository/postgres"
 	gameSessionUC "platform-backend/game_sessions/usecase"
 	"platform-backend/logger"
 	"platform-backend/models"
@@ -43,10 +43,10 @@ type App struct {
 	wsUpgrader  websocket.Upgrader
 	wsApi       *api.WsApi
 
-	smRepo   session_manager.Repository
+	smRepo         session_manager.Repository
 	eventProcessor *eventprocessor.Processor
-	useCases *usecases.UseCases
-	events   chan *eventlistener.EventMessage
+	useCases       *usecases.UseCases
+	events         chan *eventlistener.EventMessage
 }
 
 func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -164,8 +164,11 @@ func NewApp(config *config.Config) (*App, error) {
 			config.BlockchainConfig.Permissions.GameAction,
 		),
 		gameSessionUC.NewGameSessionsUseCase(
+			bc,
 			repos.GameSession,
 			repos.Casino,
+			config.BlockchainConfig.Contracts.Platform,
+			config.CasinoBackendConfig.Url,
 		),
 	)
 
@@ -176,11 +179,11 @@ func NewApp(config *config.Config) (*App, error) {
 		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		smRepo:   smRepo,
+		smRepo:         smRepo,
 		eventProcessor: eventprocessor.New(repos.GameSession),
-		useCases: useCases,
-		wsApi:    api.NewWsApi(useCases, repos),
-		events:   events,
+		useCases:       useCases,
+		wsApi:          api.NewWsApi(useCases, repos),
+		events:         events,
 	}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
