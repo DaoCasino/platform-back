@@ -13,6 +13,7 @@ import (
 	"platform-backend/casino"
 	"platform-backend/game_sessions"
 	"platform-backend/models"
+	"strconv"
 )
 
 type GameSessionsUseCase struct {
@@ -38,7 +39,8 @@ func (a *GameSessionsUseCase) NewSession(ctx context.Context, Casino *models.Cas
 	if err != nil {
 		return nil, err
 	}
-	memo := string(sessionId) // IMPORTANT!
+
+	memo := strconv.FormatUint(sessionId, 10) // IMPORTANT!
 
 	txOpts := &eos.TxOptions{}
 	if err := txOpts.FillFromChain(api); err != nil {
