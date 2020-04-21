@@ -245,12 +245,17 @@ func startAmc(a *App, ctx context.Context) error {
 		eventlistener.EnableDebugLogging()
 	}
 
-	if ok, err := listener.Subscribe(1, 0); err != nil || !ok {
-		log.Error().Msgf("Action monitor subscribe error: %v", err)
-		return err
-	}
-
 	log.Info().Msgf("Connected to the action monitor")
+
+	// subscription should be in another routine
+	go func() {
+		if ok, err := listener.Subscribe(0, 0); err != nil || !ok {
+			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
+		}
+		if ok, err := listener.Subscribe(1, 0); err != nil || !ok {
+			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
+		}
+	}()
 
 	for {
 		select {
