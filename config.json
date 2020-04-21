@@ -20,7 +20,8 @@
     },
     "permissions": {
       "deposit": "5JBjX1UpMYqnp4YtFJPvMmV7JF7EuXXXXXXXXXXXXXX",
-      "gameaction": "5JBjX1UpMYqnp4YtFJPvMmV7JF7EuXXXXXXXXXXXXXX"
+      "gameaction": "5JBjX1UpMYqnp4YtFJPvMmV7JF7EuXXXXXXXXXXXXXX",
+      "signidice": "5JSQRVxCFcoGaTgwZthUveqrTx7UnSDUx3qAM1vkDdYH9SDq1uN"
     }
   },
   "authConfig": {

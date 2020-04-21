@@ -20,6 +20,7 @@ type BlockchainConfig struct {
 	Permissions struct {
 		Deposit    string `json:"deposit"`
 		GameAction string `json:"gameaction"`
+		SigniDice  string `json:"signidice"`
 	} `json:"permissions"`
 }
 

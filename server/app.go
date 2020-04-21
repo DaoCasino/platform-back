@@ -180,7 +180,7 @@ func NewApp(config *config.Config) (*App, error) {
 			return true
 		}},
 		smRepo:         smRepo,
-		eventProcessor: eventprocessor.New(repos.GameSession),
+		eventProcessor: eventprocessor.New(repos.GameSession, bc),
 		useCases:       useCases,
 		wsApi:          api.NewWsApi(useCases, repos),
 		events:         events,

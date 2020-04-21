@@ -7,6 +7,7 @@ import (
 	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 	"time"
+	"platform-backend/blockchain"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,10 +32,11 @@ const (
 
 type Processor struct {
 	gsRepo gamesessions.Repository
+	BlockChain *blockchain.Blockchain
 }
 
-func New(gsRepo gamesessions.Repository) *Processor {
-	return &Processor{gsRepo}
+func New(gsRepo gamesessions.Repository, blockchain *blockchain.Blockchain) *Processor {
+	return &Processor{gsRepo, blockchain}
 }
 
 func (p *Processor) Process(ctx context.Context, event *eventlistener.Event) {
