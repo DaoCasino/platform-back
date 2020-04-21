@@ -22,6 +22,7 @@ const (
 )
 
 type SessionState = uint16
+type UpdateHandler = func (context.Context, *Processor, *eventlistener.Event) error
 
 // session states
 const (
@@ -69,7 +70,7 @@ func (p *Processor) Process(ctx context.Context, event *eventlistener.Event) {
 		return
 	}
 
-	handleError := handler(p, event)
+	handleError := handler(ctx, p, event)
 
 	if handleError != nil {
 		log.Warn().Msgf("Failed to process event, %+v, reason: %s", event, handleError.Error())
@@ -84,7 +85,7 @@ func (p *Processor) Process(ctx context.Context, event *eventlistener.Event) {
 
 }
 
-func GetHandler(eventType eventlistener.EventType) (func(*Processor, *eventlistener.Event) error, error) {
+func GetHandler(eventType eventlistener.EventType) (UpdateHandler, error) {
 	switch eventType {
 	case gameStarted:
 		return onGameStarted, nil

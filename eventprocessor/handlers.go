@@ -1,34 +1,34 @@
 package eventprocessor
 
 import (
+	"context"
 	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
 )
 
-func onGameStarted(p *Processor, event *eventlistener.Event) error {
-	// TODO
+func onGameStarted(ctx context.Context, p *Processor, event *eventlistener.Event) error {
 	return nil
 }
 
-func onActionRequest(p *Processor, event *eventlistener.Event) error {
+func onActionRequest(ctx context.Context, p *Processor, event *eventlistener.Event) error {
 	return nil
 }
 
-func onSignidicePartOneRequest(p *Processor, event *eventlistener.Event) error {
+func onSignidicePartOneRequest(ctx context.Context, p *Processor, event *eventlistener.Event) error {
 	return nil
 }
 
-func onSignidicePartTwoRequest(p *Processor, event *eventlistener.Event) error {
+func onSignidicePartTwoRequest(ctx context.Context, p *Processor, event *eventlistener.Event) error {
 	return nil
 }
 
-func onGameFinished(p *Processor, event *eventlistener.Event) error {
+func onGameFinished(ctx context.Context, p *Processor, event *eventlistener.Event) error {
 	return nil
 }
 
-func onGameFailed(p *Processor, event *eventlistener.Event) error {
+func onGameFailed(ctx context.Context, p *Processor, event *eventlistener.Event) error {
 	return nil
 }
 
-func onGameMessage(p *Processor, event *eventlistener.Event) error {
+func onGameMessage(ctx context.Context, p *Processor, event *eventlistener.Event) error {
 	return nil
 }
