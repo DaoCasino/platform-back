@@ -12,7 +12,7 @@ type GameParam struct {
 }
 
 type CasinoGame struct {
-	Id     uint64      `json:"game_id"`
+	Id     uint64      `json:"gameId"`
 	Paused bool        `json:"paused"`
 	Params []GameParam `json:"params"`
 }

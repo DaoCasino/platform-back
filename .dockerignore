@@ -2,4 +2,5 @@
 .idea/
 .data/
 *.pem
-*.bak
+.git/
+Dockerfile
