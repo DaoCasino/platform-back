@@ -17,6 +17,9 @@ type BlockchainConfig struct {
 	Contracts  struct {
 		Platform string `json:"platform"`
 	} `json:"contracts"`
+	Permissions struct {
+		GameAction string `json:"gameaction"`
+	} `json:"permissions"`
 }
 
 type AuthConfig struct {

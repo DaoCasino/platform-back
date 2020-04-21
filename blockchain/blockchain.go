@@ -4,15 +4,24 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/eoscanada/eos-go"
 	"github.com/eoscanada/eos-go/ecc"
 	"github.com/rs/zerolog/log"
 	"net/http"
+	"strings"
 )
 
-type sponsorRequest struct {
-	SerializedTransaction []byte `json:"serializedTransaction"`
+type ByteArray []byte
+
+func (m ByteArray) MarshalJSON() ([]byte, error) {
+	return []byte(strings.Join(strings.Fields(fmt.Sprintf("%d", m)), ",")), nil
 }
+
+type sponsorRequest struct {
+	SerializedTransaction ByteArray `json:"serializedTransaction"`
+}
+
 type sponsorResponse struct {
 	SerializedTransaction []byte   `json:"serializedTransaction"`
 	Signatures            []string `json:"signatures"`
@@ -20,6 +29,7 @@ type sponsorResponse struct {
 
 type Blockchain struct {
 	Api        *eos.API
+	ChainID    eos.Checksum256
 	sponsorUrl string
 }
 
@@ -35,10 +45,12 @@ func Init(url string, sponsorUrl string) (*Blockchain, error) {
 	}
 
 	blockchain.Api.EnableKeepAlives()
+	blockchain.ChainID = info.ChainID
 
 	log.Info().Msgf("Connected with blockchain with chaid id: %s", info.ChainID.String())
 	return blockchain, nil
 }
+
 
 func (b *Blockchain) GetSponsoredTrx(trx *eos.Transaction) (*eos.SignedTransaction, error) {
 	packedTrx, err := eos.MarshalBinary(trx)
@@ -53,7 +65,7 @@ func (b *Blockchain) GetSponsoredTrx(trx *eos.Transaction) (*eos.SignedTransacti
 		return nil, errors.New("request body marshal error")
 	}
 
-	httpResp, err := http.Post(b.sponsorUrl, "application/json", bytes.NewReader(reqBody))
+	httpResp, err := http.Post(b.sponsorUrl + "/sponsor", "application/json", bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, errors.New("sponsorship provider request error: " + err.Error())
 	}
@@ -67,8 +79,8 @@ func (b *Blockchain) GetSponsoredTrx(trx *eos.Transaction) (*eos.SignedTransacti
 		return nil, errors.New("sponsorship response parsing error: " + err.Error())
 	}
 
-	var sponsoredTrx *eos.Transaction
-	err = eos.UnmarshalBinary(response.SerializedTransaction, sponsoredTrx)
+	var sponsoredTrx eos.Transaction
+	err = eos.UnmarshalBinary(response.SerializedTransaction, &sponsoredTrx)
 	if err != nil {
 		return nil, errors.New("sponsored transaction parsing error: " + err.Error())
 	}

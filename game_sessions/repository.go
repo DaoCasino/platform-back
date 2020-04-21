@@ -5,7 +5,7 @@ import (
 	"platform-backend/models"
 )
 
-type GameSessionRepository interface {
+type Repository interface {
 	HasGameSession(ctx context.Context, id uint64) (bool, error)
 	GetGameSession(ctx context.Context, id uint64) (*models.GameSession, error)
 	AddGameSession(ctx context.Context, ses *models.GameSession) error

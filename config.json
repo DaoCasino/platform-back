@@ -14,6 +14,9 @@
     "sponsorUrl": "http://localhost:3333",
     "contracts": {
       "platform": "tplatform"
+    },
+    "permissions": {
+      "gameaction": "5JBjX1UpMYqnp4YtFJPvMmV7JF7EuXXXXXXXXXXXXXX"
     }
   },
   "authConfig": {

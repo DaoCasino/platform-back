@@ -15,8 +15,10 @@ import (
 	authUC "platform-backend/auth/usecase"
 	"platform-backend/blockchain"
 	casinoBcRepo "platform-backend/casino/repository/blockchain"
+	casinoUC "platform-backend/casino/usecase"
 	"platform-backend/config"
 	"platform-backend/db"
+	gameSesssionPgRepo "platform-backend/game_sessions/repository/postgres"
 	"platform-backend/logger"
 	"platform-backend/models"
 	"platform-backend/repositories"
@@ -139,6 +141,11 @@ func NewApp(config *config.Config) (*App, error) {
 
 	smRepo := smLocalRepo.NewLocalRepository()
 
+	repos := repositories.NewRepositories(
+		casinoBcRepo.NewCasinoBlockchainRepo(bc, config.BlockchainConfig.Contracts.Platform),
+		gameSesssionPgRepo.NewGameSessionsPostgresRepo(db.DbPool),
+	)
+
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			authPgRepo.NewUserPostgresRepo(db.DbPool),
@@ -147,10 +154,12 @@ func NewApp(config *config.Config) (*App, error) {
 			config.AuthConfig.AccessTokenTTL,
 			config.AuthConfig.RefreshTokenTTL,
 		),
-	)
-
-	repos := repositories.NewRepositories(
-		casinoBcRepo.NewCasinoBlockchainRepo(bc, config.BlockchainConfig.Contracts.Platform),
+		casinoUC.NewCasinoUseCase(
+			repos.Casino,
+			repos.GameSession,
+			bc,
+			config.BlockchainConfig.Permissions.GameAction,
+		),
 	)
 
 	events := make(chan *eventlistener.EventMessage)
