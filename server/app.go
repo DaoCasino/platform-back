@@ -26,6 +26,7 @@ import (
 	"platform-backend/server/api"
 	"platform-backend/server/session_manager"
 	smLocalRepo "platform-backend/server/session_manager/repository/localstorage"
+	signidiceUC "platform-backend/signidice/usecase"
 	"platform-backend/usecases"
 	"time"
 )
@@ -43,7 +44,7 @@ type App struct {
 	wsApi       *api.WsApi
 
 	smRepo         session_manager.Repository
-	eventProcessor *eventprocessor.Processor
+	eventProcessor *eventprocessor.EventProcessor
 	useCases       *usecases.UseCases
 	events         chan *eventlistener.EventMessage
 }
@@ -163,6 +164,11 @@ func NewApp(config *config.Config) (*App, error) {
 			config.BlockchainConfig.Contracts.Platform,
 			config.CasinoBackendConfig.Url,
 		),
+		signidiceUC.NewSignidiceUseCase(
+			bc,
+			config.BlockchainConfig.Contracts.Platform,
+			config.SignidiceConfig.KeyPath,
+		),
 	)
 
 	events := make(chan *eventlistener.EventMessage)
@@ -173,7 +179,7 @@ func NewApp(config *config.Config) (*App, error) {
 			return true
 		}},
 		smRepo:         smRepo,
-		eventProcessor: eventprocessor.New(repos.GameSession, bc),
+		eventProcessor: eventprocessor.New(repos, bc, useCases),
 		useCases:       useCases,
 		wsApi:          api.NewWsApi(useCases, repos),
 		events:         events,
@@ -246,6 +252,18 @@ func startAmc(a *App, ctx context.Context) error {
 			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
 		}
 		if ok, err := listener.Subscribe(1, 0); err != nil || !ok {
+			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
+		}
+		if ok, err := listener.Subscribe(2, 0); err != nil || !ok {
+			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
+		}
+		if ok, err := listener.Subscribe(3, 0); err != nil || !ok {
+			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
+		}
+		if ok, err := listener.Subscribe(4, 0); err != nil || !ok {
+			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
+		}
+		if ok, err := listener.Subscribe(5, 0); err != nil || !ok {
 			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
 		}
 	}()

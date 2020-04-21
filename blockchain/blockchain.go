@@ -35,11 +35,11 @@ type PubKeys struct {
 }
 
 type Blockchain struct {
-	Api        *eos.API
-	PubKeys    *PubKeys
-	ChainId    eos.Checksum256
+	Api                 *eos.API
+	PubKeys             *PubKeys
+	ChainId             eos.Checksum256
 	PlatformAccountName string
-	sponsorUrl string
+	sponsorUrl          string
 }
 
 func Init(config *config.BlockchainConfig) (*Blockchain, error) {

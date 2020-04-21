@@ -6,8 +6,9 @@ import (
 	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
 	"github.com/rs/zerolog/log"
 	"platform-backend/blockchain"
-	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
+	"platform-backend/repositories"
+	"platform-backend/usecases"
 	"time"
 )
 
@@ -22,19 +23,24 @@ const (
 	gameMessage
 )
 
-type UpdateHandler = func(context.Context, *Processor, *eventlistener.Event) error
+type UpdateHandler = func(context.Context, *EventProcessor, *eventlistener.Event) error
 
-type Processor struct {
-	gsRepo     gamesessions.Repository
-	BlockChain *blockchain.Blockchain
+type EventProcessor struct {
+	repos      *repositories.Repos
+	blockChain *blockchain.Blockchain
+	useCases   *usecases.UseCases
 }
 
-func New(gsRepo gamesessions.Repository, blockchain *blockchain.Blockchain) *Processor {
-	return &Processor{gsRepo, blockchain}
+func New(
+	repos *repositories.Repos,
+	blockchain *blockchain.Blockchain,
+	useCases *usecases.UseCases,
+) *EventProcessor {
+	return &EventProcessor{repos, blockchain, useCases}
 }
 
-func (p *Processor) Process(ctx context.Context, event *eventlistener.Event) {
-	gsRepo := p.gsRepo
+func (p *EventProcessor) Process(ctx context.Context, event *eventlistener.Event) {
+	gsRepo := p.repos.GameSession
 
 	bcSession, err := gsRepo.GetSessionByBlockChainID(ctx, event.RequestID)
 	if err != nil {
