@@ -14,5 +14,6 @@ require (
 	github.com/rs/zerolog v1.18.0
 	github.com/stretchr/testify v1.5.1
 	go.uber.org/atomic v1.6.0
+	golang.org/x/mobile v0.0.0-20190719004257-d2bd2a29d028
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 )
