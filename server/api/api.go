@@ -58,8 +58,18 @@ var handlersMap = map[string]RequestHandlerInfo{
 		messageType: websocket.TextMessage,
 		needAuth:    true,
 	},
+	"fetch_session": {
+		handler:     handlers.ProcessFetchSessionRequest,
+		messageType: websocket.TextMessage,
+		needAuth:    true,
+	},
 	"fetch_sessions": {
 		handler:     handlers.ProcessFetchSessionsRequest,
+		messageType: websocket.TextMessage,
+		needAuth:    true,
+	},
+	"fetch_session_updates": {
+		handler:     handlers.ProcessFetchSessionUpdatesRequest,
 		messageType: websocket.TextMessage,
 		needAuth:    true,
 	},
