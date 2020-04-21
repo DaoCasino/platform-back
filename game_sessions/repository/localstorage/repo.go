@@ -15,11 +15,9 @@ type GameSession struct {
 }
 
 type GameSessionsLocalRepo struct {
-	gameSessions       map[uint64]*GameSession
+	gameSessions map[uint64]*GameSession
 }
 
-func NewGameSessionsPostgresRepo() *GameSessionsLocalRepo {
-	return &GameSessionsLocalRepo{
-		gameSessions:       make(map[uint64]*GameSession),
-	}
+func NewGameSessionsLocalRepo(gameSessions map[uint64]*GameSession) *GameSessionsLocalRepo {
+	return &GameSessionsLocalRepo{gameSessions: gameSessions}
 }

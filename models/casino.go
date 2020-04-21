@@ -8,7 +8,7 @@ type Casino struct {
 
 type GameParam struct {
 	Type  uint16 `json:"type"`
-	Value uint64 `json:"value"`
+	Value uint32 `json:"value"`
 }
 
 type CasinoGame struct {

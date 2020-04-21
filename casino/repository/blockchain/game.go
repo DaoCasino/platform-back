@@ -13,7 +13,7 @@ type Game struct {
 	Contract     string `json:"contract"`
 	ParamsCnt    uint16 `json:"params_cnt"`
 	Paused       int    `json:"paused"`
-	ProfitMargin uint64 `json:"profit_margin"`
+	ProfitMargin uint32 `json:"profit_margin"`
 	Beneficiary  string `json:"beneficiary"`
 	Meta         []byte `json:"bytes"`
 }

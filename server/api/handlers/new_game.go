@@ -7,8 +7,8 @@ import (
 )
 
 type NewGamePayload struct {
-	GameId   uint64 `json:"gameid"`
-	CasinoID uint64 `json:"casinoid"`
+	GameId   uint64 `json:"gameId"`
+	CasinoID uint64 `json:"casinoId"`
 	Deposit  string `json:"deposit"`
 }
 
