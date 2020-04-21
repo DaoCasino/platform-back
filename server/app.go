@@ -19,6 +19,7 @@ import (
 	"platform-backend/config"
 	"platform-backend/db"
 	gameSesssionPgRepo "platform-backend/game_sessions/repository/postgres"
+	"platform-backend/eventprocessor"
 	"platform-backend/logger"
 	"platform-backend/models"
 	"platform-backend/repositories"
@@ -42,6 +43,7 @@ type App struct {
 	wsApi       *api.WsApi
 
 	smRepo   session_manager.Repository
+	eventProcessor *eventprocessor.Processor
 	useCases *usecases.UseCases
 	events   chan *eventlistener.EventMessage
 }
@@ -140,7 +142,6 @@ func NewApp(config *config.Config) (*App, error) {
 	}
 
 	smRepo := smLocalRepo.NewLocalRepository()
-
 	repos := repositories.NewRepositories(
 		casinoBcRepo.NewCasinoBlockchainRepo(bc, config.BlockchainConfig.Contracts.Platform),
 		gameSesssionPgRepo.NewGameSessionsPostgresRepo(db.DbPool),
@@ -170,6 +171,7 @@ func NewApp(config *config.Config) (*App, error) {
 			return true
 		}},
 		smRepo:   smRepo,
+		eventProcessor: eventprocessor.New(repos.GameSession),
 		useCases: useCases,
 		wsApi:    api.NewWsApi(useCases, repos),
 		events:   events,
@@ -252,7 +254,7 @@ func startAmc(a *App, ctx context.Context) error {
 			}
 			for _, event := range eventMessage.Events {
 				// TODO: notify clients
-				log.Printf("%+v %s\n", event, event.EventType)
+				go a.eventProcessor.Process(ctx, event)
 			}
 		}
 	}

@@ -11,4 +11,3 @@ func NewGameSessionsPostgresRepo(dbPool *pgxpool.Pool) *GameSessionsPostgresRepo
 		dbPool: dbPool,
 	}
 }
-

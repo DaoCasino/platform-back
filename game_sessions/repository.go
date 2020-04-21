@@ -1,4 +1,4 @@
-package game_sessions
+package gamesessions
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 type Repository interface {
 	HasGameSession(ctx context.Context, id uint64) (bool, error)
 	GetGameSession(ctx context.Context, id uint64) (*models.GameSession, error)
+	GetSessionByBlockChainID(ctx context.Context, bcID uint64) (*models.GameSession, error)
+	UpdateSessionState(ctx context.Context, id uint64, newState uint16) error
 	AddGameSession(ctx context.Context, ses *models.GameSession) error
 	DeleteGameSession(ctx context.Context, id uint64) error
 

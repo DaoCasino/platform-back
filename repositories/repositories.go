@@ -7,10 +7,10 @@ import (
 
 type Repos struct {
 	Casino      casino.Repository
-	GameSession game_sessions.Repository
+	GameSession gamesessions.Repository
 }
 
-func NewRepositories(Casino casino.Repository, GameSession game_sessions.Repository) *Repos {
+func NewRepositories(Casino casino.Repository, GameSession gamesessions.Repository) *Repos {
 	return &Repos{
 		Casino: Casino,
 		GameSession: GameSession,

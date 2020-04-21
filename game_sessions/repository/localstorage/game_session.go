@@ -6,7 +6,6 @@ import (
 	"platform-backend/models"
 )
 
-
 func (r *GameSessionsLocalRepo) HasGameSession(ctx context.Context, id uint64) (bool, error) {
 	if _, ok := r.gameSessions[id]; ok {
 		return true, nil
@@ -21,6 +20,16 @@ func (r *GameSessionsLocalRepo) GetGameSession(ctx context.Context, id uint64) (
 	}
 
 	return nil, errors.New("session not found")
+}
+
+func (r *GameSessionsLocalRepo) GetSessionByBlockChainID(ctx context.Context, reqID uint64) (*models.GameSession, error) {
+	// TODO get session by reqID
+	return &models.GameSession{}, nil
+}
+
+func (r *GameSessionsLocalRepo) UpdateSessionState(ctx context.Context, id uint64, newState uint16) error {
+	// TODO
+	return nil
 }
 
 func (r *GameSessionsLocalRepo) AddGameSession(ctx context.Context, ses *models.GameSession) error {

@@ -8,6 +8,8 @@ import (
 
 const (
 	selectGameSessionByIdStmt    = "SELECT * FROM game_sessions WHERE id = $1"
+	selectGameSessionByBcID      = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
+	updateSessionState           = "UPDATE game_sessions SET state = $2 WHERE id = $1"
 	selectGameSessionCntByIdStmt = "SELECT count(*) FROM game_sessions WHERE id = $1"
 	insertGameSessionStmt        = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6)"
 	deleteGameSessionByIdStmt    = "DELETE FROM game_sessions WHERE id = $1"
@@ -59,6 +61,40 @@ func (r *GameSessionsPostgresRepo) GetGameSession(ctx context.Context, id uint64
 		return nil, err
 	}
 	return toModelGameSession(session), nil
+}
+
+func (r *GameSessionsPostgresRepo) GetSessionByBlockChainID(ctx context.Context, bcID uint64) (*models.GameSession, error) {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	session := new(GameSession)
+	err = conn.QueryRow(ctx, selectGameSessionByBcID, bcID).Scan(
+		&session.ID,
+		&session.Player,
+		&session.CasinoID,
+		&session.GameID,
+		&session.BlockchainSesID,
+		&session.State,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	return toModelGameSession(session), nil
+}
+
+func (r *GameSessionsPostgresRepo) UpdateSessionState(ctx context.Context, id uint64, newState uint16) error {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, updateSessionState, id, newState)
+	return err
 }
 
 func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *models.GameSession) error {

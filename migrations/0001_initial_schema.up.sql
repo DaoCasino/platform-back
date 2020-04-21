@@ -15,6 +15,8 @@ CREATE TABLE game_sessions
     state             SMALLINT NOT NULL
 );
 
+CREATE UNIQUE INDEX bc_req_idx ON game_sessions(blockchain_req_id);
+
 CREATE TABLE casinos
 (
     id      NUMERIC PRIMARY KEY UNIQUE
