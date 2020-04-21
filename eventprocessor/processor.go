@@ -29,10 +29,10 @@ const (
 )
 
 type Processor struct {
-	gsRepo gamesessions.GameSessionRepository
+	gsRepo gamesessions.Repository
 }
 
-func New(gsRepo gamesessions.GameSessionRepository) *Processor {
+func New(gsRepo gamesessions.Repository) *Processor {
 	return &Processor{gsRepo}
 }
 

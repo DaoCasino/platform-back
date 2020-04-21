@@ -11,14 +11,14 @@ import (
 
 type CasinoUseCase struct {
 	casinoRepo      casino.Repository
-	gameSessionRepo game_sessions.Repository
+	gameSessionRepo gamesessions.Repository
 	bc              *blockchain.Blockchain
 	gameKeyBag      *eos.KeyBag
 }
 
 func NewCasinoUseCase(
 	casinoRepo casino.Repository,
-	gsRepo game_sessions.Repository,
+	gsRepo gamesessions.Repository,
 	bc *blockchain.Blockchain,
 	gameKey string,
 ) *CasinoUseCase {
