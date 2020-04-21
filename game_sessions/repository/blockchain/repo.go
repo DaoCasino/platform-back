@@ -5,9 +5,11 @@ import (
 )
 
 type GameSessionsBCRepo struct {
-	bc *blockchain.Blockchain
+	bc               *blockchain.Blockchain
+	platformContract string
+	casinoBackendUrl string
 }
 
-func NewGameSessionsBCRepo(bc *blockchain.Blockchain) *GameSessionsBCRepo {
-	return &GameSessionsBCRepo{bc: bc}
+func NewGameSessionsBCRepo(bc *blockchain.Blockchain, platformContract string, casinoBackendUrl string) *GameSessionsBCRepo {
+	return &GameSessionsBCRepo{bc: bc, platformContract: platformContract, casinoBackendUrl: casinoBackendUrl}
 }

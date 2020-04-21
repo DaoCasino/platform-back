@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"platform-backend/db"
 	"platform-backend/models"
 )
@@ -97,15 +98,15 @@ func (r *GameSessionsPostgresRepo) UpdateSessionState(ctx context.Context, id ui
 	return err
 }
 
-func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *models.GameSession) error {
-	conn, err := db.DbPool.Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Release()
-
-	_, err = conn.Exec(ctx, insertGameSessionStmt, ses.ID, ses.Player, ses.CasinoID, ses.GameID, ses.BlockchainSesID, ses.State)
-	return err
+func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, casino *models.Casino, game *models.Game, user *models.User, deposit string) (*models.GameSession, error) {
+	//conn, err := db.DbPool.Acquire(ctx)
+	//if err != nil {
+	//	return err
+	//}
+	//defer conn.Release()
+	//
+	//_, err = conn.Exec(ctx, insertGameSessionStmt, ses.ID, ses.Player, ses.CasinoID, ses.GameID, ses.BlockchainSesID, ses.State)
+	return nil, errors.New("session not found")
 }
 
 func (r *GameSessionsPostgresRepo) DeleteGameSession(ctx context.Context, id uint64) error {

@@ -136,7 +136,7 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	bc, err := blockchain.Init(config.BlockchainConfig.NodeUrl, config.BlockchainConfig.SponsorUrl)
+	bc, err := blockchain.Init(&config.BlockchainConfig)
 	if err != nil {
 		log.Fatal().Msgf("Blockchain init error, %s", err.Error())
 		return nil, err
@@ -163,7 +163,10 @@ func NewApp(config *config.Config) (*App, error) {
 			bc,
 			config.BlockchainConfig.Permissions.GameAction,
 		),
-		gameSessionUC.NewGameSessionsUseCase(repos.GameSession),
+		gameSessionUC.NewGameSessionsUseCase(
+			repos.GameSession,
+			repos.Casino,
+		),
 	)
 
 	events := make(chan *eventlistener.EventMessage)

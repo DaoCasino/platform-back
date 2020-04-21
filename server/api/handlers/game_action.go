@@ -31,7 +31,7 @@ func ProcessGameActionRequest(context context.Context, req *interfaces.ApiReques
 		return nil, err
 	}
 
-	has, err := req.Repos.GameSession.HasGameSession(context, payload.SessionId)
+	has, err := req.UseCases.GameSession.HasGameSession(context, payload.SessionId)
 	if err != nil {
 		log.Err(err)
 		return respondWithError(req.Data.Id, 5000, "Game session check error"), nil
@@ -42,7 +42,7 @@ func ProcessGameActionRequest(context context.Context, req *interfaces.ApiReques
 		return respondWithError(req.Data.Id, 4004, "Game session not found"), nil
 	}
 
-	session, err := req.Repos.GameSession.GetGameSession(context, payload.SessionId)
+	session, err := req.UseCases.GameSession.GetGameSession(context, payload.SessionId)
 	if err != nil {
 		log.Err(err)
 		return respondWithError(req.Data.Id, 5000, "Game session fetch error"), nil
