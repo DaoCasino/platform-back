@@ -43,13 +43,20 @@ func (p *Processor) Process(ctx context.Context, event *eventlistener.Event) {
 		log.Warn().Msgf("Couldn't find session with requestID %v", event.RequestID)
 		return
 	}
-	gsRepo.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
+	err = gsRepo.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
 		SessionID: bcSession.ID,
 		UpdateType: uint16(event.EventType),
 		Timestamp: time.Now(),
 		Data: event.Data,
 	})
+
+	if err != nil {
+		log.Warn().Msgf("Failed to add game session update, reason: %s", err.Error())
+		return
+	}
+
 	handler, err := GetHandler(event.EventType)
+
 	if err != nil {
 		log.Warn().Msgf("Failed to process event, reason: %s", err.Error())
 		return
@@ -63,13 +70,16 @@ func (p *Processor) Process(ctx context.Context, event *eventlistener.Event) {
 	}
 
 	handleError := handler(p, event)
+
 	if handleError != nil {
-		log.Warn().Msgf("Failed to handle event, %+v, reason: %s", event, handleError.Error())
+		log.Warn().Msgf("Failed to process event, %+v, reason: %s", event, handleError.Error())
 		return
 	}
 
-	if gsRepo.UpdateSessionState(ctx, bcSession.ID, nextState) != nil {
-		log.Warn().Msgf("Failed to update session state, id: %d", bcSession.ID)
+	err = gsRepo.UpdateSessionState(ctx, bcSession.ID, nextState)
+
+	if  err != nil {
+		log.Warn().Msgf("Failed to update session state, reason: %s", err.Error())
 	}
 
 }
