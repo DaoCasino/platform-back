@@ -79,13 +79,8 @@ func (a *GameSessionsUseCase) NewSession(ctx context.Context, Casino *models.Cas
 		return nil, err
 	}
 
-	packedTrx, err := signedTrx.Pack(eos.CompressionNone)
-	if err != nil {
-		return nil, err
-	}
-
 	// Send sponsored and signed transaction to Casino Backend
-	reader := bytes.NewReader(packedTrx.PackedTransaction)
+	reader := bytes.NewReader([]byte(signedTrx.String()))
 	_, err = http.Post(a.casinoBackendUrl+"/sign_transaction", "application/json", reader)
 	if err != nil {
 		return nil, err
