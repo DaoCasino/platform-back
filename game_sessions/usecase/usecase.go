@@ -14,6 +14,7 @@ import (
 	"platform-backend/game_sessions"
 	"platform-backend/models"
 	"strconv"
+	"time"
 )
 
 type GameSessionsUseCase struct {
@@ -25,6 +26,7 @@ type GameSessionsUseCase struct {
 }
 
 func NewGameSessionsUseCase(bc *blockchain.Blockchain, repo gamesessions.Repository, casinoRepo casino.Repository, platformContract string, casinoBackendUrl string) *GameSessionsUseCase {
+	rand.Seed(time.Now().Unix())
 	return &GameSessionsUseCase{bc: bc, repo: repo, casinoRepo: casinoRepo, platformContract: platformContract, casinoBackendUrl: casinoBackendUrl}
 }
 
