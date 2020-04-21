@@ -78,7 +78,7 @@ func (c *CasinoUseCase) GameAction(ctx context.Context, sessionId uint64, action
 	}
 
 	keys, _ := c.gameKeyBag.AvailableKeys()
-	signedTrx, err := c.gameKeyBag.Sign(sponsoredTrx, c.bc.ChainID, keys[0])
+	signedTrx, err := c.gameKeyBag.Sign(sponsoredTrx, c.bc.ChainId, keys[0])
 	if err != nil {
 		log.Err(err)
 		return err

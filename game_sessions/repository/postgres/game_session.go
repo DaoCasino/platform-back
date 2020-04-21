@@ -105,7 +105,10 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 	defer conn.Release()
 
 	_, err = conn.Exec(ctx, insertGameSessionStmt, ses.ID, ses.Player, ses.CasinoID, ses.GameID, ses.BlockchainSesID, ses.State)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *GameSessionsPostgresRepo) DeleteGameSession(ctx context.Context, id uint64) error {

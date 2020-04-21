@@ -9,6 +9,7 @@ import (
 	"github.com/eoscanada/eos-go/ecc"
 	"github.com/rs/zerolog/log"
 	"net/http"
+	"platform-backend/config"
 	"strings"
 )
 
@@ -27,16 +28,22 @@ type sponsorResponse struct {
 	Signatures            []string `json:"signatures"`
 }
 
+type PubKeys struct {
+	Deposit    ecc.PublicKey
+	GameAction ecc.PublicKey
+}
+
 type Blockchain struct {
 	Api        *eos.API
-	ChainID    eos.Checksum256
+	PubKeys    *PubKeys
+	ChainId    eos.Checksum256
 	sponsorUrl string
 }
 
-func Init(url string, sponsorUrl string) (*Blockchain, error) {
+func Init(config *config.BlockchainConfig) (*Blockchain, error) {
 	blockchain := new(Blockchain)
-	blockchain.Api = eos.New(url)
-	blockchain.sponsorUrl = sponsorUrl
+	blockchain.Api = eos.New(config.NodeUrl)
+	blockchain.sponsorUrl = config.SponsorUrl
 
 	info, err := blockchain.Api.GetInfo()
 
@@ -45,12 +52,26 @@ func Init(url string, sponsorUrl string) (*Blockchain, error) {
 	}
 
 	blockchain.Api.EnableKeepAlives()
-	blockchain.ChainID = info.ChainID
+	blockchain.ChainId = info.ChainID
 
-	log.Info().Msgf("Connected with blockchain with chaid id: %s", info.ChainID.String())
+	keyBag := &eos.KeyBag{}
+	if err := keyBag.ImportPrivateKey(config.Permissions.Deposit); err != nil {
+		return nil, err
+	}
+	if err := keyBag.ImportPrivateKey(config.Permissions.GameAction); err != nil {
+		return nil, err
+	}
+	blockchain.Api.SetSigner(keyBag)
+
+	pubKeys := &PubKeys{
+		Deposit:    keyBag.Keys[0].PublicKey(),
+		GameAction: keyBag.Keys[1].PublicKey(),
+	}
+	blockchain.PubKeys = pubKeys
+
+	log.Info().Msgf("Connected with blockchain with chaid id: %s", blockchain.ChainId.String())
 	return blockchain, nil
 }
-
 
 func (b *Blockchain) GetSponsoredTrx(trx *eos.Transaction) (*eos.SignedTransaction, error) {
 	packedTrx, err := eos.MarshalBinary(trx)
@@ -65,7 +86,7 @@ func (b *Blockchain) GetSponsoredTrx(trx *eos.Transaction) (*eos.SignedTransacti
 		return nil, errors.New("request body marshal error")
 	}
 
-	httpResp, err := http.Post(b.sponsorUrl + "/sponsor", "application/json", bytes.NewReader(reqBody))
+	httpResp, err := http.Post(b.sponsorUrl+"/sponsor", "application/json", bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, errors.New("sponsorship provider request error: " + err.Error())
 	}

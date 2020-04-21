@@ -9,6 +9,9 @@
   "amcConfig": {
     "url": "localhost:8889"
   },
+  "casinoBackendConfig": {
+    "url": "http://localhost:1234"
+  },
   "blockchainConfig": {
     "nodeUrl": "https://api.daobet.org",
     "sponsorUrl": "http://localhost:3333",
@@ -16,6 +19,7 @@
       "platform": "tplatform"
     },
     "permissions": {
+      "deposit": "5JBjX1UpMYqnp4YtFJPvMmV7JF7EuXXXXXXXXXXXXXX",
       "gameaction": "5JBjX1UpMYqnp4YtFJPvMmV7JF7EuXXXXXXXXXXXXXX"
     }
   },

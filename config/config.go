@@ -18,6 +18,7 @@ type BlockchainConfig struct {
 		Platform string `json:"platform"`
 	} `json:"contracts"`
 	Permissions struct {
+		Deposit    string `json:"deposit"`
 		GameAction string `json:"gameaction"`
 	} `json:"permissions"`
 }
@@ -33,13 +34,18 @@ type AmcConfig struct {
 	Url string `json:"url"`
 }
 
+type CasinoBackendConfig struct {
+	Url string `json:"url"`
+}
+
 type Config struct {
-	DbConfig         DbConfig         `json:"dbConfig"`
-	AmcConfig        AmcConfig        `json:"amcConfig"`
-	BlockchainConfig BlockchainConfig `json:"blockchainConfig"`
-	AuthConfig       AuthConfig       `json:"authConfig"`
-	LogLevel         string           `json:"loglevel"`
-	Port             string           `json:"port"`
+	DbConfig            DbConfig            `json:"dbConfig"`
+	AmcConfig           AmcConfig           `json:"amcConfig"`
+	CasinoBackendConfig CasinoBackendConfig `json:"casinoBackendConfig"`
+	BlockchainConfig    BlockchainConfig    `json:"blockchainConfig"`
+	AuthConfig          AuthConfig          `json:"authConfig"`
+	LogLevel            string              `json:"loglevel"`
+	Port                string              `json:"port"`
 }
 
 func FromFile(fileName string) (*Config, error) {

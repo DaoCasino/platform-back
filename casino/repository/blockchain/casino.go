@@ -28,7 +28,6 @@ type CasinoGame struct {
 	Params []GameParam `json:"params"`
 }
 
-
 type CasinoBlockchainRepo struct {
 	bc               *blockchain.Blockchain
 	platformContract string
@@ -121,7 +120,6 @@ func (r *CasinoBlockchainRepo) GetCasinoGames(ctx context.Context, casinoName st
 
 	return ret, nil
 }
-
 
 func toModelCasino(c *Casino) *models.Casino {
 	return &models.Casino{

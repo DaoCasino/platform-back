@@ -1,6 +1,6 @@
 package interfaces
 
 type WsError struct {
-	Code    int32  `json:"code"`
+	Code    uint64  `json:"code"`
 	Message string `json:"message"`
 }
