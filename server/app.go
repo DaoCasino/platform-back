@@ -15,7 +15,6 @@ import (
 	authUC "platform-backend/auth/usecase"
 	"platform-backend/blockchain"
 	casinoBcRepo "platform-backend/casino/repository/blockchain"
-	casinoUC "platform-backend/casino/usecase"
 	"platform-backend/config"
 	"platform-backend/db"
 	"platform-backend/eventprocessor"
@@ -156,12 +155,6 @@ func NewApp(config *config.Config) (*App, error) {
 			[]byte(config.AuthConfig.JwtSecret),
 			config.AuthConfig.AccessTokenTTL,
 			config.AuthConfig.RefreshTokenTTL,
-		),
-		casinoUC.NewCasinoUseCase(
-			repos.Casino,
-			repos.GameSession,
-			bc,
-			config.BlockchainConfig.Permissions.GameAction,
 		),
 		gameSessionUC.NewGameSessionsUseCase(
 			bc,

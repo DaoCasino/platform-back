@@ -10,7 +10,7 @@
     "url": "localhost:8889"
   },
   "casinoBackendConfig": {
-    "url": "http://localhost:1234"
+    "url": "http://localhost:4445"
   },
   "blockchainConfig": {
     "nodeUrl": "https://api.daobet.org",
@@ -19,8 +19,8 @@
       "platform": "tplatform"
     },
     "permissions": {
-      "deposit": "5JBjX1UpMYqnp4YtFJPvMmV7JF7EuXXXXXXXXXXXXXX",
-      "gameaction": "5JBjX1UpMYqnp4YtFJPvMmV7JF7EuXXXXXXXXXXXXXX"
+      "deposit": "5JJvavvETHcGEx7ueoDry8zvcfPenbBCKcUQYw7cnZVyFazUo34",
+      "gameaction": "5J2FdJeALHgYRkNZh9htUo3PgwXyY9XLy3UqHgeTRfwUAads5dC"
     }
   },
   "authConfig": {

@@ -11,8 +11,9 @@ const (
 	selectGameSessionByBcID      = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
 	selectAllGameSessions        = "SELECT * FROM game_sessions"
 	updateSessionState           = "UPDATE game_sessions SET state = $2 WHERE id = $1"
+	updateSessionStateAndOffset  = "UPDATE game_sessions SET state = $2, last_offset = $3 WHERE id = $1"
 	selectGameSessionCntByIdStmt = "SELECT count(*) FROM game_sessions WHERE id = $1"
-	insertGameSessionStmt        = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6)"
+	insertGameSessionStmt        = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6, $7)"
 	deleteGameSessionByIdStmt    = "DELETE FROM game_sessions WHERE id = $1"
 )
 
@@ -23,6 +24,7 @@ type GameSession struct {
 	CasinoID        uint64 `db:"casino_id"`
 	BlockchainSesID uint64 `db:"blockchain_ses_id"`
 	State           uint16 `db:"state"`
+	LastOffset      uint64 `db:"last_offset"`
 }
 
 func (r *GameSessionsPostgresRepo) HasGameSession(ctx context.Context, id uint64) (bool, error) {
@@ -56,6 +58,7 @@ func (r *GameSessionsPostgresRepo) GetGameSession(ctx context.Context, id uint64
 		&session.CasinoID,
 		&session.BlockchainSesID,
 		&session.State,
+		&session.LastOffset,
 	)
 
 	if err != nil {
@@ -75,10 +78,11 @@ func (r *GameSessionsPostgresRepo) GetSessionByBlockChainID(ctx context.Context,
 	err = conn.QueryRow(ctx, selectGameSessionByBcID, bcID).Scan(
 		&session.ID,
 		&session.Player,
-		&session.CasinoID,
 		&session.GameID,
+		&session.CasinoID,
 		&session.BlockchainSesID,
 		&session.State,
+		&session.LastOffset,
 	)
 
 	if err != nil {
@@ -87,14 +91,25 @@ func (r *GameSessionsPostgresRepo) GetSessionByBlockChainID(ctx context.Context,
 	return toModelGameSession(session), nil
 }
 
-func (r *GameSessionsPostgresRepo) UpdateSessionState(ctx context.Context, id uint64, newState uint16) error {
+func (r *GameSessionsPostgresRepo) UpdateSessionStateAndOffset(ctx context.Context, id uint64, newState models.GameSessionState, offset uint64) error {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(ctx, updateSessionState, id, newState)
+	_, err = conn.Exec(ctx, updateSessionStateAndOffset, id, uint16(newState), offset)
+	return err
+}
+
+func (r *GameSessionsPostgresRepo) UpdateSessionState(ctx context.Context, id uint64, newState models.GameSessionState) error {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, updateSessionState, id, uint16(newState))
 	return err
 }
 
@@ -105,7 +120,7 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(ctx, insertGameSessionStmt, ses.ID, ses.Player, ses.CasinoID, ses.GameID, ses.BlockchainSesID, ses.State)
+	_, err = conn.Exec(ctx, insertGameSessionStmt, ses.ID, ses.Player, ses.GameID, ses.CasinoID, ses.BlockchainSesID, ses.State, ses.LastOffset)
 	if err != nil {
 		return err
 	}
@@ -130,10 +145,11 @@ func (r *GameSessionsPostgresRepo) GetAllGameSessions(ctx context.Context) ([]*m
 		err = rows.Scan(
 			&session.ID,
 			&session.Player,
-			&session.CasinoID,
 			&session.GameID,
+			&session.CasinoID,
 			&session.BlockchainSesID,
 			&session.State,
+			&session.LastOffset,
 		)
 		if err != nil {
 			return nil, err
@@ -155,17 +171,6 @@ func (r *GameSessionsPostgresRepo) DeleteGameSession(ctx context.Context, id uin
 	return err
 }
 
-func toPostgresGameSession(gs *models.GameSession) *GameSession {
-	return &GameSession{
-		ID:              gs.ID,
-		Player:          gs.Player,
-		GameID:          gs.GameID,
-		CasinoID:        gs.CasinoID,
-		BlockchainSesID: gs.BlockchainSesID,
-		State:           gs.State,
-	}
-}
-
 func toModelGameSession(gs *GameSession) *models.GameSession {
 	return &models.GameSession{
 		ID:              gs.ID,
@@ -173,6 +178,7 @@ func toModelGameSession(gs *GameSession) *models.GameSession {
 		GameID:          gs.GameID,
 		CasinoID:        gs.CasinoID,
 		BlockchainSesID: gs.BlockchainSesID,
-		State:           gs.State,
+		State:           models.GameSessionState(gs.State),
+		LastOffset:      gs.LastOffset,
 	}
 }
