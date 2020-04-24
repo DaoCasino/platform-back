@@ -248,23 +248,10 @@ func startAmc(a *App, ctx context.Context) error {
 
 	// subscription should be in another routine
 	go func() {
-		if ok, err := listener.Subscribe(0, 0); err != nil || !ok {
-			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
-		}
-		if ok, err := listener.Subscribe(1, 0); err != nil || !ok {
-			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
-		}
-		if ok, err := listener.Subscribe(2, 0); err != nil || !ok {
-			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
-		}
-		if ok, err := listener.Subscribe(3, 0); err != nil || !ok {
-			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
-		}
-		if ok, err := listener.Subscribe(4, 0); err != nil || !ok {
-			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
-		}
-		if ok, err := listener.Subscribe(5, 0); err != nil || !ok {
-			log.Fatal().Msgf("Action monitor subscribe error: %v", err)
+		for _, eventType := range eventprocessor.GetEventsToSubscribe() {
+			if ok, err := listener.Subscribe(eventType, 0); err != nil || !ok {
+				log.Fatal().Msgf("Action monitor subscribe to %d error: %v", eventType, err)
+			}
 		}
 	}()
 

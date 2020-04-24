@@ -46,9 +46,6 @@ func NewSignidiceUseCase(
 
 
 func (a *SignidiceUseCase) rsaSign(digest eos.Checksum256) (string, error) {
-	//hash := sha256.New()
-	//hash.Write(digest)
-
 	sign, err := rsa.SignPKCS1v15(rand.Reader, a.rsaKey, crypto.SHA256, digest)
 	if err != nil {
 		return "", err

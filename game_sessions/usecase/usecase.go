@@ -124,7 +124,7 @@ func (a *GameSessionsUseCase) GameAction(ctx context.Context, sessionId uint64, 
 		return err
 	}
 
-	bcAction := eos.Action{
+	bcAction := &eos.Action{
 		Account: eos.AN(game.Contract),
 		Name:    eos.ActN("gameaction"),
 		Authorization: []eos.PermissionLevel{{
@@ -142,14 +142,14 @@ func (a *GameSessionsUseCase) GameAction(ctx context.Context, sessionId uint64, 
 		}),
 	}
 
-	trxOpts := eos.TxOptions{}
+	trxOpts := &eos.TxOptions{}
 	err = trxOpts.FillFromChain(a.bc.Api)
 	if err != nil {
 		log.Debug().Msgf("%s", err.Error())
 		return err
 	}
 
-	sponsoredTrx, err := a.bc.GetSponsoredTrx(eos.NewTransaction([]*eos.Action{&bcAction}, &trxOpts))
+	sponsoredTrx, err := a.bc.GetSponsoredTrx(eos.NewTransaction([]*eos.Action{bcAction}, trxOpts))
 	if err != nil {
 		log.Debug().Msgf("%s", err.Error())
 		return err

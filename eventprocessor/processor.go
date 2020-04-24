@@ -50,6 +50,7 @@ func (p *EventProcessor) Process(ctx context.Context, event *eventlistener.Event
 
 	// already processed offset
 	if bcSession.LastOffset >= event.Offset {
+		log.Debug().Msgf("Skip already processed event for session: %d with offset: %d", bcSession.ID, event.Offset)
 		return
 	}
 
@@ -127,5 +128,16 @@ func GetNextState(currentState models.GameSessionState, eventType eventlistener.
 		return models.GameFailed, nil
 	default:
 		return currentState, nil
+	}
+}
+
+func GetEventsToSubscribe() []eventlistener.EventType {
+	return []eventlistener.EventType{
+		gameStarted,
+		actionRequest,
+		signidicePartOneRequest,
+		gameMessage,
+		gameFinished,
+		gameFailed,
 	}
 }
