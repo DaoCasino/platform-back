@@ -31,19 +31,22 @@ type sponsorResponse struct {
 type PubKeys struct {
 	Deposit    ecc.PublicKey
 	GameAction ecc.PublicKey
+	SigniDice  ecc.PublicKey
 }
 
 type Blockchain struct {
-	Api        *eos.API
-	PubKeys    *PubKeys
-	ChainId    eos.Checksum256
-	sponsorUrl string
+	Api                 *eos.API
+	PubKeys             *PubKeys
+	ChainId             eos.Checksum256
+	PlatformAccountName string
+	sponsorUrl          string
 }
 
 func Init(config *config.BlockchainConfig) (*Blockchain, error) {
 	blockchain := new(Blockchain)
 	blockchain.Api = eos.New(config.NodeUrl)
 	blockchain.sponsorUrl = config.SponsorUrl
+	blockchain.PlatformAccountName = config.Contracts.Platform
 
 	info, err := blockchain.Api.GetInfo()
 
@@ -61,11 +64,15 @@ func Init(config *config.BlockchainConfig) (*Blockchain, error) {
 	if err := keyBag.ImportPrivateKey(config.Permissions.GameAction); err != nil {
 		return nil, err
 	}
+	if err := keyBag.ImportPrivateKey(config.Permissions.SigniDice); err != nil {
+		return nil, err
+	}
 	blockchain.Api.SetSigner(keyBag)
 
 	pubKeys := &PubKeys{
 		Deposit:    keyBag.Keys[0].PublicKey(),
 		GameAction: keyBag.Keys[1].PublicKey(),
+		SigniDice:  keyBag.Keys[2].PublicKey(),
 	}
 	blockchain.PubKeys = pubKeys
 

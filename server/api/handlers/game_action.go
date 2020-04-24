@@ -53,7 +53,7 @@ func ProcessGameActionRequest(context context.Context, req *interfaces.ApiReques
 		return respondWithError(req.Data.Id, 4003, "Requested session owned by other account"), nil
 	}
 
-	err = req.UseCases.Casino.GameAction(context, payload.SessionId, payload.ActionType, payload.Params)
+	err = req.UseCases.GameSession.GameAction(context, payload.SessionId, payload.ActionType, payload.Params)
 	if err != nil {
 		return respondWithError(req.Data.Id, 5000, "Game action trx error"), nil
 	}

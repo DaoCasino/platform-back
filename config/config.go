@@ -20,6 +20,7 @@ type BlockchainConfig struct {
 	Permissions struct {
 		Deposit    string `json:"deposit"`
 		GameAction string `json:"gameaction"`
+		SigniDice  string `json:"signidice"`
 	} `json:"permissions"`
 }
 
@@ -38,12 +39,17 @@ type CasinoBackendConfig struct {
 	Url string `json:"url"`
 }
 
+type SignidiceConfig struct {
+	KeyPath string `json:"keyPath"`
+}
+
 type Config struct {
 	DbConfig            DbConfig            `json:"dbConfig"`
 	AmcConfig           AmcConfig           `json:"amcConfig"`
 	CasinoBackendConfig CasinoBackendConfig `json:"casinoBackendConfig"`
 	BlockchainConfig    BlockchainConfig    `json:"blockchainConfig"`
 	AuthConfig          AuthConfig          `json:"authConfig"`
+	SignidiceConfig     SignidiceConfig     `json:"signidice"`
 	LogLevel            string              `json:"loglevel"`
 	Port                string              `json:"port"`
 }

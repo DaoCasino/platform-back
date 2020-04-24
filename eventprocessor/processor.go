@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
-	gamesessions "platform-backend/game_sessions"
-	"platform-backend/models"
-	"time"
 	"github.com/rs/zerolog/log"
+	"platform-backend/blockchain"
+	"platform-backend/models"
+	"platform-backend/repositories"
+	"platform-backend/usecases"
+	"time"
 )
 
 // game events
@@ -21,34 +23,42 @@ const (
 	gameMessage
 )
 
-type SessionState = uint16
-type UpdateHandler = func (context.Context, *Processor, *eventlistener.Event) error
+type UpdateHandler = func(context.Context, *EventProcessor, *eventlistener.Event) error
 
-// session states
-const (
-
-)
-
-type Processor struct {
-	gsRepo gamesessions.Repository
+type EventProcessor struct {
+	repos      *repositories.Repos
+	blockChain *blockchain.Blockchain
+	useCases   *usecases.UseCases
 }
 
-func New(gsRepo gamesessions.Repository) *Processor {
-	return &Processor{gsRepo}
+func New(
+	repos *repositories.Repos,
+	blockchain *blockchain.Blockchain,
+	useCases *usecases.UseCases,
+) *EventProcessor {
+	return &EventProcessor{repos, blockchain, useCases}
 }
 
-func (p *Processor) Process(ctx context.Context, event *eventlistener.Event) {
-	gsRepo := p.gsRepo
+func (p *EventProcessor) Process(ctx context.Context, event *eventlistener.Event) {
+	gsRepo := p.repos.GameSession
+
 	bcSession, err := gsRepo.GetSessionByBlockChainID(ctx, event.RequestID)
 	if err != nil {
 		log.Warn().Msgf("Couldn't find session with requestID %v", event.RequestID)
 		return
 	}
+
+	// already processed offset
+	if bcSession.LastOffset >= event.Offset {
+		log.Debug().Msgf("Skip already processed event for session: %d with offset: %d", bcSession.ID, event.Offset)
+		return
+	}
+
 	err = gsRepo.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
-		SessionID: bcSession.ID,
+		SessionID:  bcSession.ID,
 		UpdateType: uint16(event.EventType),
-		Timestamp: time.Now(),
-		Data: event.Data,
+		Timestamp:  time.Now(),
+		Data:       event.Data,
 	})
 
 	if err != nil {
@@ -77,12 +87,11 @@ func (p *Processor) Process(ctx context.Context, event *eventlistener.Event) {
 		return
 	}
 
-	err = gsRepo.UpdateSessionState(ctx, bcSession.ID, nextState)
+	err = gsRepo.UpdateSessionStateAndOffset(ctx, bcSession.ID, nextState, event.Offset)
 
-	if  err != nil {
+	if err != nil {
 		log.Warn().Msgf("Failed to update session state, reason: %s", err.Error())
 	}
-
 }
 
 func GetHandler(eventType eventlistener.EventType) (UpdateHandler, error) {
@@ -105,7 +114,30 @@ func GetHandler(eventType eventlistener.EventType) (UpdateHandler, error) {
 	return nil, fmt.Errorf("couldn't get dispatcher for event_type %v", eventType)
 }
 
-func GetNextState(currentState uint16, eventType eventlistener.EventType) (SessionState, error) {
-	// TODO
-	return 0, nil
+func GetNextState(currentState models.GameSessionState, eventType eventlistener.EventType) (models.GameSessionState, error) {
+	switch eventType {
+	case gameStarted:
+		return models.GameStartedInBC, nil
+	case actionRequest:
+		return models.RequestedGameAction, nil
+	case signidicePartOneRequest:
+		return models.RequestedSignidicePartOne, nil
+	case gameFinished:
+		return models.GameFinished, nil
+	case gameFailed:
+		return models.GameFailed, nil
+	default:
+		return currentState, nil
+	}
+}
+
+func GetEventsToSubscribe() []eventlistener.EventType {
+	return []eventlistener.EventType{
+		gameStarted,
+		actionRequest,
+		signidicePartOneRequest,
+		gameMessage,
+		gameFinished,
+		gameFailed,
+	}
 }
