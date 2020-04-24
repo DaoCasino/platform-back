@@ -10,29 +10,16 @@ type AuthPayload struct {
 	Token string `json:"token"`
 }
 
-func ProcessAuthRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
+func ProcessAuthRequest(context context.Context, req *interfaces.ApiRequest) (interface{}, *interfaces.HandlerError) {
 	var payload AuthPayload
 	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
-		return nil, err
+		return nil, interfaces.NewHandlerError(interfaces.InternalError, err)
 	}
 
 	user, err := req.UseCases.Auth.SignIn(context, payload.Token)
 	if err != nil {
-		return &interfaces.WsResponse{
-			Type:    "response",
-			Id:      req.Data.Id,
-			Status:  "error",
-			Payload: interfaces.WsError{
-				Code:    4003,
-				Message: err.Error(),
-			},
-		}, nil
+		return nil, interfaces.NewHandlerError(interfaces.AuthCheckError, err)
 	}
 
-	return &interfaces.WsResponse{
-		Type:    "response",
-		Id:      req.Data.Id,
-		Status:  "ok",
-		Payload: user,
-	}, nil
+	return user, nil
 }

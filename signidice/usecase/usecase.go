@@ -94,6 +94,9 @@ func (a *SignidiceUseCase)PerformSignidice(ctx context.Context, gameName string,
 	}
 
 	_, err = a.bc.Api.PushTransaction(packedTrx)
+	if err !=  nil {
+		return err
+	}
 
-	return err
+	return nil
 }

@@ -2,7 +2,7 @@
   "loglevel": "debug",
   "port": "8080",
   "dbConfig": {
-    "url": "postgresql://postgres:postgres@localhost:5432/test_platform",
+    "url": "postgresql://postgres:postgres@localhost:5555/test_platform",
     "maxPoolConns": 10,
     "minPoolConns": 1
   },
@@ -10,7 +10,7 @@
     "url": "localhost:8889"
   },
   "casinoBackendConfig": {
-    "url": "http://localhost:4445"
+    "url": "http://localhost:4444"
   },
   "blockchainConfig": {
     "nodeUrl": "https://api.daobet.org",
@@ -19,10 +19,13 @@
       "platform": "tplatform"
     },
     "permissions": {
-      "deposit": "5JBjX1UpMYqnp4YtFJPvMmV7JF7EuXXXXXXXXXXXXXX",
-      "gameaction": "5JBjX1UpMYqnp4YtFJPvMmV7JF7EuXXXXXXXXXXXXXX",
-      "signidice": "5JSQRVxCFcoGaTgwZthUveqrTx7UnSDUx3qAM1vkDdYH9SDq1uN"
+      "deposit": "5JJvavvETHcGEx7ueoDry8zvcfPenbBCKcUQYw7cnZVyFazUo34",
+      "gameaction": "5J2FdJeALHgYRkNZh9htUo3PgwXyY9XLy3UqHgeTRfwUAads5dC",
+      "signidice": "5HyvDP9LRqJYzGPorVN34mfbsuuoAwDrAqrF5gQCbribEjAUDYp"
     }
+  },
+  "signidice": {
+    "keyPath": "./signidice.pem"
   },
   "authConfig": {
     "jwtSecret": "top_secret",

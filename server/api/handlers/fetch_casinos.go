@@ -5,25 +5,11 @@ import (
 	"platform-backend/server/api/interfaces"
 )
 
-
-func ProcessFetchCasinosRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
+func ProcessFetchCasinosRequest(context context.Context, req *interfaces.ApiRequest) (interface{}, *interfaces.HandlerError) {
 	casinos, err := req.Repos.Casino.AllCasinos(context)
 	if err != nil {
-		return &interfaces.WsResponse{
-			Type:   "response",
-			Id:     req.Data.Id,
-			Status: "error",
-			Payload: interfaces.WsError{
-				Code:    5000,
-				Message: "Casinos fetch error: " + err.Error(),
-			},
-		}, nil
+		return nil, interfaces.NewHandlerError(interfaces.InternalError, err)
 	}
 
-	return &interfaces.WsResponse{
-		Type:    "response",
-		Id:      req.Data.Id,
-		Status:  "ok",
-		Payload: casinos,
-	}, nil
+	return casinos, nil
 }

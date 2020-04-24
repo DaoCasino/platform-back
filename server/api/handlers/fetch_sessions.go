@@ -5,25 +5,11 @@ import (
 	"platform-backend/server/api/interfaces"
 )
 
-func ProcessFetchSessionsRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
-	gameSessions, err := req.Repos.GameSession.GetAllGameSessions(context)
-
+func ProcessFetchSessionsRequest(context context.Context, req *interfaces.ApiRequest) (interface{}, *interfaces.HandlerError) {
+	gameSessions, err := req.Repos.GameSession.GetAllGameSessions(context, req.User.AccountName)
 	if err != nil {
-		return &interfaces.WsResponse{
-			Type:   "response",
-			Id:     req.Data.Id,
-			Status: "error",
-			Payload: interfaces.WsError{
-				Code:    5000,
-				Message: "Sessions fetch error: " + err.Error(),
-			},
-		}, nil
+		return nil, interfaces.NewHandlerError(interfaces.InternalError, err)
 	}
 
-	return &interfaces.WsResponse{
-		Type:    "response",
-		Id:      req.Data.Id,
-		Status:  "ok",
-		Payload: gameSessions,
-	}, nil
+	return gameSessions, nil
 }

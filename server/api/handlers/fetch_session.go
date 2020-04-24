@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"platform-backend/server/api/interfaces"
 )
 
@@ -10,30 +11,20 @@ type FetchSessionPayload struct {
 	SessionId uint64 `json:"sessionId"`
 }
 
-func ProcessFetchSessionRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
+func ProcessFetchSessionRequest(context context.Context, req *interfaces.ApiRequest) (interface{}, *interfaces.HandlerError) {
 	var payload FetchSessionPayload
 	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
-		return nil, err
+		return nil, interfaces.NewHandlerError(interfaces.RequestParseError, err)
 	}
 
 	gameSession, err := req.Repos.GameSession.GetGameSession(context, payload.SessionId)
-
 	if err != nil {
-		return &interfaces.WsResponse{
-			Type:   "response",
-			Id:     req.Data.Id,
-			Status: "error",
-			Payload: interfaces.WsError{
-				Code:    5000,
-				Message: "Session fetch error: " + err.Error(),
-			},
-		}, nil
+		return nil, interfaces.NewHandlerError(interfaces.InternalError, err)
 	}
 
-	return &interfaces.WsResponse{
-		Type:    "response",
-		Id:      req.Data.Id,
-		Status:  "ok",
-		Payload: gameSession,
-	}, nil
+	if gameSession.Player != req.User.AccountName {
+		return nil, interfaces.NewHandlerError(interfaces.UnauthorizedError, errors.New("attempt to fetch not own session"))
+	}
+
+	return gameSession, nil
 }

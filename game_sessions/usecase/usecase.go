@@ -27,19 +27,35 @@ type GameSessionsUseCase struct {
 	casinoBackendUrl string
 }
 
-func NewGameSessionsUseCase(bc *blockchain.Blockchain, repo gamesessions.Repository, casinoRepo casino.Repository, platformContract string, casinoBackendUrl string) *GameSessionsUseCase {
+func NewGameSessionsUseCase(
+	bc *blockchain.Blockchain,
+	repo gamesessions.Repository,
+	casinoRepo casino.Repository,
+	platformContract string,
+	casinoBackendUrl string,
+) *GameSessionsUseCase {
 	rand.Seed(time.Now().Unix())
-	return &GameSessionsUseCase{bc: bc, repo: repo, casinoRepo: casinoRepo, platformContract: platformContract, casinoBackendUrl: casinoBackendUrl}
+	return &GameSessionsUseCase{
+		bc:               bc,
+		repo:             repo,
+		casinoRepo:       casinoRepo,
+		platformContract: platformContract,
+		casinoBackendUrl: casinoBackendUrl,
+	}
 }
 
-func (a *GameSessionsUseCase) NewSession(ctx context.Context, Casino *models.Casino, Game *models.Game, User *models.User, Deposit string) (*models.GameSession, error) {
+func (a *GameSessionsUseCase) NewSession(
+	ctx context.Context, casino *models.Casino,
+	game *models.Game, user *models.User,
+	deposit string, actionType uint16, actionParams []uint32,
+) (*models.GameSession, error) {
 	api := a.bc.Api
 
 	sessionId := uint64(rand.Uint32())
 
-	from := eos.AccountName(User.AccountName)
-	to := eos.AccountName(Game.Contract)
-	quantity, err := eos.NewFixedSymbolAssetFromString(eos.Symbol{Precision: 4, Symbol: "BET"}, Deposit)
+	from := eos.AccountName(user.AccountName)
+	to := eos.AccountName(game.Contract)
+	quantity, err := eos.NewFixedSymbolAssetFromString(eos.Symbol{Precision: 4, Symbol: "BET"}, deposit)
 	if err != nil {
 		return nil, err
 	}
@@ -54,12 +70,12 @@ func (a *GameSessionsUseCase) NewSession(ctx context.Context, Casino *models.Cas
 	// Add transfer deposit action
 	transferAction := token.NewTransfer(from, to, quantity, memo)
 	transferAction.Authorization = []eos.PermissionLevel{
-		{Actor: from, Permission: eos.PN(Casino.Contract)},
+		{Actor: from, Permission: eos.PN(casino.Contract)},
 	}
 
 	//Add newgame call to the game to the transaction
 	newGameAction := &eos.Action{
-		Account: eos.AN(Game.Contract),
+		Account: eos.AN(game.Contract),
 		Name:    eos.ActN("newgame"),
 		Authorization: []eos.PermissionLevel{
 			{Actor: from, Permission: eos.PN("game")},
@@ -67,7 +83,7 @@ func (a *GameSessionsUseCase) NewSession(ctx context.Context, Casino *models.Cas
 		ActionData: eos.NewActionData(struct {
 			ReqId    uint64 `json:"req_id"`
 			CasinoID uint64 `json:"casino_id"`
-		}{ReqId: sessionId, CasinoID: Casino.Id}),
+		}{ReqId: sessionId, CasinoID: casino.Id}),
 	}
 
 	trx := eos.NewTransaction([]*eos.Action{transferAction, newGameAction}, txOpts)
@@ -78,7 +94,7 @@ func (a *GameSessionsUseCase) NewSession(ctx context.Context, Casino *models.Cas
 		return nil, err
 	}
 
-	// Sign transaction with GameAction and Deposit platform keys
+	// Sign transaction with GameAction and deposit platform keys
 	requiredKeys := []ecc.PublicKey{a.bc.PubKeys.GameAction, a.bc.PubKeys.Deposit}
 	signedTrx, err := api.Signer.Sign(sponsoredTrx, a.bc.ChainId, requiredKeys...)
 	if err != nil {
@@ -88,7 +104,7 @@ func (a *GameSessionsUseCase) NewSession(ctx context.Context, Casino *models.Cas
 	toSend, _ := json.Marshal(signedTrx)
 	log.Debug().Msgf("Trx to send: %s", string(toSend))
 
-	// Send sponsored and signed transaction to Casino Backend
+	// Send sponsored and signed transaction to casino Backend
 	reader := bytes.NewReader(toSend)
 	_, err = http.Post(a.casinoBackendUrl+"/sign_transaction", "application/json", reader)
 	if err != nil {
@@ -98,9 +114,9 @@ func (a *GameSessionsUseCase) NewSession(ctx context.Context, Casino *models.Cas
 
 	gameSession := &models.GameSession{
 		ID:              sessionId,
-		Player:          User.AccountName,
-		CasinoID:        Casino.Id,
-		GameID:          Game.Id,
+		Player:          user.AccountName,
+		CasinoID:        casino.Id,
+		GameID:          game.Id,
 		BlockchainSesID: sessionId,
 		State:           models.NewGameTrxSent,
 		LastOffset:      0,
@@ -110,10 +126,21 @@ func (a *GameSessionsUseCase) NewSession(ctx context.Context, Casino *models.Cas
 		return nil, err
 	}
 
+	// make game action
+	err = a.GameAction(ctx, sessionId, actionType, actionParams)
+	if err != nil {
+		return nil, err
+	}
+
 	return gameSession, nil
 }
 
-func (a *GameSessionsUseCase) GameAction(ctx context.Context, sessionId uint64, actionType uint16, actionParams []uint32) error {
+func (a *GameSessionsUseCase) GameAction(
+	ctx context.Context,
+	sessionId uint64,
+	actionType uint16,
+	actionParams []uint32,
+) error {
 	gs, err := a.repo.GetGameSession(ctx, sessionId)
 	if err != nil {
 		return err
@@ -181,11 +208,4 @@ func (a *GameSessionsUseCase) GameAction(ctx context.Context, sessionId uint64, 
 
 	log.Debug().Msgf("Game action trx, resp code: %d, blk num: %d", resp.StatusCode, resp.BlockNum)
 	return nil
-}
-
-func (a *GameSessionsUseCase) HasGameSession(ctx context.Context, id uint64) (bool, error) {
-	return a.repo.HasGameSession(ctx, id)
-}
-func (a *GameSessionsUseCase) GetGameSession(ctx context.Context, id uint64) (*models.GameSession, error) {
-	return a.repo.GetGameSession(ctx, id)
 }

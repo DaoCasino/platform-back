@@ -74,20 +74,13 @@ func (r *GameSessionsPostgresRepo) DeleteGameSessionUpdates(ctx context.Context,
 	return err
 }
 
-func toPostgresGameSessionUpdate(gsu *models.GameSessionUpdate) *GameSessionUpdate {
-	return &GameSessionUpdate{
+
+func toModelGameSessionUpdate(gsu *GameSessionUpdate) *models.GameSessionUpdate {
+	return &models.GameSessionUpdate{
 		SessionID:  gsu.SessionID,
-		UpdateType: gsu.UpdateType,
+		UpdateType: models.GameSessionUpdateType(gsu.UpdateType),
 		Timestamp:  gsu.Timestamp,
 		Data:       gsu.Data,
 	}
 }
 
-func toModelGameSessionUpdate(gsu *GameSessionUpdate) *models.GameSessionUpdate {
-	return &models.GameSessionUpdate{
-		SessionID:  gsu.SessionID,
-		UpdateType: gsu.UpdateType,
-		Timestamp:  gsu.Timestamp,
-		Data:       gsu.Data,
-	}
-}

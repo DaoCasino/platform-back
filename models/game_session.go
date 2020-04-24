@@ -7,7 +7,6 @@ const (
 	GameStartedInBC
 	RequestedGameAction
 	GameActionTrxSent
-	RequestedSignidicePartOne
 	SignidicePartOneTrxSent
 	GameFinished
 	GameFailed
