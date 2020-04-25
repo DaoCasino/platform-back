@@ -29,6 +29,9 @@ func (r *CasinoBlockchainRepo) GetPlayerInfo(ctx context.Context, accountName st
 	info.LinkedCasinos = make([]*models.Casino, 0)
 
 	casinos, err := r.AllCasinos(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, cas := range casinos {
 		if casinoLinked(&resp.Permissions, cas.Contract) {

@@ -14,9 +14,7 @@ func (r *GameSessionsLocalRepo) GetGameSessionUpdates(ctx context.Context, id ui
 	sessionUpdates := make([]*models.GameSessionUpdate, 0)
 	ses := r.gameSessions[id]
 	if ses.Updates != nil {
-		for _, v := range ses.Updates {
-			sessionUpdates = append(sessionUpdates, v)
-		}
+		sessionUpdates = append(sessionUpdates, ses.Updates...)
 	}
 
 	return sessionUpdates, nil

@@ -19,6 +19,6 @@ func main() {
 	}
 
 	if err := app.Run(); err != nil {
-		//log.Fatalf("%s", err.Error())
+		log.Fatalf("%s", err.Error())
 	}
 }

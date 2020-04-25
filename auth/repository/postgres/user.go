@@ -111,13 +111,6 @@ func (r *UserPostgresRepo) GetTokenNonce(ctx context.Context, accountName string
 	return user.TokenNonce, nil
 }
 
-func toPostgresUser(u *models.User) *User {
-	return &User{
-		AccountName: u.AccountName,
-		Email:       u.Email,
-	}
-}
-
 func toModelUser(u *User) *models.User {
 	return &models.User{
 		AccountName: u.AccountName,

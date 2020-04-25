@@ -100,6 +100,9 @@ func onGameFinished(ctx context.Context, p *EventProcessor, event *eventlistener
         Timestamp:  time.Now(),
         Data:       event.Data,
     })
+	if err !=  nil {
+		return err
+	}
 
 	err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameFinished)
 	if err !=  nil {
@@ -118,6 +121,9 @@ func onGameFailed(ctx context.Context, p *EventProcessor, event *eventlistener.E
         Timestamp:  time.Now(),
         Data:       event.Data,
     })
+	if err !=  nil {
+		return err
+	}
 
 	err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameFailed)
 	if err !=  nil {

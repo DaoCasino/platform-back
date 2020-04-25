@@ -20,12 +20,6 @@ func InitLogger(level string) {
 			colorGreen
 			colorYellow
 			colorBlue
-			colorMagenta
-			colorCyan
-			colorWhite
-
-			colorBold     = 1
-			colorDarkGray = 90
 		)
 		var colorMap = map[string]int{
 			"debug": colorYellow,

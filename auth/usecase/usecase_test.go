@@ -29,8 +29,7 @@ func TestAuthFlow(t *testing.T) {
 		}
 	)
 
-	var tokenNonce int64
-	tokenNonce = 0
+	tokenNonce := int64(0)
 
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
@@ -69,8 +68,7 @@ func TestTokenRefresh(t *testing.T) {
 		}
 	)
 
-	var tokenNonce int64
-	tokenNonce = 0
+	tokenNonce := int64(0)
 
 	// Sign Up (Get auth tokens)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
@@ -78,7 +76,7 @@ func TestTokenRefresh(t *testing.T) {
 	repo.On("AddUser", user).Return(nil)
 	repo.On("UpdateTokenNonce", user.AccountName).Return(nil)
 	repo.On("GetTokenNonce", user.AccountName).Return(tokenNonce, nil)
-	refreshToken, accessToken, err := uc.SignUp(ctx, user)
+	refreshToken, _, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
 
 	// Refresh tokens with refresh token
@@ -86,7 +84,7 @@ func TestTokenRefresh(t *testing.T) {
 	repo.On("GetUser", user.AccountName).Return(user, nil)
 	sm.On("SetUser", suid, user).Return(nil)
 	repo.On("GetTokenNonce", user.AccountName).Return(tokenNonce + 1, nil)
-	refreshToken, accessToken, err = uc.RefreshToken(ctx, refreshToken)
+	_, accessToken, err := uc.RefreshToken(ctx, refreshToken)
 	assert.NoError(t, err)
 
 	// Auth with access token

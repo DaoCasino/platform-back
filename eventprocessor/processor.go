@@ -84,7 +84,7 @@ func (p *EventProcessor) Process(ctx context.Context, event *eventlistener.Event
 
 func GetEventsToSubscribe() []eventlistener.EventType {
 	var events []eventlistener.EventType
-	for key, _ := range handlersMap {
+	for key := range handlersMap {
 		events = append(events, key)
 	}
 	return events
