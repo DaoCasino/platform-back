@@ -10,9 +10,9 @@ type Repository interface {
 	GetGameSession(ctx context.Context, id uint64) (*models.GameSession, error)
 	GetSessionByBlockChainID(ctx context.Context, bcID uint64) (*models.GameSession, error)
 	UpdateSessionState(ctx context.Context, id uint64, state models.GameSessionState) error
-	UpdateSessionStateAndOffset(ctx context.Context, id uint64, newState models.GameSessionState, offset uint64) error
+	UpdateSessionOffset(ctx context.Context, id uint64, offset uint64) error
 	AddGameSession(ctx context.Context, ses *models.GameSession) error
-	GetAllGameSessions(ctx context.Context) ([]*models.GameSession, error)
+	GetAllGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error)
 	DeleteGameSession(ctx context.Context, id uint64) error
 
 	GetGameSessionUpdates(ctx context.Context, id uint64) ([]*models.GameSessionUpdate, error)

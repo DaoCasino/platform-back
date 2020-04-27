@@ -16,7 +16,7 @@ const (
 type User struct {
 	AccountName string `db:"account_name"`
 	Email       string `db:"email"`
-	TokenNonce  int64 `db:"token_nonce"`
+	TokenNonce  int64  `db:"token_nonce"`
 }
 
 type UserPostgresRepo struct {
@@ -109,13 +109,6 @@ func (r *UserPostgresRepo) GetTokenNonce(ctx context.Context, accountName string
 	}
 
 	return user.TokenNonce, nil
-}
-
-func toPostgresUser(u *models.User) *User {
-	return &User{
-		AccountName: u.AccountName,
-		Email:       u.Email,
-	}
 }
 
 func toModelUser(u *User) *models.User {

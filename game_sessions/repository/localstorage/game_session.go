@@ -46,7 +46,7 @@ func (r *GameSessionsLocalRepo) AddGameSession(ctx context.Context, ses *models.
 		GameID:          ses.GameID,
 		CasinoID:        ses.CasinoID,
 		BlockchainSesID: ses.BlockchainSesID,
-		State:           ses.State,
+		State:           uint16(ses.State),
 		Updates:         make([]*models.GameSessionUpdate, 0, 100),
 	}
 	return nil
@@ -68,6 +68,6 @@ func toModelGameSession(gs *GameSession) *models.GameSession {
 		GameID:          gs.GameID,
 		CasinoID:        gs.CasinoID,
 		BlockchainSesID: gs.BlockchainSesID,
-		State:           gs.State,
+		State:           models.GameSessionState(gs.State),
 	}
 }

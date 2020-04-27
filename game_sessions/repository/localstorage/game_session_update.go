@@ -11,15 +11,13 @@ func (r *GameSessionsLocalRepo) GetGameSessionUpdates(ctx context.Context, id ui
 		return nil, err
 	}
 
-	sessionUpdates := make([]*models.GameSessionUpdate, 0)
 	ses := r.gameSessions[id]
+
 	if ses.Updates != nil {
-		for _, v := range ses.Updates {
-			sessionUpdates = append(sessionUpdates, v)
-		}
+		return ses.Updates, nil
 	}
 
-	return sessionUpdates, nil
+	return make([]*models.GameSessionUpdate, 0), nil
 }
 
 func (r *GameSessionsLocalRepo) AddGameSessionUpdate(ctx context.Context, upd *models.GameSessionUpdate) error {

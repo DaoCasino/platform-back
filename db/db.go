@@ -84,5 +84,3 @@ func InitDB(ctx context.Context, config *config.DbConfig) error {
 
 	return nil
 }
-
-

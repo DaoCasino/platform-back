@@ -2,32 +2,38 @@ package eventprocessor
 
 import (
 	"context"
-	"fmt"
 	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
 	"github.com/rs/zerolog/log"
 	"platform-backend/blockchain"
 	"platform-backend/models"
 	"platform-backend/repositories"
 	"platform-backend/usecases"
-	"time"
 )
 
 // game events
 const (
-	gameStarted eventlistener.EventType = iota
-	actionRequest
-	signidicePartOneRequest
-	signidicePartTwoRequest
-	gameFinished
-	gameFailed
-	gameMessage
+	gameStarted             = 0
+	actionRequest           = 1
+	signidicePartOneRequest = 2
+	gameFinished            = 4
+	gameFailed              = 5
+	gameMessage             = 6
 )
 
-type UpdateHandler = func(context.Context, *EventProcessor, *eventlistener.Event) error
+type UpdateHandler = func(context.Context, *EventProcessor, *eventlistener.Event, *models.GameSession) error
+
+var handlersMap = map[eventlistener.EventType]UpdateHandler{
+	gameStarted:             onGameStarted,
+	actionRequest:           onActionRequest,
+	signidicePartOneRequest: onSignidicePartOneRequest,
+	gameFinished:            onGameFinished,
+	gameFailed:              onGameFailed,
+	gameMessage:             onGameMessage,
+}
 
 type EventProcessor struct {
 	repos      *repositories.Repos
-	blockChain *blockchain.Blockchain
+	blockchain *blockchain.Blockchain
 	useCases   *usecases.UseCases
 }
 
@@ -36,7 +42,11 @@ func New(
 	blockchain *blockchain.Blockchain,
 	useCases *usecases.UseCases,
 ) *EventProcessor {
-	return &EventProcessor{repos, blockchain, useCases}
+	return &EventProcessor{
+		repos:      repos,
+		blockchain: blockchain,
+		useCases:   useCases,
+	}
 }
 
 func (p *EventProcessor) Process(ctx context.Context, event *eventlistener.Event) {
@@ -44,7 +54,7 @@ func (p *EventProcessor) Process(ctx context.Context, event *eventlistener.Event
 
 	bcSession, err := gsRepo.GetSessionByBlockChainID(ctx, event.RequestID)
 	if err != nil {
-		log.Warn().Msgf("Couldn't find session with requestID %v", event.RequestID)
+		log.Debug().Msgf("Couldn't find session with requestID %v", event.RequestID)
 		return
 	}
 
@@ -54,90 +64,28 @@ func (p *EventProcessor) Process(ctx context.Context, event *eventlistener.Event
 		return
 	}
 
-	err = gsRepo.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
-		SessionID:  bcSession.ID,
-		UpdateType: uint16(event.EventType),
-		Timestamp:  time.Now(),
-		Data:       event.Data,
-	})
-
-	if err != nil {
-		log.Warn().Msgf("Failed to add game session update, reason: %s", err.Error())
+	handler, ok := handlersMap[event.EventType]
+	if !ok { // should never happen
+		log.Panic().Msgf("Got unknown event type: %d", event.EventType)
 		return
 	}
 
-	handler, err := GetHandler(event.EventType)
-
-	if err != nil {
-		log.Warn().Msgf("Failed to process event, reason: %s", err.Error())
-		return
-	}
-
-	nextState, err := GetNextState(bcSession.State, event.EventType)
-
-	if err != nil {
-		log.Warn().Msgf("Failed to process event, reason: %s", err.Error())
-		return
-	}
-
-	handleError := handler(ctx, p, event)
-
+	handleError := handler(ctx, p, event, bcSession)
 	if handleError != nil {
-		log.Warn().Msgf("Failed to process event, %+v, reason: %s", event, handleError.Error())
+		log.Error().Msgf("Failed to process event, %+v, reason: %s", event, handleError.Error())
 		return
 	}
 
-	err = gsRepo.UpdateSessionStateAndOffset(ctx, bcSession.ID, nextState, event.Offset)
-
+	err = gsRepo.UpdateSessionOffset(ctx, bcSession.ID, event.Offset)
 	if err != nil {
-		log.Warn().Msgf("Failed to update session state, reason: %s", err.Error())
-	}
-}
-
-func GetHandler(eventType eventlistener.EventType) (UpdateHandler, error) {
-	switch eventType {
-	case gameStarted:
-		return onGameStarted, nil
-	case actionRequest:
-		return onActionRequest, nil
-	case signidicePartOneRequest:
-		return onSignidicePartOneRequest, nil
-	case signidicePartTwoRequest:
-		return onSignidicePartTwoRequest, nil
-	case gameFinished:
-		return onGameFinished, nil
-	case gameFailed:
-		return onGameFailed, nil
-	case gameMessage:
-		return onGameMessage, nil
-	}
-	return nil, fmt.Errorf("couldn't get dispatcher for event_type %v", eventType)
-}
-
-func GetNextState(currentState models.GameSessionState, eventType eventlistener.EventType) (models.GameSessionState, error) {
-	switch eventType {
-	case gameStarted:
-		return models.GameStartedInBC, nil
-	case actionRequest:
-		return models.RequestedGameAction, nil
-	case signidicePartOneRequest:
-		return models.RequestedSignidicePartOne, nil
-	case gameFinished:
-		return models.GameFinished, nil
-	case gameFailed:
-		return models.GameFailed, nil
-	default:
-		return currentState, nil
+		log.Error().Msgf("Failed to update session offset, reason: %s", err.Error())
 	}
 }
 
 func GetEventsToSubscribe() []eventlistener.EventType {
-	return []eventlistener.EventType{
-		gameStarted,
-		actionRequest,
-		signidicePartOneRequest,
-		gameMessage,
-		gameFinished,
-		gameFailed,
+	var events []eventlistener.EventType
+	for key := range handlersMap {
+		events = append(events, key)
 	}
+	return events
 }

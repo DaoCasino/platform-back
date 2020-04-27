@@ -4,60 +4,31 @@ import (
 	"context"
 	"encoding/json"
 	"platform-backend/casino"
-	"platform-backend/server/api/interfaces"
+	"platform-backend/server/api/ws_interface"
 )
 
 type FetchGamesInCasinoPayload struct {
-	CasinoId uint64  `json:"casinoId"`
+	CasinoId uint64 `json:"casinoId"`
 }
 
-func ProcessFetchGamesInCasinoRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
+func ProcessFetchGamesInCasinoRequest(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
 	var payload FetchGamesInCasinoPayload
 	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
-		return nil, err
+		return nil, ws_interface.NewHandlerError(ws_interface.RequestParseError, err)
 	}
 
 	cas, err := req.Repos.Casino.GetCasino(context, payload.CasinoId)
 	if err != nil {
 		if err == casino.CasinoNotFound {
-			return &interfaces.WsResponse{
-				Type:   "response",
-				Id:     req.Data.Id,
-				Status: "error",
-				Payload: interfaces.WsError{
-					Code:    4003,
-					Message: err.Error(),
-				},
-			}, nil
+			return nil, ws_interface.NewHandlerError(ws_interface.ContentNotFoundError, err)
 		}
-		return &interfaces.WsResponse{
-			Type:   "response",
-			Id:     req.Data.Id,
-			Status: "error",
-			Payload: interfaces.WsError{
-				Code:    5000,
-				Message: "Casino fetch error: " + err.Error(),
-			},
-		}, nil
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
 	games, err := req.Repos.Casino.GetCasinoGames(context, cas.Contract)
 	if err != nil {
-		return &interfaces.WsResponse{
-			Type:   "response",
-			Id:     req.Data.Id,
-			Status: "error",
-			Payload: interfaces.WsError{
-				Code:    5000,
-				Message: "Casino games fetch error: " + err.Error(),
-			},
-		}, nil
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	return &interfaces.WsResponse{
-		Type:    "response",
-		Id:      req.Data.Id,
-		Status:  "ok",
-		Payload: games,
-	}, nil
+	return games, nil
 }

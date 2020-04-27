@@ -44,7 +44,6 @@ func NewSignidiceUseCase(
 	}
 }
 
-
 func (a *SignidiceUseCase) rsaSign(digest eos.Checksum256) (string, error) {
 	sign, err := rsa.SignPKCS1v15(rand.Reader, a.rsaKey, crypto.SHA256, digest)
 	if err != nil {
@@ -55,7 +54,7 @@ func (a *SignidiceUseCase) rsaSign(digest eos.Checksum256) (string, error) {
 	return base64.StdEncoding.EncodeToString(sign), nil
 }
 
-func (a *SignidiceUseCase)PerformSignidice(ctx context.Context, gameName string, digest []byte, bcSessionID uint64) error {
+func (a *SignidiceUseCase) PerformSignidice(ctx context.Context, gameName string, digest []byte, bcSessionID uint64) error {
 	rsaSign, err := a.rsaSign(digest)
 	if err != nil {
 		return err
@@ -76,7 +75,7 @@ func (a *SignidiceUseCase)PerformSignidice(ctx context.Context, gameName string,
 		}),
 	}
 
-	txOpts := &eos.TxOptions{}
+	txOpts := a.bc.GetTrxOpts()
 	if err := txOpts.FillFromChain(a.bc.Api); err != nil {
 		return err
 	}
@@ -94,6 +93,9 @@ func (a *SignidiceUseCase)PerformSignidice(ctx context.Context, gameName string,
 	}
 
 	_, err = a.bc.Api.PushTransaction(packedTrx)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }

@@ -2,32 +2,15 @@ package handlers
 
 import (
 	"context"
-	"github.com/rs/zerolog/log"
-	"platform-backend/server/api/interfaces"
+	"platform-backend/server/api/ws_interface"
 )
 
-func ProcessAccountInfo(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
+func ProcessAccountInfo(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
 	player, err := req.Repos.Casino.GetPlayerInfo(context, req.User.AccountName)
 
 	if err != nil {
-		log.Debug().Msgf("Account info fetch error: %s", err.Error())
-		return &interfaces.WsResponse{
-			Type:   "response",
-			Id:     req.Data.Id,
-			Status: "error",
-			Payload: interfaces.WsError{
-				Code:    5001,
-				Message: "cannot fetch account info",
-			},
-		}, nil
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-
-
-	return &interfaces.WsResponse{
-		Type:   "response",
-		Id:     req.Data.Id,
-		Status: "ok",
-		Payload: player,
-	}, nil
+	return player, nil
 }

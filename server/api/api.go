@@ -10,7 +10,7 @@ import (
 	"platform-backend/models"
 	"platform-backend/repositories"
 	"platform-backend/server/api/handlers"
-	"platform-backend/server/api/interfaces"
+	"platform-backend/server/api/ws_interface"
 	"platform-backend/usecases"
 )
 
@@ -27,7 +27,7 @@ func NewWsApi(useCases *usecases.UseCases, repos *repositories.Repos) *WsApi {
 }
 
 type RequestHandlerInfo struct {
-	handler     func(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error)
+	handler     func(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError)
 	messageType int
 	needAuth    bool
 }
@@ -90,8 +90,29 @@ var handlersMap = map[string]RequestHandlerInfo{
 	},
 }
 
-func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, message []byte) (*interfaces.WsResponse, error) {
-	var messageObj interfaces.WsRequest
+func respondWithError(reqId string, code ws_interface.WsErrorCode) *ws_interface.WsResponse {
+	return &ws_interface.WsResponse{
+		Type:   "response",
+		Id:     reqId,
+		Status: "error",
+		Payload: &ws_interface.WsError{
+			Code:    code,
+			Message: ws_interface.GetErrorMsg(code),
+		},
+	}
+}
+
+func respondWithOK(reqId string, payload interface{}) *ws_interface.WsResponse {
+	return &ws_interface.WsResponse{
+		Type:    "response",
+		Id:      reqId,
+		Status:  "ok",
+		Payload: payload,
+	}
+}
+
+func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, message []byte) (*ws_interface.WsResponse, error) {
+	var messageObj ws_interface.WsRequest
 	if err := json.Unmarshal(message, &messageObj); err != nil {
 		return nil, err
 	}
@@ -100,26 +121,44 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 		return nil, fmt.Errorf("invalid request JSON format")
 	}
 
+	suid := context.Value("suid").(uuid.UUID).String()
+	log.Info().Msgf("WS started '%s' request from suid: %s, req: %s", messageObj.Request, suid, messageObj.Payload)
+
 	// get user info from context
 	user := context.Value("user").(*models.User)
 
 	if handler, found := handlersMap[messageObj.Request]; found {
 		if handler.messageType != messageType {
+			log.Info().Msgf("WS request from: %s has wrong message type: %d", suid, messageType)
 			return nil, fmt.Errorf("message type is wrong")
 		}
+
 		if handler.needAuth && user == nil {
-			return nil, fmt.Errorf("user unauthorized")
+			log.Info().Msgf("WS request from: %s unauthorized", suid)
+			return respondWithError(messageObj.Id, ws_interface.UnauthorizedError), nil
 		}
 
-		log.Debug().Msgf("Started '%s' request from suid: %s", messageObj.Request, context.Value("suid").(uuid.UUID).String())
-
-		return handler.handler(context, &interfaces.ApiRequest{
+		// process request
+		wsResp, handlerError := handler.handler(context, &ws_interface.ApiRequest{
 			UseCases: api.useCases,
 			Repos:    api.repos,
 			User:     user,
 			Data:     &messageObj,
 		})
+
+		if handlerError != nil {
+			if handlerError.Code == ws_interface.InternalError {
+				log.Error().Msgf("WS request internal error from suid: %s, err: %s", suid, handlerError.InternalError.Error())
+			} else {
+				log.Info().Msgf("WS request failed from suid: %s, code: %d, err: %s", suid, handlerError.Code, handlerError.InternalError.Error())
+			}
+			return respondWithError(messageObj.Id, handlerError.Code), nil
+		}
+
+		log.Info().Msgf("WS successfully finished request from suid: %s", suid)
+		return respondWithOK(messageObj.Id, wsResp), nil
 	}
 
+	log.Info().Msgf("WS request from '%s' has wrong request type: %s", suid, messageObj.Request)
 	return nil, fmt.Errorf("unknown request type: %s", messageObj.Request)
 }

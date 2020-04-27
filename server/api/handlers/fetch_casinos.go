@@ -2,28 +2,14 @@ package handlers
 
 import (
 	"context"
-	"platform-backend/server/api/interfaces"
+	"platform-backend/server/api/ws_interface"
 )
 
-
-func ProcessFetchCasinosRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
+func ProcessFetchCasinosRequest(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
 	casinos, err := req.Repos.Casino.AllCasinos(context)
 	if err != nil {
-		return &interfaces.WsResponse{
-			Type:   "response",
-			Id:     req.Data.Id,
-			Status: "error",
-			Payload: interfaces.WsError{
-				Code:    5000,
-				Message: "Casinos fetch error: " + err.Error(),
-			},
-		}, nil
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	return &interfaces.WsResponse{
-		Type:    "response",
-		Id:      req.Data.Id,
-		Status:  "ok",
-		Payload: casinos,
-	}, nil
+	return casinos, nil
 }

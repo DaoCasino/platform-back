@@ -2,28 +2,14 @@ package handlers
 
 import (
 	"context"
-	"platform-backend/server/api/interfaces"
+	"platform-backend/server/api/ws_interface"
 )
 
-func ProcessFetchSessionsRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
-	gameSessions, err := req.Repos.GameSession.GetAllGameSessions(context)
-
+func ProcessFetchSessionsRequest(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
+	gameSessions, err := req.Repos.GameSession.GetAllGameSessions(context, req.User.AccountName)
 	if err != nil {
-		return &interfaces.WsResponse{
-			Type:   "response",
-			Id:     req.Data.Id,
-			Status: "error",
-			Payload: interfaces.WsError{
-				Code:    5000,
-				Message: "Sessions fetch error: " + err.Error(),
-			},
-		}, nil
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	return &interfaces.WsResponse{
-		Type:    "response",
-		Id:      req.Data.Id,
-		Status:  "ok",
-		Payload: gameSessions,
-	}, nil
+	return gameSessions, nil
 }

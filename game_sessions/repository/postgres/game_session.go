@@ -9,9 +9,9 @@ import (
 const (
 	selectGameSessionByIdStmt    = "SELECT * FROM game_sessions WHERE id = $1"
 	selectGameSessionByBcID      = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
-	selectAllGameSessions        = "SELECT * FROM game_sessions"
+	selectAllGameSessions        = "SELECT * FROM game_sessions WHERE player = $1"
 	updateSessionState           = "UPDATE game_sessions SET state = $2 WHERE id = $1"
-	updateSessionStateAndOffset  = "UPDATE game_sessions SET state = $2, last_offset = $3 WHERE id = $1"
+	updateSessionOffset          = "UPDATE game_sessions SET last_offset = $2 WHERE id = $1"
 	selectGameSessionCntByIdStmt = "SELECT count(*) FROM game_sessions WHERE id = $1"
 	insertGameSessionStmt        = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6, $7)"
 	deleteGameSessionByIdStmt    = "DELETE FROM game_sessions WHERE id = $1"
@@ -91,14 +91,14 @@ func (r *GameSessionsPostgresRepo) GetSessionByBlockChainID(ctx context.Context,
 	return toModelGameSession(session), nil
 }
 
-func (r *GameSessionsPostgresRepo) UpdateSessionStateAndOffset(ctx context.Context, id uint64, newState models.GameSessionState, offset uint64) error {
+func (r *GameSessionsPostgresRepo) UpdateSessionOffset(ctx context.Context, id uint64, offset uint64) error {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(ctx, updateSessionStateAndOffset, id, uint16(newState), offset)
+	_, err = conn.Exec(ctx, updateSessionOffset, id, offset)
 	return err
 }
 
@@ -127,14 +127,14 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 	return nil
 }
 
-func (r *GameSessionsPostgresRepo) GetAllGameSessions(ctx context.Context) ([]*models.GameSession, error) {
+func (r *GameSessionsPostgresRepo) GetAllGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error) {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Release()
 
-	rows, err := conn.Query(ctx, selectAllGameSessions)
+	rows, err := conn.Query(ctx, selectAllGameSessions, accountName)
 	if err != nil {
 		return nil, err
 	}

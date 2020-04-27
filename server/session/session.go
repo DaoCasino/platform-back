@@ -88,7 +88,7 @@ func (s *Session) readLoop() {
 
 			resp, err := s.wsApi.ProcessRawRequest(ctx, messageType, message)
 			if err != nil {
-				log.Debug().Msgf("Websocket request parsing error, disconnection, %s", err.Error())
+				log.Debug().Msgf("Websocket request fatal error, disconnection, %s", err.Error())
 				return
 			}
 

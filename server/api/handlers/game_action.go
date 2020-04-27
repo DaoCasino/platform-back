@@ -3,65 +3,49 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"github.com/rs/zerolog/log"
-	"platform-backend/server/api/interfaces"
+	"errors"
+	"platform-backend/models"
+	"platform-backend/server/api/ws_interface"
 )
 
 type GameActionPayload struct {
 	SessionId  uint64   `json:"sessionId"`
 	ActionType uint16   `json:"actionType"`
-	Params     []uint32 `json:"params"`
+	Params     []uint64 `json:"params"`
 }
 
-func respondWithError(reqId string, code uint64, message string) *interfaces.WsResponse {
-	return &interfaces.WsResponse{
-		Type:   "response",
-		Id:     reqId,
-		Status: "error",
-		Payload: interfaces.WsError{
-			Code:    code,
-			Message: message,
-		},
-	}
-}
-
-func ProcessGameActionRequest(context context.Context, req *interfaces.ApiRequest) (*interfaces.WsResponse, error) {
+func ProcessGameActionRequest(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
 	var payload GameActionPayload
 	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
-		return nil, err
+		return nil, ws_interface.NewHandlerError(ws_interface.RequestParseError, err)
 	}
 
-	has, err := req.UseCases.GameSession.HasGameSession(context, payload.SessionId)
+	has, err := req.Repos.GameSession.HasGameSession(context, payload.SessionId)
 	if err != nil {
-		log.Err(err)
-		return respondWithError(req.Data.Id, 5000, "Game session check error"), nil
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
 	if !has {
-		log.Debug().Msgf("Session not found, id: %s", payload.SessionId)
-		return respondWithError(req.Data.Id, 4004, "Game session not found"), nil
+		return nil, ws_interface.NewHandlerError(ws_interface.ContentNotFoundError, errors.New("game session not found"))
 	}
 
-	session, err := req.UseCases.GameSession.GetGameSession(context, payload.SessionId)
+	session, err := req.Repos.GameSession.GetGameSession(context, payload.SessionId)
 	if err != nil {
-		log.Err(err)
-		return respondWithError(req.Data.Id, 5000, "Game session fetch error"), nil
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+	}
+
+	if session.State != models.RequestedGameAction {
+		return nil, ws_interface.NewHandlerError(ws_interface.BadRequest, errors.New("attempt to action while invalid state"))
 	}
 
 	if req.User.AccountName != session.Player {
-		log.Debug().Msgf("Session player mismatch, req: %s, player: %s", req.User.AccountName, session.Player)
-		return respondWithError(req.Data.Id, 4003, "Requested session owned by other account"), nil
+		return nil, ws_interface.NewHandlerError(ws_interface.UnauthorizedError, errors.New("attempt to play not own session"))
 	}
 
 	err = req.UseCases.GameSession.GameAction(context, payload.SessionId, payload.ActionType, payload.Params)
 	if err != nil {
-		return respondWithError(req.Data.Id, 5000, "Game action trx error"), nil
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	return &interfaces.WsResponse{
-		Type:    "response",
-		Id:      req.Data.Id,
-		Status:  "ok",
-		Payload: struct{}{},
-	}, nil
+	return struct{}{}, nil
 }
