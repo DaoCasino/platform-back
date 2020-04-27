@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/eoscanada/eos-go"
 	"github.com/eoscanada/eos-go/ecc"
@@ -62,7 +63,7 @@ func (a *GameSessionsUseCase) NewSession(
 
 	memo := strconv.FormatUint(sessionId, 10) // IMPORTANT!
 
-	txOpts := &eos.TxOptions{}
+	txOpts := a.bc.GetTrxOpts()
 	if err := txOpts.FillFromChain(api); err != nil {
 		panic(fmt.Errorf("filling tx opts: %s", err))
 	}
@@ -106,10 +107,15 @@ func (a *GameSessionsUseCase) NewSession(
 
 	// Send sponsored and signed transaction to casino Backend
 	reader := bytes.NewReader(toSend)
-	_, err = http.Post(a.casinoBackendUrl+"/sign_transaction", "application/json", reader)
+	resp, err := http.Post(a.casinoBackendUrl+"/sign_transaction", "application/json", reader)
 	if err != nil {
 		log.Debug().Msgf("%s", err.Error())
 		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		log.Error().Msgf("deposit error from casino: %s", resp.Status)
+		return nil, errors.New("casino error: " + resp.Status)
 	}
 
 	gameSession := &models.GameSession{
@@ -169,7 +175,7 @@ func (a *GameSessionsUseCase) GameAction(
 		}),
 	}
 
-	trxOpts := &eos.TxOptions{}
+	trxOpts := a.bc.GetTrxOpts()
 	err = trxOpts.FillFromChain(a.bc.Api)
 	if err != nil {
 		log.Debug().Msgf("%s", err.Error())
@@ -194,7 +200,7 @@ func (a *GameSessionsUseCase) GameAction(
 		return err
 	}
 
-	resp, err := a.bc.Api.PushTransaction(packedTrx)
+	_, err = a.bc.Api.PushTransaction(packedTrx)
 	if err != nil {
 		log.Debug().Msgf("%s", err.Error())
 		return err
@@ -206,6 +212,5 @@ func (a *GameSessionsUseCase) GameAction(
 		return err
 	}
 
-	log.Debug().Msgf("Game action trx, resp code: %d, blk num: %d", resp.StatusCode, resp.BlockNum)
 	return nil
 }

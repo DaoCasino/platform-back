@@ -76,7 +76,7 @@ func (a *SignidiceUseCase)PerformSignidice(ctx context.Context, gameName string,
 		}),
 	}
 
-	txOpts := &eos.TxOptions{}
+	txOpts := a.bc.GetTrxOpts()
 	if err := txOpts.FillFromChain(a.bc.Api); err != nil {
 		return err
 	}

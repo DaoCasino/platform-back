@@ -11,6 +11,12 @@ import (
 	"net/http"
 	"platform-backend/config"
 	"strings"
+	"sync"
+	"time"
+)
+
+const (
+	txOptsCacheTTL = 2 //seconds
 )
 
 type ByteArray []byte
@@ -40,6 +46,9 @@ type Blockchain struct {
 	ChainId             eos.Checksum256
 	PlatformAccountName string
 	sponsorUrl          string
+	optsMutex           sync.Mutex
+	lastInfoTime        time.Time
+	lastHeadBlockID     eos.Checksum256
 }
 
 func Init(config *config.BlockchainConfig) (*Blockchain, error) {
@@ -56,6 +65,8 @@ func Init(config *config.BlockchainConfig) (*Blockchain, error) {
 
 	blockchain.Api.EnableKeepAlives()
 	blockchain.ChainId = info.ChainID
+	blockchain.lastInfoTime = time.Now()
+	blockchain.lastHeadBlockID = info.HeadBlockID
 
 	keyBag := &eos.KeyBag{}
 	if err := keyBag.ImportPrivateKey(config.Permissions.Deposit); err != nil {
@@ -124,4 +135,23 @@ func (b *Blockchain) GetSponsoredTrx(trx *eos.Transaction) (*eos.SignedTransacti
 	}
 
 	return sponsoredSignedTrx, nil
+}
+
+func (b *Blockchain) GetTrxOpts() *eos.TxOptions {
+	b.optsMutex.Lock()
+	defer b.optsMutex.Unlock()
+
+	if b.lastInfoTime.Unix()+txOptsCacheTTL > time.Now().Unix() {
+		resp, err := b.Api.GetInfo()
+		if err != nil {
+			b.lastHeadBlockID = nil
+		} else {
+			b.lastHeadBlockID = resp.HeadBlockID
+		}
+	}
+
+	return &eos.TxOptions{
+		ChainID:     b.ChainId,
+		HeadBlockID: b.lastHeadBlockID,
+	}
 }

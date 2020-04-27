@@ -11,8 +11,8 @@ import (
 
 func InitLogger(level string) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
-	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
+	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339Nano}
 	output.FormatLevel = func(i interface{}) string {
 		const (
 			colorBlack = iota + 30
