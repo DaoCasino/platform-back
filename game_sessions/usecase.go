@@ -13,13 +13,13 @@ type UseCase interface {
 		user *models.User,
 		deposit string,
 		actionType uint16,
-		actionParams []uint32,
+		actionParams []uint64,
 	) (*models.GameSession, error)
 
 	GameAction(
 		ctx context.Context,
 		sessionId uint64,
 		actionType uint16,
-		actionParams []uint32,
+		actionParams []uint64,
 	) error
 }

@@ -11,7 +11,7 @@ import (
 type GameActionPayload struct {
 	SessionId  uint64   `json:"sessionId"`
 	ActionType uint16   `json:"actionType"`
-	Params     []uint32 `json:"params"`
+	Params     []uint64 `json:"params"`
 }
 
 func ProcessGameActionRequest(context context.Context, req *interfaces.ApiRequest) (interface{}, *interfaces.HandlerError) {

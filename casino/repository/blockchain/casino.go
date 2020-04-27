@@ -19,7 +19,7 @@ type Casino struct {
 
 type GameParam struct {
 	Type  uint16 `json:"first"`
-	Value uint32 `json:"second"`
+	Value uint64 `json:"second"`
 }
 
 type CasinoGame struct {

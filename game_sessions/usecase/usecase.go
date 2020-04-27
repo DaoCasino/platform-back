@@ -48,7 +48,7 @@ func NewGameSessionsUseCase(
 func (a *GameSessionsUseCase) NewSession(
 	ctx context.Context, casino *models.Casino,
 	game *models.Game, user *models.User,
-	deposit string, actionType uint16, actionParams []uint32,
+	deposit string, actionType uint16, actionParams []uint64,
 ) (*models.GameSession, error) {
 	api := a.bc.Api
 
@@ -145,7 +145,7 @@ func (a *GameSessionsUseCase) GameAction(
 	ctx context.Context,
 	sessionId uint64,
 	actionType uint16,
-	actionParams []uint32,
+	actionParams []uint64,
 ) error {
 	gs, err := a.repo.GetGameSession(ctx, sessionId)
 	if err != nil {
@@ -167,7 +167,7 @@ func (a *GameSessionsUseCase) GameAction(
 		ActionData: eos.NewActionData(struct {
 			SessionId    uint64   `json:"ses_id"`
 			ActionType   uint16   `json:"type"`
-			ActionParams []uint32 `json:"params"`
+			ActionParams []uint64 `json:"params"`
 		}{
 			SessionId:    gs.BlockchainSesID,
 			ActionType:   actionType,

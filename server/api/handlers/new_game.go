@@ -14,7 +14,7 @@ type NewGamePayload struct {
 	CasinoID     uint64   `json:"casinoId"`
 	Deposit      string   `json:"deposit"`
 	ActionType   uint16   `json:"actionType"`
-	ActionParams []uint32 `json:"actionParams"`
+	ActionParams []uint64 `json:"actionParams"`
 }
 
 func ProcessNewGameRequest(context context.Context, req *interfaces.ApiRequest) (interface{}, *interfaces.HandlerError) {
