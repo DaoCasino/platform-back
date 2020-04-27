@@ -288,7 +288,7 @@ func (a *App) Run() error {
 
 	errGroup.Go(func() error {
 		quit := make(chan os.Signal, 1)
-		signal.Notify(quit, os.Interrupt, os.Interrupt)
+		signal.Notify(quit, os.Interrupt)
 		select {
 		case <-runCtx.Done():
 			return nil
