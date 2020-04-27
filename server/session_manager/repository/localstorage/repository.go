@@ -15,14 +15,14 @@ import (
 type LocalRepository struct {
 	sync.Mutex
 	// main sessions registry
-	sessionById   map[uuid.UUID]*session.Session
+	sessionById map[uuid.UUID]*session.Session
 	// session by account name map
 	sessionByUser map[string]*session.Session
 }
 
 func NewLocalRepository() *LocalRepository {
 	return &LocalRepository{
-		sessionById: make(map[uuid.UUID]*session.Session),
+		sessionById:   make(map[uuid.UUID]*session.Session),
 		sessionByUser: make(map[string]*session.Session),
 	}
 }
@@ -84,4 +84,3 @@ func (r *LocalRepository) SetUser(uid uuid.UUID, user *models.User) error {
 	r.sessionById[uid].User = user
 	return nil
 }
-

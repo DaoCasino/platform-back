@@ -96,7 +96,7 @@ func respondWithError(reqId string, code interfaces.WsErrorCode) *interfaces.WsR
 		Id:     reqId,
 		Status: "error",
 		Payload: &interfaces.WsError{
-			Code: code,
+			Code:    code,
 			Message: interfaces.GetErrorMsg(code),
 		},
 	}
@@ -104,9 +104,9 @@ func respondWithError(reqId string, code interfaces.WsErrorCode) *interfaces.WsR
 
 func respondWithOK(reqId string, payload interface{}) *interfaces.WsResponse {
 	return &interfaces.WsResponse{
-		Type:   "response",
-		Id:     reqId,
-		Status: "ok",
+		Type:    "response",
+		Id:      reqId,
+		Status:  "ok",
 		Payload: payload,
 	}
 }

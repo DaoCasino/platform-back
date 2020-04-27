@@ -16,7 +16,7 @@ const (
 type User struct {
 	AccountName string `db:"account_name"`
 	Email       string `db:"email"`
-	TokenNonce  int64 `db:"token_nonce"`
+	TokenNonce  int64  `db:"token_nonce"`
 }
 
 type UserPostgresRepo struct {

@@ -18,14 +18,14 @@ func TestAuthFlow(t *testing.T) {
 
 	var (
 		accountName = "user"
-		email = "user@user.com"
-		suid, _ = uuid.NewRandom()
+		email       = "user@user.com"
+		suid, _     = uuid.NewRandom()
 
 		ctx = context.Background()
 
 		user = &models.User{
 			AccountName: accountName,
-			Email: email,
+			Email:       email,
 		}
 	)
 
@@ -57,14 +57,14 @@ func TestTokenRefresh(t *testing.T) {
 
 	var (
 		accountName = "user"
-		email = "user@user.com"
-		suid, _ = uuid.NewRandom()
+		email       = "user@user.com"
+		suid, _     = uuid.NewRandom()
 
 		ctx = context.Background()
 
 		user = &models.User{
 			AccountName: accountName,
-			Email: email,
+			Email:       email,
 		}
 	)
 
@@ -83,7 +83,7 @@ func TestTokenRefresh(t *testing.T) {
 	ctx = context.WithValue(ctx, "suid", suid)
 	repo.On("GetUser", user.AccountName).Return(user, nil)
 	sm.On("SetUser", suid, user).Return(nil)
-	repo.On("GetTokenNonce", user.AccountName).Return(tokenNonce + 1, nil)
+	repo.On("GetTokenNonce", user.AccountName).Return(tokenNonce+1, nil)
 	_, accessToken, err := uc.RefreshToken(ctx, refreshToken)
 	assert.NoError(t, err)
 

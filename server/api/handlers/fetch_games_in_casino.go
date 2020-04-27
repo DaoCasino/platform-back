@@ -8,7 +8,7 @@ import (
 )
 
 type FetchGamesInCasinoPayload struct {
-	CasinoId uint64  `json:"casinoId"`
+	CasinoId uint64 `json:"casinoId"`
 }
 
 func ProcessFetchGamesInCasinoRequest(context context.Context, req *interfaces.ApiRequest) (interface{}, *interfaces.HandlerError) {

@@ -41,16 +41,16 @@ jobs:
     - stage: lint & test
       script:
         - golangci-lint run
-        - go test -v -race -coverprofile=coverage.txt -covermode=atomic .
+        - go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
     - stage: build & push
       script:
-       - docker build -t $IMG_NAME:$TRAVIS_BRANCH -f Dockerfile .
-       - |
-         docker push $IMG_NAME:$TRAVIS_BRANCH
-         if [ $TRAVIS_BRANCH == "master" ]; then
-           docker tag $IMG_NAME:master $IMG_NAME:latest
-           docker push $IMG_NAME:latest
-         fi
+        - docker build -t $IMG_NAME:$TRAVIS_BRANCH -f Dockerfile .
+        - |
+          docker push $IMG_NAME:$TRAVIS_BRANCH
+          if [ $TRAVIS_BRANCH == "master" ]; then
+            docker tag $IMG_NAME:master $IMG_NAME:latest
+            docker push $IMG_NAME:latest
+          fi
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

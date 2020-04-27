@@ -12,7 +12,7 @@ type Repos struct {
 
 func NewRepositories(Casino casino.Repository, GameSession gamesessions.Repository) *Repos {
 	return &Repos{
-		Casino: Casino,
+		Casino:      Casino,
 		GameSession: GameSession,
 	}
 }
