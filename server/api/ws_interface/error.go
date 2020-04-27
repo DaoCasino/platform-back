@@ -1,4 +1,4 @@
-package interfaces
+package ws_interface
 
 type WsErrorCode uint64
 

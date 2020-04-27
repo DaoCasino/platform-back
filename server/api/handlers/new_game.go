@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"platform-backend/casino"
 	"platform-backend/models"
-	"platform-backend/server/api/interfaces"
+	"platform-backend/server/api/ws_interface"
 	"time"
 )
 
@@ -17,26 +17,26 @@ type NewGamePayload struct {
 	ActionParams []uint64 `json:"actionParams"`
 }
 
-func ProcessNewGameRequest(context context.Context, req *interfaces.ApiRequest) (interface{}, *interfaces.HandlerError) {
+func ProcessNewGameRequest(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
 	var payload NewGamePayload
 	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
-		return nil, interfaces.NewHandlerError(interfaces.RequestParseError, err)
+		return nil, ws_interface.NewHandlerError(ws_interface.RequestParseError, err)
 	}
 
 	game, err := req.Repos.Casino.GetGame(context, payload.GameId)
 	if err != nil {
 		if err == casino.GameNotFound {
-			return nil, interfaces.NewHandlerError(interfaces.ContentNotFoundError, err)
+			return nil, ws_interface.NewHandlerError(ws_interface.ContentNotFoundError, err)
 		}
-		return nil, interfaces.NewHandlerError(interfaces.InternalError, err)
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
 	cas, err := req.Repos.Casino.GetCasino(context, payload.CasinoID)
 	if err != nil {
 		if err == casino.CasinoNotFound {
-			return nil, interfaces.NewHandlerError(interfaces.ContentNotFoundError, err)
+			return nil, ws_interface.NewHandlerError(ws_interface.ContentNotFoundError, err)
 		}
-		return nil, interfaces.NewHandlerError(interfaces.InternalError, err)
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
 	session, err := req.UseCases.GameSession.NewSession(
@@ -45,7 +45,7 @@ func ProcessNewGameRequest(context context.Context, req *interfaces.ApiRequest) 
 		payload.ActionType, payload.ActionParams,
 	)
 	if err != nil {
-		return nil, interfaces.NewHandlerError(interfaces.InternalError, err)
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
 	err = req.Repos.GameSession.AddGameSessionUpdate(context, &models.GameSessionUpdate{
@@ -55,7 +55,7 @@ func ProcessNewGameRequest(context context.Context, req *interfaces.ApiRequest) 
 		Data:       nil,
 	})
 	if err != nil {
-		return nil, interfaces.NewHandlerError(interfaces.InternalError, err)
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
 	return session, nil

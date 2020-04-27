@@ -6,9 +6,20 @@ import (
 	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
 	"github.com/eoscanada/eos-go"
 	"github.com/rs/zerolog/log"
+	"platform-backend/blockchain"
 	"platform-backend/models"
 	"time"
 )
+
+type finishedEventData struct {
+	Msg       blockchain.ByteArray `json:"msg"`
+	PlayerWin eos.Asset            `json:"player_win_amount"`
+}
+
+type finishedUpdateData struct {
+	Msg       []uint64  `json:"msg"`
+	PlayerWin eos.Asset `json:"player_win_amount"`
+}
 
 func onGameStarted(ctx context.Context, p *EventProcessor, event *eventlistener.Event, session *models.GameSession) error {
 	log.Debug().Msgf("Got started event for session: %d", session.ID)
@@ -94,11 +105,31 @@ func onSignidicePartOneRequest(ctx context.Context, p *EventProcessor, event *ev
 func onGameFinished(ctx context.Context, p *EventProcessor, event *eventlistener.Event, session *models.GameSession) error {
 	log.Debug().Msgf("Got finished event for session: %d", session.ID)
 
-	err := p.repos.GameSession.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
+	var eventData finishedEventData
+	err := json.Unmarshal(event.Data, &eventData)
+	if err != nil {
+		return err
+	}
+
+	var resultsArray []uint64
+	err = eos.NewDecoder(eventData.Msg).Decode(&resultsArray)
+	if err != nil {
+		return err
+	}
+
+	updateData, err := json.Marshal(finishedUpdateData{
+		PlayerWin: eventData.PlayerWin,
+		Msg:       resultsArray,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = p.repos.GameSession.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
 		SessionID:  session.ID,
 		UpdateType: models.GameFinishedUpdate,
 		Timestamp:  time.Now(),
-		Data:       event.Data,
+		Data:       updateData,
 	})
 	if err != nil {
 		return err

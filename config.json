@@ -16,7 +16,7 @@
     "nodeUrl": "https://api.daobet.org",
     "sponsorUrl": "http://localhost:3333",
     "contracts": {
-      "platform": "tplatform"
+      "platform": "ttplatform"
     },
     "permissions": {
       "deposit": "5JJvavvETHcGEx7ueoDry8zvcfPenbBCKcUQYw7cnZVyFazUo34",

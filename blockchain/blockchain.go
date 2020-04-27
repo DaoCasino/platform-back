@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +24,22 @@ type ByteArray []byte
 
 func (m ByteArray) MarshalJSON() ([]byte, error) {
 	return []byte(strings.Join(strings.Fields(fmt.Sprintf("%d", m)), ",")), nil
+}
+
+func (m *ByteArray) UnmarshalJSON(data []byte) error {
+	str := ""
+	err := json.Unmarshal(data, &str)
+	if err != nil {
+		return err
+	}
+
+	b, err := hex.DecodeString(str)
+	if err != nil {
+		return err
+	}
+
+	*m = b
+	return nil
 }
 
 type sponsorRequest struct {

@@ -10,7 +10,7 @@ import (
 	"platform-backend/models"
 	"platform-backend/repositories"
 	"platform-backend/server/api/handlers"
-	"platform-backend/server/api/interfaces"
+	"platform-backend/server/api/ws_interface"
 	"platform-backend/usecases"
 )
 
@@ -27,7 +27,7 @@ func NewWsApi(useCases *usecases.UseCases, repos *repositories.Repos) *WsApi {
 }
 
 type RequestHandlerInfo struct {
-	handler     func(context context.Context, req *interfaces.ApiRequest) (interface{}, *interfaces.HandlerError)
+	handler     func(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError)
 	messageType int
 	needAuth    bool
 }
@@ -90,20 +90,20 @@ var handlersMap = map[string]RequestHandlerInfo{
 	},
 }
 
-func respondWithError(reqId string, code interfaces.WsErrorCode) *interfaces.WsResponse {
-	return &interfaces.WsResponse{
+func respondWithError(reqId string, code ws_interface.WsErrorCode) *ws_interface.WsResponse {
+	return &ws_interface.WsResponse{
 		Type:   "response",
 		Id:     reqId,
 		Status: "error",
-		Payload: &interfaces.WsError{
+		Payload: &ws_interface.WsError{
 			Code:    code,
-			Message: interfaces.GetErrorMsg(code),
+			Message: ws_interface.GetErrorMsg(code),
 		},
 	}
 }
 
-func respondWithOK(reqId string, payload interface{}) *interfaces.WsResponse {
-	return &interfaces.WsResponse{
+func respondWithOK(reqId string, payload interface{}) *ws_interface.WsResponse {
+	return &ws_interface.WsResponse{
 		Type:    "response",
 		Id:      reqId,
 		Status:  "ok",
@@ -111,8 +111,8 @@ func respondWithOK(reqId string, payload interface{}) *interfaces.WsResponse {
 	}
 }
 
-func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, message []byte) (*interfaces.WsResponse, error) {
-	var messageObj interfaces.WsRequest
+func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, message []byte) (*ws_interface.WsResponse, error) {
+	var messageObj ws_interface.WsRequest
 	if err := json.Unmarshal(message, &messageObj); err != nil {
 		return nil, err
 	}
@@ -135,11 +135,11 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 
 		if handler.needAuth && user == nil {
 			log.Info().Msgf("WS request from: %s unauthorized", suid)
-			return respondWithError(messageObj.Id, interfaces.UnauthorizedError), nil
+			return respondWithError(messageObj.Id, ws_interface.UnauthorizedError), nil
 		}
 
 		// process request
-		wsResp, handlerError := handler.handler(context, &interfaces.ApiRequest{
+		wsResp, handlerError := handler.handler(context, &ws_interface.ApiRequest{
 			UseCases: api.useCases,
 			Repos:    api.repos,
 			User:     user,
@@ -147,7 +147,7 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 		})
 
 		if handlerError != nil {
-			if handlerError.Code == interfaces.InternalError {
+			if handlerError.Code == ws_interface.InternalError {
 				log.Error().Msgf("WS request internal error from suid: %s, err: %s", suid, handlerError.InternalError.Error())
 			} else {
 				log.Info().Msgf("WS request failed from suid: %s, code: %d, err: %s", suid, handlerError.Code, handlerError.InternalError.Error())
