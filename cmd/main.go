@@ -2,12 +2,18 @@ package main
 
 import (
 	"log"
+	"os"
 	"platform-backend/config"
 	"platform-backend/server"
 )
 
 func main() {
-	appConfig, err := config.FromFile("config.json")
+	confPath, isSet := os.LookupEnv("CONFIG_PATH")
+	if !isSet {
+		confPath = "config.json"
+	}
+
+	appConfig, err := config.FromFile(confPath)
 	if err != nil {
 		log.Fatalf("%s", err.Error())
 	}
