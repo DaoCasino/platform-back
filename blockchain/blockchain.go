@@ -159,6 +159,11 @@ func (b *Blockchain) GetSponsoredTrx(trx *eos.Transaction) (*eos.SignedTransacti
 		sponsoredSignedTrx.Signatures = append(sponsoredSignedTrx.Signatures, sign)
 	}
 
+	for _, action := range sponsoredSignedTrx.Actions {
+		action.HexData = eos.HexBytes{}
+		action.SetToServer(true)
+	}
+
 	return sponsoredSignedTrx, nil
 }
 
