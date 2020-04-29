@@ -22,6 +22,7 @@ type BlockchainConfig struct {
 		GameAction string `json:"gameaction"`
 		SigniDice  string `json:"signidice"`
 	} `json:"permissions"`
+	DisableSponsor bool `json:"disableSponsor"`
 }
 
 type AuthConfig struct {

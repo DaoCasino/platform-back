@@ -22,7 +22,8 @@
       "deposit": "5JJvavvETHcGEx7ueoDry8zvcfPenbBCKcUQXXXXXX",
       "gameaction": "5J2FdJeALHgYRkNZh9htUo3PgwXyY9XLyXXXXXX",
       "signidice": "5HyvDP9LRqJYzGPorVN34mfbsuuoAwDrAqXXXXXX"
-    }
+    },
+    "disableSponsor": true
   },
   "signidice": {
     "keyPath": "./signidice.pem"

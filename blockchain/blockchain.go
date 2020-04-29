@@ -63,9 +63,11 @@ type Blockchain struct {
 	ChainId             eos.Checksum256
 	PlatformAccountName string
 	sponsorUrl          string
-	optsMutex           sync.Mutex
-	lastInfoTime        time.Time
-	lastHeadBlockID     eos.Checksum256
+	disableSponsor      bool
+
+	optsMutex       sync.Mutex
+	lastInfoTime    time.Time
+	lastHeadBlockID eos.Checksum256
 }
 
 func Init(config *config.BlockchainConfig) (*Blockchain, error) {
@@ -104,11 +106,17 @@ func Init(config *config.BlockchainConfig) (*Blockchain, error) {
 	}
 	blockchain.PubKeys = pubKeys
 
+	blockchain.disableSponsor = config.DisableSponsor
+
 	log.Info().Msgf("Connected with blockchain with chaid id: %s", blockchain.ChainId.String())
 	return blockchain, nil
 }
 
 func (b *Blockchain) GetSponsoredTrx(trx *eos.Transaction) (*eos.SignedTransaction, error) {
+	if b.disableSponsor {
+		return eos.NewSignedTransaction(trx), nil
+	}
+
 	packedTrx, err := eos.MarshalBinary(trx)
 	if err != nil {
 		return nil, err
@@ -141,7 +149,7 @@ func (b *Blockchain) GetSponsoredTrx(trx *eos.Transaction) (*eos.SignedTransacti
 		return nil, errors.New("sponsored transaction parsing error: " + err.Error())
 	}
 
-	sponsoredSignedTrx := eos.NewSignedTransaction(trx)
+	sponsoredSignedTrx := eos.NewSignedTransaction(&sponsoredTrx)
 
 	for _, strSignature := range response.Signatures {
 		sign, err := ecc.NewSignature(strSignature)
