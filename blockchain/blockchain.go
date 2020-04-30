@@ -171,7 +171,7 @@ func (b *Blockchain) GetTrxOpts() *eos.TxOptions {
 	b.optsMutex.Lock()
 	defer b.optsMutex.Unlock()
 
-	if b.lastInfoTime.Unix()+txOptsCacheTTL > time.Now().Unix() {
+	if b.lastInfoTime.Unix()+txOptsCacheTTL < time.Now().Unix() {
 		resp, err := b.Api.GetInfo()
 		if err != nil {
 			b.lastHeadBlockID = nil
