@@ -23,7 +23,7 @@
       "gameaction": "5J2FdJeALHgYRkNZh9htUo3PgwXyY9XLyXXXXXX",
       "signidice": "5HyvDP9LRqJYzGPorVN34mfbsuuoAwDrAqXXXXXX"
     },
-    "disableSponsor": true
+    "disableSponsor": false
   },
   "signidice": {
     "keyPath": "./signidice.pem"

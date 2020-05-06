@@ -7,6 +7,7 @@ import (
 	"github.com/eoscanada/eos-go"
 	"github.com/rs/zerolog/log"
 	"platform-backend/blockchain"
+	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 	"time"
 )
@@ -45,8 +46,28 @@ func onGameStarted(ctx context.Context, p *EventProcessor, event *eventlistener.
 func onActionRequest(ctx context.Context, p *EventProcessor, event *eventlistener.Event, session *models.GameSession) error {
 	log.Debug().Msgf("Got action request event for session: %d", session.ID)
 
-	// first action already processed by back-end
+	// first action
 	if session.State == models.GameStartedInBC {
+		action, err := p.repos.GameSession.GetFirstAction(ctx, session.ID)
+		if err != nil {
+			// if first game session not saved action was already sent
+			if err == gamesessions.ErrFirstGameActionNotFound {
+				return nil
+			}
+			return err
+		}
+
+		log.Debug().Msgf("Try to perform first game action for session: %d", session.ID)
+		err = p.useCases.GameSession.GameAction(ctx, session.ID, action.Type, action.Params)
+		if err != nil {
+			return err
+		}
+
+		err = p.repos.GameSession.DeleteFirstGameAction(ctx, session.ID)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	}
 
