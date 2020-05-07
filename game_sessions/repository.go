@@ -15,6 +15,10 @@ type Repository interface {
 	GetAllGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error)
 	DeleteGameSession(ctx context.Context, id uint64) error
 
+	GetFirstAction(ctx context.Context, sesID uint64) (*models.GameAction, error)
+	AddFirstGameAction(ctx context.Context, sesID uint64, action *models.GameAction) error
+	DeleteFirstGameAction(ctx context.Context, sesID uint64) error
+
 	GetGameSessionUpdates(ctx context.Context, id uint64) ([]*models.GameSessionUpdate, error)
 	AddGameSessionUpdate(ctx context.Context, upd *models.GameSessionUpdate) error
 	DeleteGameSessionUpdates(ctx context.Context, sesId uint64) error

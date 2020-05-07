@@ -2,19 +2,25 @@ package postgres
 
 import (
 	"context"
+	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v4"
 	"platform-backend/db"
+	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 )
 
 const (
 	selectGameSessionByIdStmt    = "SELECT * FROM game_sessions WHERE id = $1"
-	selectGameSessionByBcID      = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
-	selectAllGameSessions        = "SELECT * FROM game_sessions WHERE player = $1"
-	updateSessionState           = "UPDATE game_sessions SET state = $2 WHERE id = $1"
-	updateSessionOffset          = "UPDATE game_sessions SET last_offset = $2 WHERE id = $1"
+	selectGameSessionByBcIDStmt  = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
+	selectAllGameSessionsStmt    = "SELECT * FROM game_sessions WHERE player = $1"
+	selectFirstGameActionStmt    = "SELECT * FROM first_game_actions WHERE ses_id = $1"
+	updateSessionStateStmt       = "UPDATE game_sessions SET state = $2 WHERE id = $1"
+	updateSessionOffsetStmt      = "UPDATE game_sessions SET last_offset = $2 WHERE id = $1"
 	selectGameSessionCntByIdStmt = "SELECT count(*) FROM game_sessions WHERE id = $1"
 	insertGameSessionStmt        = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6, $7)"
+	insertFirstGameActionStmt    = "INSERT INTO first_game_actions VALUES ($1, $2, $3)"
 	deleteGameSessionByIdStmt    = "DELETE FROM game_sessions WHERE id = $1"
+	deleteFirstGameActionStmt    = "DELETE FROM first_game_actions WHERE ses_id = $1"
 )
 
 type GameSession struct {
@@ -25,6 +31,12 @@ type GameSession struct {
 	BlockchainSesID uint64 `db:"blockchain_ses_id"`
 	State           uint16 `db:"state"`
 	LastOffset      uint64 `db:"last_offset"`
+}
+
+type GameAction struct {
+	SesID  uint64              `db:"ses_id"`
+	Type   uint16              `db:"type"`
+	Params pgtype.NumericArray `db:"params"`
 }
 
 func (r *GameSessionsPostgresRepo) HasGameSession(ctx context.Context, id uint64) (bool, error) {
@@ -62,9 +74,36 @@ func (r *GameSessionsPostgresRepo) GetGameSession(ctx context.Context, id uint64
 	)
 
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, gamesessions.ErrGameSessionNotFound
+		}
 		return nil, err
 	}
 	return toModelGameSession(session), nil
+}
+
+func (r *GameSessionsPostgresRepo) GetFirstAction(ctx context.Context, sesID uint64) (*models.GameAction, error) {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	var action GameAction
+	err = conn.QueryRow(ctx, selectFirstGameActionStmt, sesID).Scan(
+		&action.SesID,
+		&action.Type,
+		&action.Params,
+	)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, gamesessions.ErrFirstGameActionNotFound
+		}
+		return nil, err
+	}
+
+	return toModelGameAction(&action)
 }
 
 func (r *GameSessionsPostgresRepo) GetSessionByBlockChainID(ctx context.Context, bcID uint64) (*models.GameSession, error) {
@@ -75,7 +114,7 @@ func (r *GameSessionsPostgresRepo) GetSessionByBlockChainID(ctx context.Context,
 	defer conn.Release()
 
 	session := new(GameSession)
-	err = conn.QueryRow(ctx, selectGameSessionByBcID, bcID).Scan(
+	err = conn.QueryRow(ctx, selectGameSessionByBcIDStmt, bcID).Scan(
 		&session.ID,
 		&session.Player,
 		&session.GameID,
@@ -86,6 +125,9 @@ func (r *GameSessionsPostgresRepo) GetSessionByBlockChainID(ctx context.Context,
 	)
 
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, gamesessions.ErrGameSessionNotFound
+		}
 		return nil, err
 	}
 	return toModelGameSession(session), nil
@@ -98,7 +140,7 @@ func (r *GameSessionsPostgresRepo) UpdateSessionOffset(ctx context.Context, id u
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(ctx, updateSessionOffset, id, offset)
+	_, err = conn.Exec(ctx, updateSessionOffsetStmt, id, offset)
 	return err
 }
 
@@ -109,7 +151,7 @@ func (r *GameSessionsPostgresRepo) UpdateSessionState(ctx context.Context, id ui
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(ctx, updateSessionState, id, uint16(newState))
+	_, err = conn.Exec(ctx, updateSessionStateStmt, id, uint16(newState))
 	return err
 }
 
@@ -127,6 +169,26 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 	return nil
 }
 
+func (r *GameSessionsPostgresRepo) AddFirstGameAction(ctx context.Context, sesID uint64, action *models.GameAction) error {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	params := pgtype.NumericArray{}
+	err = params.Set(action.Params)
+	if err != nil {
+		return err
+	}
+
+	_, err = conn.Exec(ctx, insertFirstGameActionStmt, sesID, action.Type, params)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *GameSessionsPostgresRepo) GetAllGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error) {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
@@ -134,7 +196,7 @@ func (r *GameSessionsPostgresRepo) GetAllGameSessions(ctx context.Context, accou
 	}
 	defer conn.Release()
 
-	rows, err := conn.Query(ctx, selectAllGameSessions, accountName)
+	rows, err := conn.Query(ctx, selectAllGameSessionsStmt, accountName)
 	if err != nil {
 		return nil, err
 	}
@@ -171,6 +233,17 @@ func (r *GameSessionsPostgresRepo) DeleteGameSession(ctx context.Context, id uin
 	return err
 }
 
+func (r *GameSessionsPostgresRepo) DeleteFirstGameAction(ctx context.Context, sesID uint64) error {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, deleteFirstGameActionStmt, sesID)
+	return err
+}
+
 func toModelGameSession(gs *GameSession) *models.GameSession {
 	return &models.GameSession{
 		ID:              gs.ID,
@@ -181,4 +254,15 @@ func toModelGameSession(gs *GameSession) *models.GameSession {
 		State:           models.GameSessionState(gs.State),
 		LastOffset:      gs.LastOffset,
 	}
+}
+
+func toModelGameAction(ga *GameAction) (*models.GameAction, error) {
+	ret := models.GameAction{
+		Type: ga.Type,
+	}
+	err := ga.Params.AssignTo(&ret.Params)
+	if err != nil {
+		return nil, err
+	}
+	return &ret, nil
 }

@@ -76,17 +76,17 @@ var handlersMap = map[string]RequestHandlerInfo{
 	"fetch_casinos": {
 		handler:     handlers.ProcessFetchCasinosRequest,
 		messageType: websocket.TextMessage,
-		needAuth:    true,
+		needAuth:    false,
 	},
 	"fetch_games": {
 		handler:     handlers.ProcessFetchGamesRequest,
 		messageType: websocket.TextMessage,
-		needAuth:    true,
+		needAuth:    false,
 	},
 	"fetch_games_in_casino": {
 		handler:     handlers.ProcessFetchGamesInCasinoRequest,
 		messageType: websocket.TextMessage,
-		needAuth:    true,
+		needAuth:    false,
 	},
 }
 

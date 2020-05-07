@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"github.com/rs/zerolog/log"
 	"platform-backend/casino"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
@@ -42,7 +43,6 @@ func ProcessNewGameRequest(context context.Context, req *ws_interface.ApiRequest
 	session, err := req.UseCases.GameSession.NewSession(
 		context, cas, game,
 		req.User, payload.Deposit,
-		payload.ActionType, payload.ActionParams,
 	)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
@@ -56,6 +56,19 @@ func ProcessNewGameRequest(context context.Context, req *ws_interface.ApiRequest
 	})
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+	}
+
+	// try to instantly make first game action
+	err = req.UseCases.GameSession.GameAction(context, session.ID, payload.ActionType, payload.ActionParams)
+	if err != nil { // if error just save action to db
+		log.Debug().Msgf("Instant first action failed, saving action params for session: %d", session.ID)
+		err = req.Repos.GameSession.AddFirstGameAction(context, session.ID, &models.GameAction{
+			Type:   payload.ActionType,
+			Params: payload.ActionParams,
+		})
+		if err != nil {
+			return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+		}
 	}
 
 	return session, nil

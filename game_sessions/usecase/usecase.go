@@ -48,7 +48,7 @@ func NewGameSessionsUseCase(
 func (a *GameSessionsUseCase) NewSession(
 	ctx context.Context, casino *models.Casino,
 	game *models.Game, user *models.User,
-	deposit string, actionType uint16, actionParams []uint64,
+	deposit string,
 ) (*models.GameSession, error) {
 	api := a.bc.Api
 
@@ -129,12 +129,6 @@ func (a *GameSessionsUseCase) NewSession(
 	}
 
 	if err := a.repo.AddGameSession(ctx, gameSession); err != nil {
-		return nil, err
-	}
-
-	// make game action
-	err = a.GameAction(ctx, sessionId, actionType, actionParams)
-	if err != nil {
 		return nil, err
 	}
 
