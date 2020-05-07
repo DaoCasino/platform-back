@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/kelseyhightower/envconfig"
 	"io/ioutil"
+	"os"
 )
 
 type DbConfig struct {
@@ -57,13 +58,14 @@ type Config struct {
 }
 
 func Read(fileName string) (*Config, error) {
-	data, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
 	appConfig := &Config{}
-	err = json.Unmarshal(data, appConfig)
-	if err != nil {
+	data, err := ioutil.ReadFile(fileName)
+	if err == nil  {
+		err = json.Unmarshal(data, appConfig)
+		if err != nil {
+			return nil, err
+		}
+	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
 	err = envconfig.Process("", appConfig)
