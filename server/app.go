@@ -136,7 +136,7 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	bc, err := blockchain.Init(&config.BlockchainConfig)
+	bc, err := blockchain.Init(&config.Blockchain)
 	if err != nil {
 		log.Fatal().Msgf("Blockchain init error, %s", err.Error())
 		return nil, err
@@ -145,7 +145,7 @@ func NewApp(config *config.Config) (*App, error) {
 	smRepo := smLocalRepo.NewLocalRepository()
 
 	repos := repositories.NewRepositories(
-		casinoBcRepo.NewCasinoBlockchainRepo(bc, config.BlockchainConfig.Contracts.Platform),
+		casinoBcRepo.NewCasinoBlockchainRepo(bc, config.Blockchain.Contracts.Platform),
 		gameSesssionPgRepo.NewGameSessionsPostgresRepo(db.DbPool),
 	)
 
@@ -153,21 +153,21 @@ func NewApp(config *config.Config) (*App, error) {
 		authUC.NewAuthUseCase(
 			authPgRepo.NewUserPostgresRepo(db.DbPool),
 			smRepo,
-			[]byte(config.AuthConfig.JwtSecret),
-			config.AuthConfig.AccessTokenTTL,
-			config.AuthConfig.RefreshTokenTTL,
+			[]byte(config.Auth.JwtSecret),
+			config.Auth.AccessTokenTTL,
+			config.Auth.RefreshTokenTTL,
 		),
 		gameSessionUC.NewGameSessionsUseCase(
 			bc,
 			repos.GameSession,
 			repos.Casino,
-			config.BlockchainConfig.Contracts.Platform,
-			config.CasinoBackendConfig.Url,
+			config.Blockchain.Contracts.Platform,
+			config.Casino.Url,
 		),
 		signidiceUC.NewSignidiceUseCase(
 			bc,
-			config.BlockchainConfig.Contracts.Platform,
-			config.SignidiceConfig.KeyPath,
+			config.Blockchain.Contracts.Platform,
+			config.Signidice.Key,
 		),
 	)
 
@@ -232,8 +232,8 @@ func startHttpServer(a *App, ctx context.Context) error {
 }
 
 func startAmc(a *App, ctx context.Context) error {
-	listener := eventlistener.NewEventListener(a.config.AmcConfig.Url, a.events)
-	log.Info().Msgf("Connecting to the action monitor on %s", a.config.AmcConfig.Url)
+	listener := eventlistener.NewEventListener(a.config.Amc.Url, a.events)
+	log.Info().Msgf("Connecting to the action monitor on %s", a.config.Amc.Url)
 
 	if err := listener.ListenAndServe(ctx); err != nil {
 		log.Error().Msgf("Action monitor connect error: %v", err)

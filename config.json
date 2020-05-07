@@ -1,18 +1,18 @@
 {
   "loglevel": "debug",
   "port": "8080",
-  "dbConfig": {
+  "db": {
     "url": "postgresql://postgres:postgres@localhost:5555/test_platform",
     "maxPoolConns": 10,
     "minPoolConns": 1
   },
-  "amcConfig": {
+  "amc": {
     "url": "localhost:8889"
   },
-  "casinoBackendConfig": {
+  "casino": {
     "url": "http://localhost:4444"
   },
-  "blockchainConfig": {
+  "blockchain": {
     "nodeUrl": "https://api.daobet.org",
     "sponsorUrl": "http://localhost:3333",
     "contracts": {
@@ -26,9 +26,9 @@
     "disableSponsor": false
   },
   "signidice": {
-    "keyPath": "./signidice.pem"
+    "key": "base64 encoded pem key"
   },
-  "authConfig": {
+  "auth": {
     "jwtSecret": "top_secret",
     "accessTokenTTL": 1800,
     "refreshTokenTTL": 86400
