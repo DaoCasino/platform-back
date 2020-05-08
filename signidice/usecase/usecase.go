@@ -10,7 +10,6 @@ import (
 	"encoding/pem"
 	"github.com/eoscanada/eos-go"
 	"github.com/rs/zerolog/log"
-	"io/ioutil"
 	"platform-backend/blockchain"
 )
 
@@ -23,14 +22,15 @@ type SignidiceUseCase struct {
 func NewSignidiceUseCase(
 	bc *blockchain.Blockchain,
 	platformAccountName string,
-	rsaKeyPath string,
+	rsaBase64 string,
 ) *SignidiceUseCase {
-	data, err := ioutil.ReadFile(rsaKeyPath)
+	rsaPem, err := base64.StdEncoding.DecodeString(rsaBase64)
 	if err != nil {
-		log.Panic().Msgf("Cannot read rsa key file: %s", err.Error())
+		log.Panic().Msgf("Cannot decode rsa key: %s", err.Error())
 		return nil
 	}
-	block, _ := pem.Decode(data)
+
+	block, _ := pem.Decode(rsaPem)
 	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
 		log.Panic().Msgf("Cannot parse PKCS1 private key: %s", err.Error())

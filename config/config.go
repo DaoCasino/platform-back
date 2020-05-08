@@ -2,7 +2,9 @@ package config
 
 import (
 	"encoding/json"
+	"github.com/kelseyhightower/envconfig"
 	"io/ioutil"
+	"os"
 )
 
 type DbConfig struct {
@@ -41,27 +43,32 @@ type CasinoBackendConfig struct {
 }
 
 type SignidiceConfig struct {
-	KeyPath string `json:"keyPath"`
+	Key string `json:"key"`
 }
 
 type Config struct {
-	DbConfig            DbConfig            `json:"dbConfig"`
-	AmcConfig           AmcConfig           `json:"amcConfig"`
-	CasinoBackendConfig CasinoBackendConfig `json:"casinoBackendConfig"`
-	BlockchainConfig    BlockchainConfig    `json:"blockchainConfig"`
-	AuthConfig          AuthConfig          `json:"authConfig"`
-	SignidiceConfig     SignidiceConfig     `json:"signidice"`
-	LogLevel            string              `json:"loglevel"`
-	Port                string              `json:"port"`
+	DbConfig   DbConfig            `json:"db"`
+	Amc        AmcConfig           `json:"amc"`
+	Casino     CasinoBackendConfig `json:"casino"`
+	Blockchain BlockchainConfig    `json:"blockchain"`
+	Auth       AuthConfig          `json:"auth"`
+	Signidice  SignidiceConfig     `json:"signidice"`
+	LogLevel   string              `json:"loglevel"`
+	Port       string              `json:"port"`
 }
 
-func FromFile(fileName string) (*Config, error) {
+func Read(fileName string) (*Config, error) {
+	appConfig := &Config{}
 	data, err := ioutil.ReadFile(fileName)
-	if err != nil {
+	if err == nil  {
+		err = json.Unmarshal(data, appConfig)
+		if err != nil {
+			return nil, err
+		}
+	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
-	appConfig := &Config{}
-	err = json.Unmarshal(data, appConfig)
+	err = envconfig.Process("", appConfig)
 	if err != nil {
 		return nil, err
 	}

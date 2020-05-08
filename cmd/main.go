@@ -13,7 +13,7 @@ func main() {
 		confPath = "config.json"
 	}
 
-	appConfig, err := config.FromFile(confPath)
+	appConfig, err := config.Read(confPath)
 	if err != nil {
 		log.Fatalf("%s", err.Error())
 	}
