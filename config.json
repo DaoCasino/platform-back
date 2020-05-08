@@ -7,7 +7,9 @@
     "minPoolConns": 1
   },
   "amc": {
-    "url": "localhost:8889"
+    "url": "localhost:8889",
+    "reconnectionAttempts": 5,
+    "reconnectionDelay": 5
   },
   "casino": {
     "url": "http://localhost:4444"

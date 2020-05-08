@@ -233,27 +233,26 @@ func startHttpServer(a *App, ctx context.Context) error {
 
 func startAmc(a *App, ctx context.Context) error {
 	listener := eventlistener.NewEventListener(a.config.Amc.Url, a.events)
-	log.Info().Msgf("Connecting to the action monitor on %s", a.config.Amc.Url)
+	// setup reconnection options
+	listener.ReconnectionAttempts = a.config.Amc.ReconnectionAttempts
+	listener.ReconnectionDelay = time.Duration(a.config.Amc.ReconnectionDelay)
 
-	if err := listener.ListenAndServe(ctx); err != nil {
-		log.Error().Msgf("Action monitor connect error: %v", err)
-		return err
-	}
+	log.Info().Msgf("Connecting to the action monitor on %s", a.config.Amc.Url)
 
 	if a.config.LogLevel == "debug" {
 		eventlistener.EnableDebugLogging()
 	}
 
-	log.Info().Msgf("Connected to the action monitor")
+	go listener.Run(ctx)
 
-	// subscription should be in another routine
-	go func() {
-		for _, eventType := range eventprocessor.GetEventsToSubscribe() {
-			if ok, err := listener.Subscribe(eventType, 0); err != nil || !ok {
-				log.Fatal().Msgf("Action monitor subscribe to %d error: %v", eventType, err)
-			}
+	// App will not start till subscribed to every events
+	for _, eventType := range eventprocessor.GetEventsToSubscribe() {
+		if ok, err := listener.Subscribe(eventType, 0); err != nil || !ok {
+			log.Fatal().Msgf("Action monitor subscribe to %d error: %v", eventType, err)
 		}
-	}()
+	}
+
+	log.Info().Msgf("Subscribed to all events!")
 
 	for {
 		select {
