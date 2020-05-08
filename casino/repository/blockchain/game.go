@@ -2,20 +2,22 @@ package blockchain
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/eoscanada/eos-go"
+	"platform-backend/blockchain"
 	"platform-backend/casino"
 	"platform-backend/models"
 	"strconv"
 )
 
 type Game struct {
-	Id           uint64 `json:"id"`
-	Contract     string `json:"contract"`
-	ParamsCnt    uint16 `json:"params_cnt"`
-	Paused       int    `json:"paused"`
-	ProfitMargin uint32 `json:"profit_margin"`
-	Beneficiary  string `json:"beneficiary"`
-	Meta         []byte `json:"bytes"`
+	Id           uint64               `json:"id"`
+	Contract     string               `json:"contract"`
+	ParamsCnt    uint16               `json:"params_cnt"`
+	Paused       int                  `json:"paused"`
+	ProfitMargin uint32               `json:"profit_margin"`
+	Beneficiary  string               `json:"beneficiary"`
+	Meta         blockchain.ByteArray `json:"meta"`
 }
 
 func (r *CasinoBlockchainRepo) GetGame(ctx context.Context, gameId uint64) (*models.Game, error) {
@@ -78,5 +80,6 @@ func toModelGame(g *Game) *models.Game {
 		Contract:  g.Contract,
 		ParamsCnt: g.ParamsCnt,
 		Paused:    g.Paused,
+		Meta:      json.RawMessage(g.Meta),
 	}
 }
