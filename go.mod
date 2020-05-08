@@ -3,7 +3,7 @@ module platform-backend
 go 1.14
 
 require (
-	github.com/DaoCasino/platform-action-monitor-client v0.0.0-20200410183228-95602487e795
+	github.com/DaoCasino/platform-action-monitor-client v1.0.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/eoscanada/eos-go v0.9.0
 	github.com/golang-migrate/migrate/v4 v4.10.0

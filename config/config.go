@@ -35,7 +35,9 @@ type AuthConfig struct {
 
 // Action monitor config
 type AmcConfig struct {
-	Url string `json:"url"`
+	Url                  string `json:"url"`
+	ReconnectionAttempts int    `default:"5" json:"reconnectionAttempts"`
+	ReconnectionDelay    int    `default:"5" json:"reconnectionDelay"`
 }
 
 type CasinoBackendConfig struct {
@@ -60,7 +62,7 @@ type Config struct {
 func Read(fileName string) (*Config, error) {
 	appConfig := &Config{}
 	data, err := ioutil.ReadFile(fileName)
-	if err == nil  {
+	if err == nil {
 		err = json.Unmarshal(data, appConfig)
 		if err != nil {
 			return nil, err

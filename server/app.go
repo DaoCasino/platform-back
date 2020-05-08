@@ -232,12 +232,12 @@ func startHttpServer(a *App, ctx context.Context) error {
 }
 
 func startAmc(a *App, ctx context.Context) error {
-	listener := eventlistener.NewEventListener(a.config.AmcConfig.Url, a.events)
+	listener := eventlistener.NewEventListener(a.config.Amc.Url, a.events)
 	// setup reconnection options
-	listener.ReconnectionAttempts = 5
-	listener.ReconnectionDelay = 5 * time.Second
+	listener.ReconnectionAttempts = a.config.Amc.ReconnectionAttempts
+	listener.ReconnectionDelay = time.Duration(a.config.Amc.ReconnectionDelay)
 
-	log.Info().Msgf("Connecting to the action monitor on %s", a.config.AmcConfig.Url)
+	log.Info().Msgf("Connecting to the action monitor on %s", a.config.Amc.Url)
 
 	if a.config.LogLevel == "debug" {
 		eventlistener.EnableDebugLogging()
