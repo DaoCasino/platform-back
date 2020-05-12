@@ -52,7 +52,7 @@ func (a *GameSessionsUseCase) NewSession(
 ) (*models.GameSession, error) {
 	api := a.bc.Api
 
-	sessionId := uint64(rand.Uint32())
+	sessionId := rand.Uint64()
 
 	from := eos.AccountName(user.AccountName)
 	to := eos.AccountName(game.Contract)
