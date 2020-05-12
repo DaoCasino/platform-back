@@ -210,6 +210,43 @@ func NewApp(config *config.Config) (*App, error) {
 	return app, nil
 }
 
+func startSessionsCleaner(a *App, ctx context.Context) error {
+	interval := a.config.ExpiredSessionsCleaner.Interval
+	if interval <= 0 {
+		log.Info().Msg("Sessions cleaner is disabled")
+		return nil
+	}
+
+	maxLastUpdate := time.Duration(a.config.ExpiredSessionsCleaner.MaxLastUpdate) * time.Second
+
+	log.Info().Msg("Sessions cleaner is started")
+	clean := func() error {
+		log.Info().Msg("Sessions cleaner is cleaning sessions...")
+		if err := a.useCases.GameSession.CleanExpiredSessions(ctx, maxLastUpdate); err != nil {
+			return err
+		}
+		log.Info().Msgf("Old sessions were cleaned! Next clean in %d seconds", interval)
+		return nil
+	}
+	if err := clean(); err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			if err := clean(); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			log.Info().Msg("Sessions cleaner is stopped")
+			return nil
+		}
+	}
+}
+
 func startHttpServer(a *App, ctx context.Context) error {
 	srv := &http.Server{Addr: ":" + a.config.Port, Handler: a.httpHandler}
 	log.Info().Msgf("Server is starting on %s port", a.config.Port)
@@ -283,6 +320,10 @@ func (a *App) Run() error {
 	errGroup.Go(func() error {
 		defer cancelRun()
 		return startAmc(a, runCtx)
+	})
+	errGroup.Go(func() error {
+		defer cancelRun()
+		return startSessionsCleaner(a, runCtx)
 	})
 
 	errGroup.Go(func() error {

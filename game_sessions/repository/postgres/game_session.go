@@ -12,7 +12,8 @@ import (
 const (
 	selectGameSessionByIdStmt    = "SELECT * FROM game_sessions WHERE id = $1"
 	selectGameSessionByBcIDStmt  = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
-	selectAllGameSessionsStmt    = "SELECT * FROM game_sessions WHERE player = $1"
+	selectUserGameSessionsStmt   = "SELECT * FROM game_sessions WHERE player = $1"
+	selectAllGameSessionsStmt    = "SELECT * FROM game_sessions"
 	selectFirstGameActionStmt    = "SELECT * FROM first_game_actions WHERE ses_id = $1"
 	updateSessionStateStmt       = "UPDATE game_sessions SET state = $2 WHERE id = $1"
 	updateSessionOffsetStmt      = "UPDATE game_sessions SET last_offset = $2 WHERE id = $1"
@@ -189,14 +190,47 @@ func (r *GameSessionsPostgresRepo) AddFirstGameAction(ctx context.Context, sesID
 	return nil
 }
 
-func (r *GameSessionsPostgresRepo) GetAllGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error) {
+func (r *GameSessionsPostgresRepo) GetUserGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error) {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Release()
 
-	rows, err := conn.Query(ctx, selectAllGameSessionsStmt, accountName)
+	rows, err := conn.Query(ctx, selectUserGameSessionsStmt, accountName)
+	if err != nil {
+		return nil, err
+	}
+
+	gameSessions := make([]*models.GameSession, 0)
+	for rows.Next() {
+		session := new(GameSession)
+		err = rows.Scan(
+			&session.ID,
+			&session.Player,
+			&session.GameID,
+			&session.CasinoID,
+			&session.BlockchainSesID,
+			&session.State,
+			&session.LastOffset,
+		)
+		if err != nil {
+			return nil, err
+		}
+		gameSessions = append(gameSessions, toModelGameSession(session))
+	}
+
+	return gameSessions, nil
+}
+
+func (r *GameSessionsPostgresRepo) GetAllGameSessions(ctx context.Context) ([]*models.GameSession, error) {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(ctx, selectAllGameSessionsStmt)
 	if err != nil {
 		return nil, err
 	}
