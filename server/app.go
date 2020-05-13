@@ -211,13 +211,14 @@ func NewApp(config *config.Config) (*App, error) {
 }
 
 func startSessionsCleaner(a *App, ctx context.Context) error {
-	interval := a.config.ExpiredSessionsCleaner.Interval
+	interval := a.config.SessionsCleaner.Interval
 	if interval <= 0 {
 		log.Info().Msg("Sessions cleaner is disabled")
+		<-ctx.Done()
 		return nil
 	}
 
-	maxLastUpdate := time.Duration(a.config.ExpiredSessionsCleaner.MaxLastUpdate) * time.Second
+	maxLastUpdate := time.Duration(a.config.SessionsCleaner.MaxLastUpdate) * time.Second
 
 	log.Info().Msg("Sessions cleaner is started")
 	clean := func() error {
@@ -225,7 +226,7 @@ func startSessionsCleaner(a *App, ctx context.Context) error {
 		if err := a.useCases.GameSession.CleanExpiredSessions(ctx, maxLastUpdate); err != nil {
 			return err
 		}
-		log.Info().Msgf("Old sessions were cleaned! Next clean in %d seconds", interval)
+		log.Info().Msgf("Old sessions were cleaned!")
 		return nil
 	}
 	if err := clean(); err != nil {

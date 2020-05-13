@@ -13,7 +13,7 @@ type DbConfig struct {
 	MinPoolConns int32  `json:"minPoolConns"`
 }
 
-type ExpiredSessionsCleaner struct {
+type SessionsCleaner struct {
 	Interval      int `json:"interval"`
 	MaxLastUpdate int `json:"maxLastUpdate"`
 }
@@ -54,15 +54,15 @@ type SignidiceConfig struct {
 }
 
 type Config struct {
-	DbConfig               DbConfig               `json:"db"`
-	Amc                    AmcConfig              `json:"amc"`
-	Casino                 CasinoBackendConfig    `json:"casino"`
-	ExpiredSessionsCleaner ExpiredSessionsCleaner `json:"expiredSessionsCleaner"`
-	Blockchain             BlockchainConfig       `json:"blockchain"`
-	Auth                   AuthConfig             `json:"auth"`
-	Signidice              SignidiceConfig        `json:"signidice"`
-	LogLevel               string                 `json:"loglevel"`
-	Port                   string                 `json:"port"`
+	DbConfig        DbConfig            `json:"db"`
+	Amc             AmcConfig           `json:"amc"`
+	Casino          CasinoBackendConfig `json:"casino"`
+	SessionsCleaner SessionsCleaner     `json:"sessionsCleaner"`
+	Blockchain      BlockchainConfig    `json:"blockchain"`
+	Auth            AuthConfig          `json:"auth"`
+	Signidice       SignidiceConfig     `json:"signidice"`
+	LogLevel        string              `json:"loglevel"`
+	Port            string              `json:"port"`
 }
 
 func Read(fileName string) (*Config, error) {

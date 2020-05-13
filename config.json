@@ -14,7 +14,7 @@
   "casino": {
     "url": "http://localhost:4444"
   },
-  "expiredSessionsCleaner": {
+  "sessionsCleaner": {
     "interval": 60,
     "maxLastUpdate": 600
   },
