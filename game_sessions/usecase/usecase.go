@@ -45,6 +45,77 @@ func NewGameSessionsUseCase(
 	}
 }
 
+func (a *GameSessionsUseCase) CleanExpiredSessions(
+	ctx context.Context,
+	maxLastUpdate time.Duration,
+) error {
+	games, err := a.casinoRepo.AllGames(ctx)
+	if err != nil {
+		return err
+	}
+	for _, game := range games {
+		resp, err := a.bc.Api.GetTableRows(eos.GetTableRowsRequest{
+			Code:  game.Contract,
+			Scope: game.Contract,
+			Table: "session",
+			Limit: 1000,
+			JSON:  true,
+		})
+		if err != nil {
+			return err
+		}
+
+		sessions := &[]models.ContractSession{}
+		err = resp.JSONToStructs(sessions)
+		if err != nil {
+			return err
+		}
+
+		for _, session := range *sessions {
+			lastUpdate, err := time.Parse("2006-01-02T15:04:05.000", session.LastUpdate)
+			if err != nil {
+				return err
+			}
+			if time.Now().After(lastUpdate.Add(maxLastUpdate)) {
+				// Session is expired!
+
+				txOpts := a.bc.GetTrxOpts()
+				if err := txOpts.FillFromChain(a.bc.Api); err != nil {
+					return err
+				}
+				closeAction := &eos.Action{
+					Account: eos.AN(game.Contract),
+					Name:    eos.ActN("close"),
+					Authorization: []eos.PermissionLevel{
+						{Actor: eos.AN(a.platformContract), Permission: eos.PN("gameaction")},
+					},
+					ActionData: eos.NewActionData(struct {
+						ReqId uint64 `json:"req_id"`
+					}{ReqId: session.ReqId}),
+				}
+				tx := eos.NewTransaction([]*eos.Action{closeAction}, txOpts)
+				notSigned := eos.NewSignedTransaction(tx)
+
+				requiredKeys := []ecc.PublicKey{a.bc.PubKeys.GameAction}
+				signedTrx, err := a.bc.Api.Signer.Sign(notSigned, a.bc.ChainId, requiredKeys...)
+				if err != nil {
+					return err
+				}
+				packedTrx, err := signedTrx.Pack(eos.CompressionNone)
+				if err != nil {
+					return err
+				}
+				if _, err := a.bc.Api.PushTransaction(packedTrx); err != nil {
+					// Do not return error, because it can be caused by bug in contract
+					// So just log it and ignore
+					log.Error().Msgf("EXP_CLEAN: transaction error: %s", err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (a *GameSessionsUseCase) NewSession(
 	ctx context.Context, casino *models.Casino,
 	game *models.Game, user *models.User,

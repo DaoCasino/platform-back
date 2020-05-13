@@ -3,9 +3,15 @@ package gamesessions
 import (
 	"context"
 	"platform-backend/models"
+	"time"
 )
 
 type UseCase interface {
+	CleanExpiredSessions(
+		ctx context.Context,
+		maxLastUpdate time.Duration,
+	) error
+
 	NewSession(
 		ctx context.Context,
 		casino *models.Casino,

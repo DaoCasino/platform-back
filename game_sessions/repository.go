@@ -12,7 +12,8 @@ type Repository interface {
 	UpdateSessionState(ctx context.Context, id uint64, state models.GameSessionState) error
 	UpdateSessionOffset(ctx context.Context, id uint64, offset uint64) error
 	AddGameSession(ctx context.Context, ses *models.GameSession) error
-	GetAllGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error)
+	GetUserGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error)
+	GetAllGameSessions(ctx context.Context) ([]*models.GameSession, error)
 	DeleteGameSession(ctx context.Context, id uint64) error
 
 	GetFirstAction(ctx context.Context, sesID uint64) (*models.GameAction, error)

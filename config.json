@@ -14,6 +14,10 @@
   "casino": {
     "url": "http://localhost:4444"
   },
+  "sessionsCleaner": {
+    "interval": 60,
+    "maxLastUpdate": 600
+  },
   "blockchain": {
     "nodeUrl": "https://api.daobet.org",
     "sponsorUrl": "http://localhost:3333",

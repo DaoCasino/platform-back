@@ -76,18 +76,28 @@ func (r *GameSessionsLocalRepo) AddGameSession(ctx context.Context, ses *models.
 	return nil
 }
 
-func (r *GameSessionsLocalRepo)  AddFirstGameAction(ctx context.Context, sesID uint64, action *models.GameAction) error {
+func (r *GameSessionsLocalRepo) AddFirstGameAction(ctx context.Context, sesID uint64, action *models.GameAction) error {
 	r.firstGameActions[sesID] = action
 	return nil
 }
 
-func (r *GameSessionsLocalRepo) GetAllGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error) {
+func (r *GameSessionsLocalRepo) GetUserGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error) {
 	var sessions []*models.GameSession
 
 	for _, ses := range r.gameSessions {
 		if ses.Player == accountName {
 			sessions = append(sessions, toModelGameSession(ses))
 		}
+	}
+
+	return sessions, nil
+}
+
+func (r *GameSessionsLocalRepo) GetAllGameSessions(ctx context.Context) ([]*models.GameSession, error) {
+	var sessions []*models.GameSession
+
+	for _, ses := range r.gameSessions {
+		sessions = append(sessions, toModelGameSession(ses))
 	}
 
 	return sessions, nil
