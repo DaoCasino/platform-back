@@ -12,9 +12,12 @@ require (
 	github.com/jackc/pgtype v1.2.0
 	github.com/jackc/pgx/v4 v4.5.0
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/machinebox/graphql v0.2.2
+	github.com/matryer/is v1.3.0 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/rs/zerolog v1.18.0
 	github.com/stretchr/testify v1.5.1
 	go.uber.org/atomic v1.6.0
+	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
 )

@@ -2,13 +2,17 @@ package usecase
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
+	"github.com/machinebox/graphql"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/crypto/sha3"
 	"platform-backend/auth"
 	"platform-backend/models"
 	"platform-backend/server/session_manager"
+	"strconv"
 	"time"
 )
 
@@ -18,17 +22,80 @@ type AuthUseCase struct {
 	jwtSecret       []byte
 	refreshTokenTTL int64
 	accessTokenTTL  int64
+
+	walletGqClient     *graphql.Client
+	walletClientId     int64
+	walletClientSecret string
 }
 
 func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository,
-	jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64) *AuthUseCase {
+	jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64,
+	walletUrl string, walletClientId int64, walletClientSecret string) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:        userRepo,
 		smRepo:          smRepo,
 		jwtSecret:       jwtSecret,
 		accessTokenTTL:  accessTokenTTL,
 		refreshTokenTTL: refreshTokenTTL,
+
+		walletGqClient:     graphql.NewClient(walletUrl),
+		walletClientId:     walletClientId,
+		walletClientSecret: walletClientSecret,
 	}
+}
+
+func (a *AuthUseCase) ResolveUser(ctx context.Context, tmpToken string) (*models.User, error) {
+	request := graphql.NewRequest(`
+		mutation TokenValidate($token: String!, $client_id: Int!, $sign: String!) {
+		  	tokenValidate(data: { key: $token client_id: $client_id }, sign: $sign) {
+			  	result attachment user { email ref_token kyc_status account_name }
+		  	}
+	  	}
+	`)
+
+	request.Var("token", tmpToken)
+	request.Var("client_id", a.walletClientId)
+
+	// wallet require data hash salted with secret
+	hash := sha3.NewLegacyKeccak256()
+	strForHash := strconv.FormatInt(a.walletClientId, 10) + tmpToken + a.walletClientSecret
+	_, err := hash.Write([]byte(strForHash))
+	if err != nil {
+		return nil, err
+	}
+
+	request.Var("sign", hex.EncodeToString(hash.Sum(nil)))
+
+	response := &struct {
+		TokenValidate struct {
+			User struct {
+				ID          int64  `json:"Id"`
+				Email       string `json:"email"`
+				AccountName string `json:"account_name"`
+				RefToken    string `json:"ref_token"`
+				KycStatus   string `json:"kyc_status"`
+			} `json:"user"`
+		} `json:"tokenValidate"`
+	}{}
+
+	err = a.walletGqClient.Run(ctx, request, response)
+	if err != nil {
+		log.Debug().Msgf("TokenValidate request error: %s", err.Error())
+		return nil, err
+	}
+
+	if response.TokenValidate.User.AccountName == "" {
+		return nil, errors.New("got empty account name from wallet")
+	}
+
+	if response.TokenValidate.User.Email == "" {
+		return nil, errors.New("got empty email from wallet")
+	}
+
+	return &models.User{
+		AccountName: response.TokenValidate.User.AccountName,
+		Email:       response.TokenValidate.User.Email,
+	}, nil
 }
 
 func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User) (string, string, error) {
