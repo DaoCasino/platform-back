@@ -29,7 +29,8 @@ type BlockchainConfig struct {
 		GameAction string `json:"gameaction"`
 		SigniDice  string `json:"signidice"`
 	} `json:"permissions"`
-	DisableSponsor bool `json:"disableSponsor"`
+	DisableSponsor  bool `json:"disableSponsor"`
+	TrxPushAttempts int  `default:"5" json:"trxPushAttempts"`
 }
 
 type AuthConfig struct {

@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"github.com/eoscanada/eos-go"
+	"github.com/eoscanada/eos-go/ecc"
 	"github.com/rs/zerolog/log"
 	"platform-backend/blockchain"
 )
@@ -60,7 +61,7 @@ func (a *SignidiceUseCase) PerformSignidice(ctx context.Context, gameName string
 		return err
 	}
 
-	action := eos.Action{
+	action := &eos.Action{
 		Account: eos.AN(gameName),
 		Name:    eos.ActN("sgdicefirst"),
 		Authorization: []eos.PermissionLevel{
@@ -75,27 +76,11 @@ func (a *SignidiceUseCase) PerformSignidice(ctx context.Context, gameName string
 		}),
 	}
 
-	txOpts := a.bc.GetTrxOpts()
-	if err := txOpts.FillFromChain(a.bc.Api); err != nil {
-		return err
-	}
-
-	tx := eos.NewTransaction([]*eos.Action{&action}, txOpts)
-
-	signedTrx, err := a.bc.Api.Signer.Sign(eos.NewSignedTransaction(tx), a.bc.ChainId, a.bc.PubKeys.SigniDice)
-	if err != nil {
-		return err
-	}
-
-	packedTrx, err := signedTrx.Pack(eos.CompressionNone)
-	if err != nil {
-		return err
-	}
-
-	_, err = a.bc.Api.PushTransaction(packedTrx)
-	if err != nil {
-		return err
-	}
+	_, err = a.bc.PushTransaction(
+		[]*eos.Action{action},
+		[]ecc.PublicKey{a.bc.PubKeys.SigniDice},
+		false,
+	)
 
 	return nil
 }
