@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	gamesessions "platform-backend/game_sessions"
 	"platform-backend/server/api/ws_interface"
 )
 
@@ -18,6 +19,9 @@ func ProcessFetchSessionUpdatesRequest(context context.Context, req *ws_interfac
 	}
 
 	gameSession, err := req.Repos.GameSession.GetGameSession(context, payload.SessionId)
+	if err == gamesessions.ErrGameSessionNotFound {
+		return nil, ws_interface.NewHandlerError(ws_interface.SessionNotFoundError, err)
+	}
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}

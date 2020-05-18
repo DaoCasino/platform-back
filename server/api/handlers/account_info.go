@@ -6,7 +6,7 @@ import (
 )
 
 func ProcessAccountInfo(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
-	player, err := req.Repos.Casino.GetPlayerInfo(context, req.User.AccountName)
+	player, err := req.Repos.Contracts.GetPlayerInfo(context, req.User.AccountName)
 
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)

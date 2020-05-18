@@ -13,7 +13,7 @@ type AuthPayload struct {
 func ProcessAuthRequest(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
 	var payload AuthPayload
 	if err := json.Unmarshal(req.Data.Payload, &payload); err != nil {
-		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+		return nil, ws_interface.NewHandlerError(ws_interface.RequestParseError, err)
 	}
 
 	user, err := req.UseCases.Auth.SignIn(context, payload.Token)

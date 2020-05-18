@@ -4,26 +4,26 @@ import (
 	"context"
 	"github.com/eoscanada/eos-go"
 	"platform-backend/blockchain"
-	"platform-backend/casino"
+	"platform-backend/contracts"
 	"platform-backend/models"
 	"strconv"
 )
 
 type Casino struct {
-	Id        uint64 `json:"id"`
-	Contract  string `json:"contract"`
-	Paused    int    `json:"paused"`
-	RsaPubkey string `json:"rsa_pubkey"`
-	Meta      []byte `json:"bytes"`
+	Id        eos.Uint64 `json:"id"`
+	Contract  string     `json:"contract"`
+	Paused    int        `json:"paused"`
+	RsaPubkey string     `json:"rsa_pubkey"`
+	Meta      []byte     `json:"bytes"`
 }
 
 type GameParam struct {
-	Type  uint16 `json:"first"`
-	Value uint64 `json:"second"`
+	Type  uint16     `json:"first"`
+	Value eos.Uint64 `json:"second"`
 }
 
 type CasinoGame struct {
-	Id     uint64      `json:"game_id"`
+	Id     eos.Uint64  `json:"game_id"`
 	Paused int         `json:"paused"`
 	Params []GameParam `json:"params"`
 }
@@ -87,8 +87,8 @@ func (r *CasinoBlockchainRepo) GetCasino(ctx context.Context, casinoId uint64) (
 		return nil, err
 	}
 
-	if len(casinos) == 0 || casinos[0].Id != casinoId {
-		return nil, casino.CasinoNotFound
+	if len(casinos) == 0 || uint64(casinos[0].Id) != casinoId {
+		return nil, contracts.CasinoNotFound
 	}
 
 	return toModelCasino(casinos[0]), nil
@@ -123,7 +123,7 @@ func (r *CasinoBlockchainRepo) GetCasinoGames(ctx context.Context, casinoName st
 
 func toModelCasino(c *Casino) *models.Casino {
 	return &models.Casino{
-		Id:       c.Id,
+		Id:       uint64(c.Id),
 		Contract: c.Contract,
 		Paused:   !(c.Paused == 0),
 	}
@@ -135,12 +135,12 @@ func toModelCasinoGame(game *CasinoGame) *models.CasinoGame {
 	for _, param := range game.Params {
 		params = append(params, models.GameParam{
 			Type:  param.Type,
-			Value: param.Value,
+			Value: uint64(param.Value),
 		})
 	}
 
 	return &models.CasinoGame{
-		Id:     game.Id,
+		Id:     uint64(game.Id),
 		Paused: !(game.Paused == 0),
 		Params: params,
 	}

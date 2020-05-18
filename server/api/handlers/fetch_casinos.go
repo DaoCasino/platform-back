@@ -6,7 +6,7 @@ import (
 )
 
 func ProcessFetchCasinosRequest(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
-	casinos, err := req.Repos.Casino.AllCasinos(context)
+	casinos, err := req.Repos.Contracts.AllCasinos(context)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}

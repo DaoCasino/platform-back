@@ -1,4 +1,4 @@
-package casino
+package contracts
 
 import (
 	"context"

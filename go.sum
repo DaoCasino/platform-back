@@ -41,6 +41,8 @@ github.com/ClickHouse/clickhouse-go v1.3.12/go.mod h1:EaI/sW7Azgz9UATzd5ZdZHRUhH
 github.com/DaoCasino/platform-action-monitor-client v0.0.0-20200410183228-95602487e795/go.mod h1:YxQzP8t+pdya1eeKRWf+5oLxhqtV2FXQTEqSH63vh0E=
 github.com/DaoCasino/platform-action-monitor-client v1.0.0 h1:iaUHUNIa6UYEQphYwMZsju5nLu/CYiYLQIeIHq4wq2w=
 github.com/DaoCasino/platform-action-monitor-client v1.0.0/go.mod h1:nHT42TvSDrFQIoRkSQphVD7DDxNPwC7RqXQwmIW0l5s=
+github.com/DaoCasino/platform-action-monitor-client v1.0.1-0.20200515085228-967d424405ed h1:JwoNpwbyWH36qcLwyuWxBZHsAcuNiLsQZ0hvKDeyar4=
+github.com/DaoCasino/platform-action-monitor-client v1.0.1-0.20200515085228-967d424405ed/go.mod h1:nHT42TvSDrFQIoRkSQphVD7DDxNPwC7RqXQwmIW0l5s=
 github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/Microsoft/go-winio v0.4.14 h1:+hMXMk01us9KgxGb7ftKQt2Xpf5hH/yky+TDA+qxleU=
 github.com/Microsoft/go-winio v0.4.14/go.mod h1:qXqCSQ3Xa7+6tgxaGTIe4Kpcdsi+P8jBhyzoq1bpyYA=

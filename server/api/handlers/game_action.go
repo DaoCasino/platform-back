@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
 )
@@ -20,22 +21,16 @@ func ProcessGameActionRequest(context context.Context, req *ws_interface.ApiRequ
 		return nil, ws_interface.NewHandlerError(ws_interface.RequestParseError, err)
 	}
 
-	has, err := req.Repos.GameSession.HasGameSession(context, payload.SessionId)
-	if err != nil {
-		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
-	}
-
-	if !has {
-		return nil, ws_interface.NewHandlerError(ws_interface.ContentNotFoundError, errors.New("game session not found"))
-	}
-
 	session, err := req.Repos.GameSession.GetGameSession(context, payload.SessionId)
+	if err == gamesessions.ErrGameSessionNotFound {
+		return nil, ws_interface.NewHandlerError(ws_interface.SessionNotFoundError, err)
+	}
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
 	if session.State != models.RequestedGameAction {
-		return nil, ws_interface.NewHandlerError(ws_interface.BadRequest, errors.New("attempt to action while invalid state"))
+		return nil, ws_interface.NewHandlerError(ws_interface.SessionInvalidStateError, errors.New("attempt to action while invalid state"))
 	}
 
 	if req.User.AccountName != session.Player {

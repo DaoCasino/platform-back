@@ -97,7 +97,7 @@ func onSignidicePartOneRequest(ctx context.Context, p *EventProcessor, event *ev
 		return err
 	}
 
-	game, err := p.repos.Casino.GetGame(ctx, gs.GameID)
+	game, err := p.repos.Contracts.GetGame(ctx, gs.GameID)
 	if err != nil {
 		return err
 	}

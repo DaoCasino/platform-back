@@ -54,7 +54,7 @@ type SignidiceConfig struct {
 }
 
 type Config struct {
-	DbConfig        DbConfig            `json:"db"`
+	Db              DbConfig            `json:"db"`
 	Amc             AmcConfig           `json:"amc"`
 	Casino          CasinoBackendConfig `json:"casino"`
 	SessionsCleaner SessionsCleaner     `json:"sessionsCleaner"`
