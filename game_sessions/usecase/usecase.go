@@ -150,7 +150,7 @@ func (a *GameSessionsUseCase) NewSession(
 		Account: eos.AN(game.Contract),
 		Name:    eos.ActN("newgame"),
 		Authorization: []eos.PermissionLevel{
-			{Actor: from, Permission: eos.PN("game")},
+			{Actor: eos.AN(a.platformContract), Permission: eos.PN("gameaction")},
 		},
 		ActionData: eos.NewActionData(struct {
 			ReqId    uint64 `json:"req_id"`
@@ -226,8 +226,8 @@ func (a *GameSessionsUseCase) GameAction(
 		Account: eos.AN(game.Contract),
 		Name:    eos.ActN("gameaction"),
 		Authorization: []eos.PermissionLevel{{
-			Actor:      eos.AN(gs.Player),
-			Permission: eos.PN("game"),
+			Actor:      eos.AN(a.platformContract),
+			Permission: eos.PN("gameaction"),
 		}},
 		ActionData: eos.NewActionData(struct {
 			SessionId    uint64   `json:"ses_id"`
