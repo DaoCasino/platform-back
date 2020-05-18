@@ -41,7 +41,7 @@ var handlersMap = map[string]RequestHandlerInfo{
 	"account_info": {
 		handler:     handlers.ProcessAccountInfo,
 		messageType: websocket.TextMessage,
-		needAuth:    false,
+		needAuth:    true,
 	},
 	"subscribe": {
 		handler:     handlers.ProcessSubscribeRequest,
