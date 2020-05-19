@@ -127,6 +127,11 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(response)
 }
 
+func pingHandler(w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New ping request")
+	w.WriteHeader(http.StatusOK)
+}
+
 func NewApp(config *config.Config) (*App, error) {
 	logger.InitLogger(config.LogLevel)
 
@@ -202,6 +207,7 @@ func NewApp(config *config.Config) (*App, error) {
 	mux.Handle("/connect", wsHandler)
 	mux.HandleFunc("/auth", authHandler)
 	mux.HandleFunc("/refresh_token", refreshTokensHandler)
+	mux.HandleFunc("/ping", pingHandler)
 
 	app.httpHandler = cors.Default().Handler(mux)
 
