@@ -10,10 +10,11 @@ import (
 	"github.com/eoscanada/eos-go/ecc"
 	"github.com/eoscanada/eos-go/token"
 	"github.com/rs/zerolog/log"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"platform-backend/blockchain"
-	"platform-backend/casino"
+	"platform-backend/contracts"
 	"platform-backend/game_sessions"
 	"platform-backend/models"
 	"strconv"
@@ -23,7 +24,7 @@ import (
 type GameSessionsUseCase struct {
 	bc               *blockchain.Blockchain
 	repo             gamesessions.Repository
-	casinoRepo       casino.Repository
+	contractsRepo    contracts.Repository
 	platformContract string
 	casinoBackendUrl string
 }
@@ -31,7 +32,7 @@ type GameSessionsUseCase struct {
 func NewGameSessionsUseCase(
 	bc *blockchain.Blockchain,
 	repo gamesessions.Repository,
-	casinoRepo casino.Repository,
+	contractsRepo contracts.Repository,
 	platformContract string,
 	casinoBackendUrl string,
 ) *GameSessionsUseCase {
@@ -39,17 +40,23 @@ func NewGameSessionsUseCase(
 	return &GameSessionsUseCase{
 		bc:               bc,
 		repo:             repo,
-		casinoRepo:       casinoRepo,
+		contractsRepo:    contractsRepo,
 		platformContract: platformContract,
 		casinoBackendUrl: casinoBackendUrl,
 	}
+}
+
+// session in game contract(parse only used fields)
+type gameSession struct {
+	ReqId      eos.Uint64 `json:"req_id"`
+	LastUpdate string     `json:"last_update"`
 }
 
 func (a *GameSessionsUseCase) CleanExpiredSessions(
 	ctx context.Context,
 	maxLastUpdate time.Duration,
 ) error {
-	games, err := a.casinoRepo.AllGames(ctx)
+	games, err := a.contractsRepo.AllGames(ctx)
 	if err != nil {
 		return err
 	}
@@ -65,7 +72,7 @@ func (a *GameSessionsUseCase) CleanExpiredSessions(
 			return err
 		}
 
-		sessions := &[]models.ContractSession{}
+		sessions := &[]gameSession{}
 		err = resp.JSONToStructs(sessions)
 		if err != nil {
 			return err
@@ -91,7 +98,7 @@ func (a *GameSessionsUseCase) CleanExpiredSessions(
 					},
 					ActionData: eos.NewActionData(struct {
 						ReqId uint64 `json:"req_id"`
-					}{ReqId: session.ReqId}),
+					}{ReqId: uint64(session.ReqId)}),
 				}
 				tx := eos.NewTransaction([]*eos.Action{closeAction}, txOpts)
 				notSigned := eos.NewSignedTransaction(tx)
@@ -108,7 +115,7 @@ func (a *GameSessionsUseCase) CleanExpiredSessions(
 				if _, err := a.bc.Api.PushTransaction(packedTrx); err != nil {
 					// Do not return error, because it can be caused by bug in contract
 					// So just log it and ignore
-					log.Error().Msgf("EXP_CLEAN: transaction error: %s", err)
+					log.Warn().Msgf("EXP_CLEAN: transaction error: %s", err)
 				}
 			}
 		}
@@ -185,8 +192,9 @@ func (a *GameSessionsUseCase) NewSession(
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Error().Msgf("deposit error from casino: %s", resp.Status)
-		return nil, errors.New("casino error: " + resp.Status)
+		errBody, _ := ioutil.ReadAll(resp.Body)
+		log.Error().Msgf("deposit error from casino back, code %s, body: %s", resp.Status, string(errBody))
+		return nil, errors.New("casino error")
 	}
 
 	gameSession := &models.GameSession{
@@ -217,7 +225,7 @@ func (a *GameSessionsUseCase) GameAction(
 		return err
 	}
 
-	game, err := a.casinoRepo.GetGame(ctx, gs.GameID)
+	game, err := a.contractsRepo.GetGame(ctx, gs.GameID)
 	if err != nil {
 		return err
 	}

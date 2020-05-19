@@ -20,11 +20,17 @@ func NewHandlerError(code WsErrorCode, internal error) *HandlerError {
 }
 
 const (
-	BadRequest           WsErrorCode = 4000
-	RequestParseError    WsErrorCode = 4001
-	AuthCheckError       WsErrorCode = 4002
-	UnauthorizedError    WsErrorCode = 4003
+	BadRequest        WsErrorCode = 4000
+	RequestParseError WsErrorCode = 4001
+	AuthCheckError    WsErrorCode = 4002
+	UnauthorizedError WsErrorCode = 4003
+
 	ContentNotFoundError WsErrorCode = 4004
+	CasinoNotFoundError  WsErrorCode = 4005
+	GameNotFoundError    WsErrorCode = 4006
+	SessionNotFoundError WsErrorCode = 4007
+
+	SessionInvalidStateError WsErrorCode = 4100
 
 	InternalError WsErrorCode = 5000
 )
@@ -35,8 +41,22 @@ func GetErrorMsg(code WsErrorCode) string {
 		return "bad request"
 	case RequestParseError:
 		return "request parse error"
+	case AuthCheckError:
+		return "auth check error"
 	case UnauthorizedError:
 		return "unauthorized error"
+
+	case ContentNotFoundError:
+		return "requesting content not found"
+	case CasinoNotFoundError:
+		return "casino not found"
+	case GameNotFoundError:
+		return "game not found"
+	case SessionNotFoundError:
+		return "session not found"
+
+	case SessionInvalidStateError:
+		return "action while session invalid state"
 	case InternalError:
 		return "internal server error"
 	default:

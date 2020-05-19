@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"github.com/eoscanada/eos-go"
 	"platform-backend/blockchain"
-	"platform-backend/casino"
+	"platform-backend/contracts"
 	"platform-backend/models"
 	"strconv"
 )
 
 type Game struct {
-	Id           uint64               `json:"id"`
+	Id           eos.Uint64           `json:"id"`
 	Contract     string               `json:"contract"`
 	ParamsCnt    uint16               `json:"params_cnt"`
 	Paused       int                  `json:"paused"`
@@ -40,8 +40,8 @@ func (r *CasinoBlockchainRepo) GetGame(ctx context.Context, gameId uint64) (*mod
 		return nil, err
 	}
 
-	if len(games) == 0 || games[0].Id != gameId {
-		return nil, casino.GameNotFound
+	if len(games) == 0 || uint64(games[0].Id) != gameId {
+		return nil, contracts.GameNotFound
 	}
 
 	return toModelGame(games[0]), nil
@@ -76,7 +76,7 @@ func (r *CasinoBlockchainRepo) AllGames(ctx context.Context) ([]*models.Game, er
 
 func toModelGame(g *Game) *models.Game {
 	return &models.Game{
-		Id:        g.Id,
+		Id:        uint64(g.Id),
 		Contract:  g.Contract,
 		ParamsCnt: g.ParamsCnt,
 		Paused:    g.Paused,

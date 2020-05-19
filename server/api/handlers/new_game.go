@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/rs/zerolog/log"
-	"platform-backend/casino"
+	"platform-backend/contracts"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
 	"time"
@@ -24,18 +24,18 @@ func ProcessNewGameRequest(context context.Context, req *ws_interface.ApiRequest
 		return nil, ws_interface.NewHandlerError(ws_interface.RequestParseError, err)
 	}
 
-	game, err := req.Repos.Casino.GetGame(context, payload.GameId)
+	game, err := req.Repos.Contracts.GetGame(context, payload.GameId)
 	if err != nil {
-		if err == casino.GameNotFound {
-			return nil, ws_interface.NewHandlerError(ws_interface.ContentNotFoundError, err)
+		if err == contracts.GameNotFound {
+			return nil, ws_interface.NewHandlerError(ws_interface.GameNotFoundError, err)
 		}
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	cas, err := req.Repos.Casino.GetCasino(context, payload.CasinoID)
+	cas, err := req.Repos.Contracts.GetCasino(context, payload.CasinoID)
 	if err != nil {
-		if err == casino.CasinoNotFound {
-			return nil, ws_interface.NewHandlerError(ws_interface.ContentNotFoundError, err)
+		if err == contracts.CasinoNotFound {
+			return nil, ws_interface.NewHandlerError(ws_interface.CasinoNotFoundError, err)
 		}
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}

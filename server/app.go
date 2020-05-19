@@ -14,11 +14,11 @@ import (
 	authPgRepo "platform-backend/auth/repository/postgres"
 	authUC "platform-backend/auth/usecase"
 	"platform-backend/blockchain"
-	casinoBcRepo "platform-backend/casino/repository/blockchain"
+	casinoBcRepo "platform-backend/contracts/repository/blockchain"
 	"platform-backend/config"
 	"platform-backend/db"
 	"platform-backend/eventprocessor"
-	gameSesssionPgRepo "platform-backend/game_sessions/repository/postgres"
+	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
 	gameSessionUC "platform-backend/game_sessions/usecase"
 	"platform-backend/logger"
 	"platform-backend/models"
@@ -127,10 +127,15 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(response)
 }
 
+func pingHandler(w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New ping request")
+	w.WriteHeader(http.StatusOK)
+}
+
 func NewApp(config *config.Config) (*App, error) {
 	logger.InitLogger(config.LogLevel)
 
-	err := db.InitDB(context.Background(), &config.DbConfig)
+	err := db.InitDB(context.Background(), &config.Db)
 	if err != nil {
 		log.Fatal().Msgf("Database init error, %s", err.Error())
 		return nil, err
@@ -146,7 +151,7 @@ func NewApp(config *config.Config) (*App, error) {
 
 	repos := repositories.NewRepositories(
 		casinoBcRepo.NewCasinoBlockchainRepo(bc, config.Blockchain.Contracts.Platform),
-		gameSesssionPgRepo.NewGameSessionsPostgresRepo(db.DbPool),
+		gameSessionPgRepo.NewGameSessionsPostgresRepo(db.DbPool),
 	)
 
 	useCases := usecases.NewUseCases(
@@ -160,7 +165,7 @@ func NewApp(config *config.Config) (*App, error) {
 		gameSessionUC.NewGameSessionsUseCase(
 			bc,
 			repos.GameSession,
-			repos.Casino,
+			repos.Contracts,
 			config.Blockchain.Contracts.Platform,
 			config.Casino.Url,
 		),
@@ -202,6 +207,7 @@ func NewApp(config *config.Config) (*App, error) {
 	mux.Handle("/connect", wsHandler)
 	mux.HandleFunc("/auth", authHandler)
 	mux.HandleFunc("/refresh_token", refreshTokensHandler)
+	mux.HandleFunc("/ping", pingHandler)
 
 	app.httpHandler = cors.Default().Handler(mux)
 
@@ -283,11 +289,8 @@ func startAmc(a *App, ctx context.Context) error {
 
 	go listener.Run(ctx)
 
-	// App will not start till subscribed to every events
-	for _, eventType := range eventprocessor.GetEventsToSubscribe() {
-		if ok, err := listener.Subscribe(eventType, 0); err != nil || !ok {
-			log.Fatal().Msgf("Action monitor subscribe to %d error: %v", eventType, err)
-		}
+	if ok, err := listener.BatchSubscribe( eventprocessor.GetEventsToSubscribe(), 0); err != nil || !ok {
+		log.Fatal().Msgf("Action monitor subscribe to events, error: %v", err)
 	}
 
 	log.Info().Msgf("Subscribed to all events!")
@@ -302,8 +305,7 @@ func startAmc(a *App, ctx context.Context) error {
 				return nil
 			}
 			for _, event := range eventMessage.Events {
-				// TODO: notify clients
-				go a.eventProcessor.Process(ctx, event)
+				a.eventProcessor.Process(ctx, event)
 			}
 		}
 	}
