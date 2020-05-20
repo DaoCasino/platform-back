@@ -130,7 +130,8 @@ func (a *GameSessionsUseCase) NewSession(
 ) (*models.GameSession, error) {
 	api := a.bc.Api
 
-	sessionId := rand.Uint64()
+	// TODO fix after front lib fix
+	sessionId := uint64(rand.Uint32())
 
 	from := eos.AccountName(user.AccountName)
 	to := eos.AccountName(game.Contract)
