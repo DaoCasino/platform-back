@@ -19,9 +19,10 @@ func toPlayerInfoResponse(p *models.PlayerInfo) *PlayerInfoResponse {
 		Balance:          p.Balance,
 		ActivePermission: p.ActivePermission,
 		OwnerPermission:  p.OwnerPermission,
+		LinkedCasinos:    make([]*CasinoResponse, len(p.LinkedCasinos)),
 	}
-	for _, casino := range p.LinkedCasinos {
-		ret.LinkedCasinos = append(ret.LinkedCasinos, toCasinoResponse(casino))
+	for i, casino := range p.LinkedCasinos {
+		ret.LinkedCasinos[i] = toCasinoResponse(casino)
 	}
 
 	return ret

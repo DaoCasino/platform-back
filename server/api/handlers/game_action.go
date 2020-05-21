@@ -38,9 +38,9 @@ func ProcessGameActionRequest(context context.Context, req *ws_interface.ApiRequ
 		return nil, ws_interface.NewHandlerError(ws_interface.UnauthorizedError, errors.New("attempt to play not own session"))
 	}
 
-	var params []uint64
-	for _, param := range payload.Params {
-		params = append(params, uint64(param))
+	params := make([]uint64, len(payload.Params))
+	for i, param := range payload.Params {
+		params[i] = uint64(param)
 	}
 
 	err = req.UseCases.GameSession.GameAction(context, uint64(payload.SessionId), payload.ActionType, params)

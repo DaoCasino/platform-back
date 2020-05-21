@@ -55,9 +55,9 @@ func ProcessFetchSessionUpdatesRequest(context context.Context, req *ws_interfac
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	var response []*SessionUpdateResponse
-	for _, su := range gameSessionUpdates {
-		response = append(response, toSessionUpdateResponse(su))
+	response := make([]*SessionUpdateResponse, len(gameSessionUpdates))
+	for i, su := range gameSessionUpdates {
+		response[i] = toSessionUpdateResponse(su)
 	}
 
 	return response, nil

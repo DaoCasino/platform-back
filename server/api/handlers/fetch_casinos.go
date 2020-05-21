@@ -27,9 +27,9 @@ func ProcessFetchCasinosRequest(context context.Context, req *ws_interface.ApiRe
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	var response []*CasinoResponse
-	for _, casino := range casinos {
-		response = append(response, toCasinoResponse(casino))
+	response := make([]*CasinoResponse, len(casinos))
+	for i, casino := range casinos {
+		response[i] = toCasinoResponse(casino)
 	}
 
 	return response, nil

@@ -22,20 +22,21 @@ type GameParamResponse struct {
 type CasinoGameResponse struct {
 	Id     string              `json:"gameId"`
 	Paused bool                `json:"paused"`
-	Params []GameParamResponse `json:"params"`
+	Params []*GameParamResponse `json:"params"`
 }
 
 func toCasinoGameResponse(g *models.CasinoGame) *CasinoGameResponse {
 	ret := &CasinoGameResponse{
 		Id:     strconv.FormatUint(g.Id, 10),
 		Paused: g.Paused,
+		Params: make([]*GameParamResponse, len(g.Params)),
 	}
 
-	for _, param := range g.Params {
-		ret.Params = append(ret.Params, GameParamResponse{
+	for i, param := range g.Params {
+		ret.Params[i] = &GameParamResponse{
 			Type:  param.Type,
 			Value: strconv.FormatUint(param.Value, 10),
-		})
+		}
 	}
 
 	return ret
@@ -60,9 +61,9 @@ func ProcessFetchGamesInCasinoRequest(context context.Context, req *ws_interface
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	var response []*CasinoGameResponse
-	for _, game := range games {
-		response = append(response, toCasinoGameResponse(game))
+	response := make([]*CasinoGameResponse, len(games))
+	for i, game := range games {
+		response[i] = toCasinoGameResponse(game)
 	}
 
 	return response, nil

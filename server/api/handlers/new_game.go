@@ -59,9 +59,9 @@ func ProcessNewGameRequest(context context.Context, req *ws_interface.ApiRequest
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	var actionParams []uint64
-	for _, param := range payload.ActionParams {
-		actionParams = append(actionParams, uint64(param))
+	actionParams := make([]uint64, len(payload.ActionParams))
+	for i, param := range payload.ActionParams {
+		actionParams[i] = uint64(param)
 	}
 
 	// try to instantly make first game action

@@ -32,9 +32,9 @@ func ProcessFetchGamesRequest(context context.Context, req *ws_interface.ApiRequ
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	var response []*GameResponse
-	for _, game := range games {
-		response = append(response, toGameResponse(game))
+	response := make([]*GameResponse, len(games))
+	for i, game := range games {
+		response[i] = toGameResponse(game)
 	}
 
 	return response, nil
