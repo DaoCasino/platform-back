@@ -11,5 +11,10 @@ func ProcessFetchSessionsRequest(context context.Context, req *ws_interface.ApiR
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	return gameSessions, nil
+	response := make([]*GameSessionResponse, len(gameSessions))
+	for i, session := range gameSessions {
+		response[i] = toGameSessionResponse(session)
+	}
+
+	return response, nil
 }
