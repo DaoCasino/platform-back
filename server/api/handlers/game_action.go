@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/eoscanada/eos-go"
 	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
 )
 
 type GameActionPayload struct {
-	SessionId  uint64   `json:"sessionId"`
-	ActionType uint16   `json:"actionType"`
-	Params     []uint64 `json:"params"`
+	SessionId  eos.Uint64   `json:"sessionId"`
+	ActionType uint16       `json:"actionType"`
+	Params     []eos.Uint64 `json:"params"`
 }
 
 func ProcessGameActionRequest(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
@@ -21,7 +22,7 @@ func ProcessGameActionRequest(context context.Context, req *ws_interface.ApiRequ
 		return nil, ws_interface.NewHandlerError(ws_interface.RequestParseError, err)
 	}
 
-	session, err := req.Repos.GameSession.GetGameSession(context, payload.SessionId)
+	session, err := req.Repos.GameSession.GetGameSession(context, uint64(payload.SessionId))
 	if err == gamesessions.ErrGameSessionNotFound {
 		return nil, ws_interface.NewHandlerError(ws_interface.SessionNotFoundError, err)
 	}
@@ -37,7 +38,12 @@ func ProcessGameActionRequest(context context.Context, req *ws_interface.ApiRequ
 		return nil, ws_interface.NewHandlerError(ws_interface.UnauthorizedError, errors.New("attempt to play not own session"))
 	}
 
-	err = req.UseCases.GameSession.GameAction(context, payload.SessionId, payload.ActionType, payload.Params)
+	var params []uint64
+	for _, param := range payload.Params {
+		params = append(params, uint64(param))
+	}
+
+	err = req.UseCases.GameSession.GameAction(context, uint64(payload.SessionId), payload.ActionType, params)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
