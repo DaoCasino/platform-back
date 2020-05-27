@@ -36,6 +36,10 @@ type AuthConfig struct {
 	JwtSecret       string `json:"jwtSecret"`
 	AccessTokenTTL  int64  `json:"accessTokenTTL"`
 	RefreshTokenTTL int64  `json:"refreshTokenTTL"`
+
+	WalletURL          string `json:"walletUrl"`
+	WalletClientID     int64  `json:"walletClientID"`
+	WalletClientSecret string `json:"walletClientSecret"`
 }
 
 // Action monitor config
