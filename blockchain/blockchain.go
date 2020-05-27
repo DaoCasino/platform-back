@@ -64,16 +64,66 @@ type Blockchain struct {
 	PlatformAccountName string
 	sponsorUrl          string
 	disableSponsor      bool
+	trxPushAttempts     int
 
 	optsMutex       sync.Mutex
 	lastInfoTime    time.Time
 	lastHeadBlockID eos.Checksum256
 }
 
+func (b *Blockchain) PushTransaction(actions []*eos.Action, requiredKeys []ecc.PublicKey, sponsored bool) (out *eos.PushTransactionFullResp, err error) {
+	sendTrx := func() (*eos.PushTransactionFullResp, error) {
+		trxOpts := b.GetTrxOpts()
+		err := trxOpts.FillFromChain(b.Api)
+		if err != nil {
+			return nil, err
+		}
+		trx := eos.NewTransaction(actions, trxOpts)
+
+		var notSignedTrx *eos.SignedTransaction
+		if sponsored {
+			notSignedTrx, err = b.GetSponsoredTrx(trx)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			notSignedTrx = eos.NewSignedTransaction(trx)
+		}
+
+		signedTrx, err := b.Api.Signer.Sign(notSignedTrx, b.ChainId, requiredKeys...)
+		if err != nil {
+			return nil, err
+		}
+		packedTrx, err := signedTrx.Pack(eos.CompressionNone)
+		if err != nil {
+			return nil, err
+		}
+		out, err = b.Api.PushTransaction(packedTrx)
+		if err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
+
+	attempts := 0
+	for {
+		out, err := sendTrx()
+		if err == nil {
+			return out, nil
+		}
+		attempts++
+		log.Error().Msgf("Send transaction error (attempt %d of %d): %s", attempts, b.trxPushAttempts, err.Error())
+		if attempts >= b.trxPushAttempts {
+			return nil, err
+		}
+	}
+}
+
 func Init(config *config.BlockchainConfig) (*Blockchain, error) {
 	blockchain := new(Blockchain)
 	blockchain.Api = eos.New(config.NodeUrl)
 	blockchain.sponsorUrl = config.SponsorUrl
+	blockchain.trxPushAttempts = config.TrxPushAttempts
 	blockchain.PlatformAccountName = config.Contracts.Platform
 
 	info, err := blockchain.Api.GetInfo()

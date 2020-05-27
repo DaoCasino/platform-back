@@ -249,34 +249,13 @@ func (a *GameSessionsUseCase) GameAction(
 		}),
 	}
 
-	trxOpts := a.bc.GetTrxOpts()
-	err = trxOpts.FillFromChain(a.bc.Api)
-	if err != nil {
-		log.Debug().Msgf("%s", err.Error())
-		return err
-	}
+	_, err = a.bc.PushTransaction(
+		[]*eos.Action{bcAction},
+		[]ecc.PublicKey{a.bc.PubKeys.GameAction},
+		true,
+	)
 
-	sponsoredTrx, err := a.bc.GetSponsoredTrx(eos.NewTransaction([]*eos.Action{bcAction}, trxOpts))
 	if err != nil {
-		log.Debug().Msgf("%s", err.Error())
-		return err
-	}
-
-	signedTrx, err := a.bc.Api.Signer.Sign(sponsoredTrx, a.bc.ChainId, a.bc.PubKeys.GameAction)
-	if err != nil {
-		log.Debug().Msgf("%s", err.Error())
-		return err
-	}
-
-	packedTrx, err := signedTrx.Pack(eos.CompressionNone)
-	if err != nil {
-		log.Debug().Msgf("%s", err.Error())
-		return err
-	}
-
-	_, err = a.bc.Api.PushTransaction(packedTrx)
-	if err != nil {
-		log.Debug().Msgf("%s", err.Error())
 		return err
 	}
 
