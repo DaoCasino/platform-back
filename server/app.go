@@ -21,7 +21,6 @@ import (
 	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
 	gameSessionUC "platform-backend/game_sessions/usecase"
 	"platform-backend/logger"
-	"platform-backend/models"
 	"platform-backend/repositories"
 	"platform-backend/server/api"
 	"platform-backend/server/session_manager"
@@ -35,6 +34,10 @@ type JsonResponse = map[string]interface{}
 
 type RefreshRequest struct {
 	RefreshToken string `json:"refreshToken"`
+}
+
+type AuthRequest struct {
+	TmpToken string `json:"tmpToken"`
 }
 
 type App struct {
@@ -64,16 +67,23 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 }
 
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	var user models.User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+	var req AuthRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
 
-	log.Debug().Msgf("New auth request from %s", user.AccountName)
+	log.Debug().Msgf("New auth request with token %s", req.TmpToken)
 
-	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), &user)
+	user, err := app.useCases.Auth.ResolveUser(context.Background(), req.TmpToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("Token validate error: %s", err.Error())
+		return
+	}
+
+	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Debug().Msgf("SignUp error: %s", err.Error())
@@ -161,6 +171,9 @@ func NewApp(config *config.Config) (*App, error) {
 			[]byte(config.Auth.JwtSecret),
 			config.Auth.AccessTokenTTL,
 			config.Auth.RefreshTokenTTL,
+			config.Auth.WalletURL,
+			config.Auth.WalletClientID,
+			config.Auth.WalletClientSecret,
 		),
 		gameSessionUC.NewGameSessionsUseCase(
 			bc,

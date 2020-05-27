@@ -37,6 +37,9 @@
   "auth": {
     "jwtSecret": "top_secret",
     "accessTokenTTL": 1800,
-    "refreshTokenTTL": 86400
+    "refreshTokenTTL": 86400,
+    "walletUrl": "url",
+    "walletClientID": 0,
+    "walletClientSecret": "secret"
   }
 }

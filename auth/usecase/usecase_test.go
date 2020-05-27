@@ -14,7 +14,16 @@ func TestAuthFlow(t *testing.T) {
 	repo := new(mock.UserStorageMock)
 	sm := new(smMockRepo.MockRepository)
 
-	uc := NewAuthUseCase(repo, sm, []byte("secret"), 10, 10)
+	uc := NewAuthUseCase(
+		repo,
+		sm,
+		[]byte("secret"),
+		10,
+		10,
+		"",
+		0,
+		"",
+	)
 
 	var (
 		accountName = "user"
@@ -53,7 +62,16 @@ func TestTokenRefresh(t *testing.T) {
 	repo := new(mock.UserStorageMock)
 	sm := new(smMockRepo.MockRepository)
 
-	uc := NewAuthUseCase(repo, sm, []byte("secret"), 10, 10)
+	uc := NewAuthUseCase(
+		repo,
+		sm,
+		[]byte("secret"),
+		10,
+		10,
+		"",
+		0,
+		"",
+	)
 
 	var (
 		accountName = "user"
