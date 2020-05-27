@@ -82,5 +82,9 @@ func (a *SignidiceUseCase) PerformSignidice(ctx context.Context, gameName string
 		false,
 	)
 
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
