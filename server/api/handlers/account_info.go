@@ -8,14 +8,18 @@ import (
 )
 
 type PlayerInfoResponse struct {
+	AccountName      string            `json:"accountName"`
+	Email            string            `json:"email"`
 	Balance          eos.Asset         `json:"balance"`
 	ActivePermission eos.Authority     `json:"activePermission"`
 	OwnerPermission  eos.Authority     `json:"ownerPermission"`
 	LinkedCasinos    []*CasinoResponse `json:"linkedCasinos"`
 }
 
-func toPlayerInfoResponse(p *models.PlayerInfo) *PlayerInfoResponse {
+func toPlayerInfoResponse(p *models.PlayerInfo, u *models.User) *PlayerInfoResponse {
 	ret := &PlayerInfoResponse{
+		AccountName:      u.AccountName,
+		Email:            u.Email,
 		Balance:          p.Balance,
 		ActivePermission: p.ActivePermission,
 		OwnerPermission:  p.OwnerPermission,
@@ -35,5 +39,5 @@ func ProcessAccountInfo(context context.Context, req *ws_interface.ApiRequest) (
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	return toPlayerInfoResponse(player), nil
+	return toPlayerInfoResponse(player, req.User), nil
 }
