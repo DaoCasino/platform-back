@@ -300,6 +300,9 @@ func startAmc(a *App, ctx context.Context) error {
 		eventlistener.EnableDebugLogging()
 	}
 
+	// set auth token
+	listener.SetToken(a.config.Amc.Token)
+
 	go listener.Run(ctx)
 
 	if ok, err := listener.BatchSubscribe( eventprocessor.GetEventsToSubscribe(), 0); err != nil || !ok {

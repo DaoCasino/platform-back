@@ -48,6 +48,7 @@ type AmcConfig struct {
 	Url                  string `json:"url"`
 	ReconnectionAttempts int    `default:"5" json:"reconnectionAttempts"`
 	ReconnectionDelay    int    `default:"5" json:"reconnectionDelay"`
+	Token                string `json:"token"`
 }
 
 type CasinoBackendConfig struct {
