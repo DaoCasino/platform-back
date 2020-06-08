@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/eoscanada/eos-go"
+	"github.com/rs/zerolog/log"
 	"platform-backend/blockchain"
 	"platform-backend/contracts"
 	"platform-backend/models"
@@ -66,20 +67,28 @@ func (r *CasinoBlockchainRepo) AllGames(ctx context.Context) ([]*models.Game, er
 		return nil, err
 	}
 
-	ret := make([]*models.Game, 0)
-	for _, game := range games {
-		ret = append(ret, toModelGame(game))
+	ret := make([]*models.Game, len(games))
+	for i, game := range games {
+		ret[i] = toModelGame(game)
 	}
 
 	return ret, nil
 }
 
 func toModelGame(g *Game) *models.Game {
+	meta := &models.GameMeta{}
+	err := json.Unmarshal(g.Meta, meta)
+	if err != nil {
+		log.Warn().Msgf("invalid game meta, setting null, ID: %d, err: %s", g.Id, err.Error())
+		// set null meta if invalid json
+		meta = nil
+	}
+
 	return &models.Game{
 		Id:        uint64(g.Id),
 		Contract:  g.Contract,
 		ParamsCnt: g.ParamsCnt,
 		Paused:    g.Paused,
-		Meta:      json.RawMessage(g.Meta),
+		Meta:      meta,
 	}
 }

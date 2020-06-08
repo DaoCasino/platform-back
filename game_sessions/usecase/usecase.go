@@ -26,7 +26,6 @@ type GameSessionsUseCase struct {
 	repo             gamesessions.Repository
 	contractsRepo    contracts.Repository
 	platformContract string
-	casinoBackendUrl string
 }
 
 func NewGameSessionsUseCase(
@@ -34,7 +33,6 @@ func NewGameSessionsUseCase(
 	repo gamesessions.Repository,
 	contractsRepo contracts.Repository,
 	platformContract string,
-	casinoBackendUrl string,
 ) *GameSessionsUseCase {
 	rand.Seed(time.Now().Unix())
 	return &GameSessionsUseCase{
@@ -42,7 +40,6 @@ func NewGameSessionsUseCase(
 		repo:             repo,
 		contractsRepo:    contractsRepo,
 		platformContract: platformContract,
-		casinoBackendUrl: casinoBackendUrl,
 	}
 }
 
@@ -130,6 +127,14 @@ func (a *GameSessionsUseCase) NewSession(
 ) (*models.GameSession, error) {
 	api := a.bc.Api
 
+	if casino.Meta == nil {
+		return nil, gamesessions.ErrCasinoMetaEmpty
+	}
+
+	if casino.Meta.ApiURL == "" {
+		return nil, gamesessions.ErrCasinoUrlNotDefined
+	}
+
 	// TODO fix after front lib fix
 	sessionId := uint64(rand.Uint32())
 
@@ -186,7 +191,7 @@ func (a *GameSessionsUseCase) NewSession(
 
 	// Send sponsored and signed transaction to casino Backend
 	reader := bytes.NewReader(toSend)
-	resp, err := http.Post(a.casinoBackendUrl+"/sign_transaction", "application/json", reader)
+	resp, err := http.Post(casino.Meta.ApiURL+"/sign_transaction", "application/json", reader)
 	if err != nil {
 		log.Debug().Msgf("%s", err.Error())
 		return nil, err
@@ -252,7 +257,7 @@ func (a *GameSessionsUseCase) GameAction(
 	_, err = a.bc.PushTransaction(
 		[]*eos.Action{bcAction},
 		[]ecc.PublicKey{a.bc.PubKeys.GameAction},
-		true,
+		false,
 	)
 
 	if err != nil {

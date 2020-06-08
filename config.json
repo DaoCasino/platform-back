@@ -11,9 +11,6 @@
     "reconnectionAttempts": 5,
     "reconnectionDelay": 5
   },
-  "casino": {
-    "url": "http://localhost:4444"
-  },
   "sessionsCleaner": {
     "interval": 60,
     "maxLastUpdate": 600
