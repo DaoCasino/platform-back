@@ -14,6 +14,7 @@ type GameActionPayload struct {
 	SessionId  eos.Uint64   `json:"sessionId"`
 	ActionType uint16       `json:"actionType"`
 	Params     []eos.Uint64 `json:"params"`
+	Deposit    string       `json:"deposit"`
 }
 
 func ProcessGameActionRequest(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
@@ -43,7 +44,11 @@ func ProcessGameActionRequest(context context.Context, req *ws_interface.ApiRequ
 		params[i] = uint64(param)
 	}
 
-	err = req.UseCases.GameSession.GameAction(context, uint64(payload.SessionId), payload.ActionType, params)
+	if payload.Deposit != "" {
+		err = req.UseCases.GameSession.GameActionWithDeposit(context, uint64(payload.SessionId), payload.ActionType, params, payload.Deposit)
+	} else {
+		err = req.UseCases.GameSession.GameAction(context, uint64(payload.SessionId), payload.ActionType, params)
+	}
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
