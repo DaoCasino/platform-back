@@ -26,4 +26,12 @@ type UseCase interface {
 		actionType uint16,
 		actionParams []uint64,
 	) error
+
+	GameActionWithDeposit(
+		ctx context.Context,
+		sessionId uint64,
+		actionType uint16,
+		actionParams []uint64,
+		deposit string,
+	) error
 }

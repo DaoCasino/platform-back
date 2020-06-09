@@ -125,8 +125,6 @@ func (a *GameSessionsUseCase) NewSession(
 	game *models.Game, user *models.User,
 	deposit string,
 ) (*models.GameSession, error) {
-	api := a.bc.Api
-
 	if casino.Meta == nil {
 		return nil, gamesessions.ErrCasinoMetaEmpty
 	}
@@ -138,24 +136,15 @@ func (a *GameSessionsUseCase) NewSession(
 	// TODO fix after front lib fix
 	sessionId := uint64(rand.Uint32())
 
-	from := eos.AccountName(user.AccountName)
-	to := eos.AccountName(game.Contract)
-	quantity, err := eos.NewFixedSymbolAssetFromString(eos.Symbol{Precision: 4, Symbol: "BET"}, deposit)
-	if err != nil {
-		return nil, err
-	}
-
-	memo := strconv.FormatUint(sessionId, 10) // IMPORTANT!
-
 	txOpts := a.bc.GetTrxOpts()
-	if err := txOpts.FillFromChain(api); err != nil {
-		panic(fmt.Errorf("filling tx opts: %s", err))
+	if err := txOpts.FillFromChain(a.bc.Api); err != nil {
+		return nil, fmt.Errorf("filling tx opts: %s", err)
 	}
 
 	// Add transfer deposit action
-	transferAction := token.NewTransfer(from, to, quantity, memo)
-	transferAction.Authorization = []eos.PermissionLevel{
-		{Actor: from, Permission: eos.PN(casino.Contract)},
+	transferAction, err := a.getTransferAction(user.AccountName, game.Contract, casino.Contract, sessionId, deposit)
+	if err != nil {
+		return nil, err
 	}
 
 	//Add newgame call to the game to the transaction
@@ -172,35 +161,9 @@ func (a *GameSessionsUseCase) NewSession(
 	}
 
 	trx := eos.NewTransaction([]*eos.Action{transferAction, newGameAction}, txOpts)
-
-	// Add sponsorship to the transaction
-	sponsoredTrx, err := a.bc.GetSponsoredTrx(trx)
+	err = a.trxByCasino(casino, trx)
 	if err != nil {
 		return nil, err
-	}
-
-	// Sign transaction with GameAction and deposit platform keys
-	requiredKeys := []ecc.PublicKey{a.bc.PubKeys.GameAction, a.bc.PubKeys.Deposit}
-	signedTrx, err := api.Signer.Sign(sponsoredTrx, a.bc.ChainId, requiredKeys...)
-	if err != nil {
-		return nil, err
-	}
-
-	toSend, _ := json.Marshal(signedTrx)
-	log.Debug().Msgf("Trx to send: %s", string(toSend))
-
-	// Send sponsored and signed transaction to casino Backend
-	reader := bytes.NewReader(toSend)
-	resp, err := http.Post(casino.Meta.ApiURL+"/sign_transaction", "application/json", reader)
-	if err != nil {
-		log.Debug().Msgf("%s", err.Error())
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		errBody, _ := ioutil.ReadAll(resp.Body)
-		log.Error().Msgf("deposit error from casino back, code %s, body: %s", resp.Status, string(errBody))
-		return nil, errors.New("casino error")
 	}
 
 	gameSession := &models.GameSession{
@@ -268,6 +231,131 @@ func (a *GameSessionsUseCase) GameAction(
 	if err != nil {
 		log.Debug().Msgf("%s", err.Error())
 		return err
+	}
+
+	return nil
+}
+
+func (a *GameSessionsUseCase) GameActionWithDeposit(
+	ctx context.Context,
+	sessionId uint64,
+	actionType uint16,
+	actionParams []uint64,
+	deposit string,
+) error {
+	gs, err := a.repo.GetGameSession(ctx, sessionId)
+	if err != nil {
+		return err
+	}
+
+	game, err := a.contractsRepo.GetGame(ctx, gs.GameID)
+	if err != nil {
+		return err
+	}
+
+	casino, err := a.contractsRepo.GetCasino(ctx, gs.CasinoID)
+	if err != nil {
+		return err
+	}
+
+	transferAction, err := a.getTransferAction(gs.Player, game.Contract, casino.Contract, gs.ID, deposit)
+	if err != nil {
+		return err
+	}
+
+	gameAction := &eos.Action{
+		Account: eos.AN(game.Contract),
+		Name:    eos.ActN("gameaction"),
+		Authorization: []eos.PermissionLevel{{
+			Actor:      eos.AN(a.platformContract),
+			Permission: eos.PN("gameaction"),
+		}},
+		ActionData: eos.NewActionData(struct {
+			SessionId    uint64   `json:"ses_id"`
+			ActionType   uint16   `json:"type"`
+			ActionParams []uint64 `json:"params"`
+		}{
+			SessionId:    gs.BlockchainSesID,
+			ActionType:   actionType,
+			ActionParams: actionParams,
+		}),
+	}
+
+	txOpts := a.bc.GetTrxOpts()
+	if err := txOpts.FillFromChain(a.bc.Api); err != nil {
+		return fmt.Errorf("filling tx opts: %s", err)
+	}
+
+	trx := eos.NewTransaction([]*eos.Action{transferAction, gameAction}, txOpts)
+	err = a.trxByCasino(casino, trx)
+	if err != nil {
+		return err
+	}
+
+	err = a.repo.UpdateSessionState(ctx, sessionId, models.GameActionTrxSent)
+	if err != nil {
+		log.Debug().Msgf("%s", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (a *GameSessionsUseCase) getTransferAction(
+	playerName string,
+	gameName string,
+	casinoName string,
+	sessionID uint64,
+	amount string,
+) (*eos.Action, error) {
+	from := eos.AN(playerName)
+	to := eos.AN(gameName)
+
+	quantity, err := eos.NewFixedSymbolAssetFromString(eos.Symbol{Precision: 4, Symbol: "BET"}, amount)
+	if err != nil {
+		return nil, err
+	}
+
+	memo := strconv.FormatUint(sessionID, 10) // IMPORTANT!
+
+	// Add transfer deposit action
+	transferAction := token.NewTransfer(from, to, quantity, memo)
+	transferAction.Authorization = []eos.PermissionLevel{
+		{Actor: from, Permission: eos.PN(casinoName)},
+	}
+
+	return transferAction, nil
+}
+
+func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transaction) error {
+	// Add sponsorship to the transaction
+	sponsoredTrx, err := a.bc.GetSponsoredTrx(trx)
+	if err != nil {
+		return err
+	}
+
+	// Sign transaction with GameAction and deposit platform keys
+	requiredKeys := []ecc.PublicKey{a.bc.PubKeys.GameAction, a.bc.PubKeys.Deposit}
+	signedTrx, err := a.bc.Api.Signer.Sign(sponsoredTrx, a.bc.ChainId, requiredKeys...)
+	if err != nil {
+		return err
+	}
+
+	toSend, _ := json.Marshal(signedTrx)
+	log.Debug().Msgf("Trx for casino: %s", string(toSend))
+
+	// Send sponsored and signed transaction to casino Backend
+	reader := bytes.NewReader(toSend)
+	resp, err := http.Post(casino.Meta.ApiURL+"/sign_transaction", "application/json", reader)
+	if err != nil {
+		log.Debug().Msgf("Casino request error: %s", err.Error())
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		errBody, _ := ioutil.ReadAll(resp.Body)
+		log.Error().Msgf("deposit error from casino back, code %s, body: %s", resp.Status, string(errBody))
+		return errors.New("casino error")
 	}
 
 	return nil
