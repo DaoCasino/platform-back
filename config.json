@@ -9,7 +9,8 @@
   "amc": {
     "url": "localhost:8889",
     "reconnectionAttempts": 5,
-    "reconnectionDelay": 5
+    "reconnectionDelay": 5,
+    "token": "top secret am token"
   },
   "sessionsCleaner": {
     "interval": 60,
