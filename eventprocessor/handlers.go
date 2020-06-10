@@ -18,12 +18,16 @@ type finishedEventData struct {
 }
 
 type messageEventData struct {
-	Msg       blockchain.ByteArray `json:"msg"`
+	Msg blockchain.ByteArray `json:"msg"`
 }
 
 type finishedUpdateData struct {
 	Msg       []uint64  `json:"msg"`
 	PlayerWin eos.Asset `json:"player_win_amount"`
+}
+
+type messageUpdateData struct {
+	Msg []uint64 `json:"msg"`
 }
 
 func onGameStarted(ctx context.Context, p *EventProcessor, event *eventlistener.Event, session *models.GameSession) error {
@@ -203,8 +207,8 @@ func onGameMessage(ctx context.Context, p *EventProcessor, event *eventlistener.
 		return err
 	}
 
-	updateData, err := json.Marshal(finishedUpdateData{
-		Msg:       resultsArray,
+	updateData, err := json.Marshal(messageUpdateData{
+		Msg: resultsArray,
 	})
 	if err != nil {
 		return err
