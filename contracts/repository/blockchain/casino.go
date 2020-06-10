@@ -2,7 +2,9 @@ package blockchain
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/eoscanada/eos-go"
+	"github.com/rs/zerolog/log"
 	"platform-backend/blockchain"
 	"platform-backend/contracts"
 	"platform-backend/models"
@@ -10,11 +12,11 @@ import (
 )
 
 type Casino struct {
-	Id        eos.Uint64 `json:"id"`
-	Contract  string     `json:"contract"`
-	Paused    int        `json:"paused"`
-	RsaPubkey string     `json:"rsa_pubkey"`
-	Meta      []byte     `json:"bytes"`
+	Id        eos.Uint64           `json:"id"`
+	Contract  string               `json:"contract"`
+	Paused    int                  `json:"paused"`
+	RsaPubkey string               `json:"rsa_pubkey"`
+	Meta      blockchain.ByteArray `json:"meta"`
 }
 
 type GameParam struct {
@@ -122,10 +124,19 @@ func (r *CasinoBlockchainRepo) GetCasinoGames(ctx context.Context, casinoName st
 }
 
 func toModelCasino(c *Casino) *models.Casino {
+	meta := &models.CasinoMeta{}
+	err := json.Unmarshal(c.Meta, meta)
+	if err != nil {
+		log.Warn().Msgf("invalid casino meta, setting null, ID: %d, err: %s", c.Id, err.Error())
+		// set null meta if invalid json
+		meta = nil
+	}
+
 	return &models.Casino{
 		Id:       uint64(c.Id),
 		Contract: c.Contract,
 		Paused:   !(c.Paused == 0),
+		Meta:     meta,
 	}
 }
 

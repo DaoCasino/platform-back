@@ -2,18 +2,17 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
 	"strconv"
 )
 
 type GameResponse struct {
-	Id        string          `json:"id"`
-	Contract  string          `json:"contract"`
-	ParamsCnt uint16          `json:"paramsCnt"`
-	Paused    int             `json:"paused"`
-	Meta      json.RawMessage `json:"meta"`
+	Id        string           `json:"id"`
+	Contract  string           `json:"contract"`
+	ParamsCnt uint16           `json:"paramsCnt"`
+	Paused    int              `json:"paused"`
+	Meta      *models.GameMeta `json:"meta"`
 }
 
 func toGameResponse(g *models.Game) *GameResponse {

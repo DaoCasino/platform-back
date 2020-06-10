@@ -180,7 +180,6 @@ func NewApp(config *config.Config) (*App, error) {
 			repos.GameSession,
 			repos.Contracts,
 			config.Blockchain.Contracts.Platform,
-			config.Casino.Url,
 		),
 		signidiceUC.NewSignidiceUseCase(
 			bc,

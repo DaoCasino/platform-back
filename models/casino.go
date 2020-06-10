@@ -1,9 +1,14 @@
 package models
 
+type CasinoMeta struct {
+	ApiURL string `json:"apiUrl"`
+}
+
 type Casino struct {
-	Id       uint64 `json:"id"`
-	Contract string `json:"contract"`
-	Paused   bool   `json:"paused"`
+	Id       uint64      `json:"id"`
+	Contract string      `json:"contract"`
+	Paused   bool        `json:"paused"`
+	Meta     *CasinoMeta `json:"meta"`
 }
 
 type GameParam struct {

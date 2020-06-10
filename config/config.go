@@ -51,10 +51,6 @@ type AmcConfig struct {
 	Token                string `json:"token"`
 }
 
-type CasinoBackendConfig struct {
-	Url string `json:"url"`
-}
-
 type SignidiceConfig struct {
 	Key string `json:"key"`
 }
@@ -62,7 +58,6 @@ type SignidiceConfig struct {
 type Config struct {
 	Db              DbConfig            `json:"db"`
 	Amc             AmcConfig           `json:"amc"`
-	Casino          CasinoBackendConfig `json:"casino"`
 	SessionsCleaner SessionsCleaner     `json:"sessionsCleaner"`
 	Blockchain      BlockchainConfig    `json:"blockchain"`
 	Auth            AuthConfig          `json:"auth"`
