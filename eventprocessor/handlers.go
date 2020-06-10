@@ -17,6 +17,10 @@ type finishedEventData struct {
 	PlayerWin eos.Asset            `json:"player_win_amount"`
 }
 
+type messageEventData struct {
+	Msg       blockchain.ByteArray `json:"msg"`
+}
+
 type finishedUpdateData struct {
 	Msg       []uint64  `json:"msg"`
 	PlayerWin eos.Asset `json:"player_win_amount"`
@@ -187,11 +191,29 @@ func onGameFailed(ctx context.Context, p *EventProcessor, event *eventlistener.E
 
 func onGameMessage(ctx context.Context, p *EventProcessor, event *eventlistener.Event, session *models.GameSession) error {
 	log.Debug().Msgf("Got game message event for session: %d", session.ID)
+	var eventData messageEventData
+	err := json.Unmarshal(event.Data, &eventData)
+	if err != nil {
+		return err
+	}
+
+	var resultsArray []uint64
+	err = eos.NewDecoder(eventData.Msg).Decode(&resultsArray)
+	if err != nil {
+		return err
+	}
+
+	updateData, err := json.Marshal(finishedUpdateData{
+		Msg:       resultsArray,
+	})
+	if err != nil {
+		return err
+	}
 
 	return p.repos.GameSession.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
 		SessionID:  session.ID,
 		UpdateType: models.GameMessageUpdate,
 		Timestamp:  time.Now(),
-		Data:       event.Data,
+		Data:       updateData,
 	})
 }
