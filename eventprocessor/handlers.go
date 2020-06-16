@@ -164,6 +164,11 @@ func onGameFinished(ctx context.Context, p *EventProcessor, event *eventlistener
 		return err
 	}
 
+	err = p.repos.GameSession.UpdateSessionPlayerWin(ctx, session.ID, eventData.PlayerWin.String())
+	if err != nil {
+		return err
+	}
+
 	err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameFinished)
 	if err != nil {
 		return err

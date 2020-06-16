@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"github.com/jackc/pgx/v4"
 	"platform-backend/db"
 	"platform-backend/models"
 	"time"
@@ -18,6 +19,15 @@ type GameSessionUpdate struct {
 	UpdateType uint16    `db:"update_type"`
 	Timestamp  time.Time `db:"timestamp"`
 	Data       []byte    `db:"data"`
+}
+
+func (u *GameSessionUpdate) Scan(row pgx.Row) error {
+	return row.Scan(
+		&u.SessionID,
+		&u.UpdateType,
+		&u.Timestamp,
+		&u.Data,
+	)
 }
 
 func (r *GameSessionsPostgresRepo) GetGameSessionUpdates(ctx context.Context, id uint64) ([]*models.GameSessionUpdate, error) {
@@ -37,12 +47,7 @@ func (r *GameSessionsPostgresRepo) GetGameSessionUpdates(ctx context.Context, id
 
 	for rows.Next() {
 		upd := new(GameSessionUpdate)
-		err := rows.Scan(
-			&upd.SessionID,
-			&upd.UpdateType,
-			&upd.Timestamp,
-			&upd.Data,
-		)
+		err := upd.Scan(rows)
 		if err != nil {
 			return nil, err
 		}
