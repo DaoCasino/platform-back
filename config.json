@@ -2,7 +2,7 @@
   "loglevel": "debug",
   "port": "8080",
   "db": {
-    "url": "postgresql://postgres:postgres@localhost:5555/test_platform",
+    "url": "postgresql://postgres:postgres@localhost:5432/test_platform",
     "maxPoolConns": 10,
     "minPoolConns": 1
   },
@@ -27,7 +27,7 @@
       "gameaction": "5J2FdJeALHgYRkNZh9htUo3PgwXyY9XLyXXXXXX",
       "signidice": "5HyvDP9LRqJYzGPorVN34mfbsuuoAwDrAqXXXXXX"
     },
-    "disableSponsor": false
+    "disableSponsor": true
   },
   "signidice": {
     "key": "base64 encoded pem key"

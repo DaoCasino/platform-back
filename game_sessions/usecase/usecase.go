@@ -17,6 +17,7 @@ import (
 	"platform-backend/contracts"
 	"platform-backend/game_sessions"
 	"platform-backend/models"
+	"platform-backend/utils"
 	"strconv"
 	"time"
 )
@@ -141,8 +142,13 @@ func (a *GameSessionsUseCase) NewSession(
 		return nil, fmt.Errorf("filling tx opts: %s", err)
 	}
 
+	asset, err := utils.ToBetAsset(deposit)
+	if err != nil {
+		return nil, err
+	}
+
 	// Add transfer deposit action
-	transferAction, err := a.getTransferAction(user.AccountName, game.Contract, casino.Contract, sessionId, deposit)
+	transferAction, err := a.getTransferAction(user.AccountName, game.Contract, casino.Contract, sessionId, asset)
 	if err != nil {
 		return nil, err
 	}
@@ -174,6 +180,9 @@ func (a *GameSessionsUseCase) NewSession(
 		BlockchainSesID: sessionId,
 		State:           models.NewGameTrxSent,
 		LastOffset:      0,
+		Deposit:         asset,
+		LastUpdate:      time.Now().Unix(),
+		PlayerWinAmount: nil,
 	}
 
 	if err := a.repo.AddGameSession(ctx, gameSession); err != nil {
@@ -258,7 +267,12 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 		return err
 	}
 
-	transferAction, err := a.getTransferAction(gs.Player, game.Contract, casino.Contract, gs.ID, deposit)
+	asset, err := utils.ToBetAsset(deposit)
+	if err != nil {
+		return err
+	}
+
+	transferAction, err := a.getTransferAction(gs.Player, game.Contract, casino.Contract, gs.ID, asset)
 	if err != nil {
 		return err
 	}
@@ -298,6 +312,12 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 		return err
 	}
 
+	totalDeposit := gs.Deposit.Add(*asset)
+	err = a.repo.UpdateSessionDeposit(ctx, sessionId, totalDeposit.String())
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -306,20 +326,15 @@ func (a *GameSessionsUseCase) getTransferAction(
 	gameName string,
 	casinoName string,
 	sessionID uint64,
-	amount string,
+	amount *eos.Asset,
 ) (*eos.Action, error) {
 	from := eos.AN(playerName)
 	to := eos.AN(gameName)
 
-	quantity, err := eos.NewFixedSymbolAssetFromString(eos.Symbol{Precision: 4, Symbol: "BET"}, amount)
-	if err != nil {
-		return nil, err
-	}
-
 	memo := strconv.FormatUint(sessionID, 10) // IMPORTANT!
 
 	// Add transfer deposit action
-	transferAction := token.NewTransfer(from, to, quantity, memo)
+	transferAction := token.NewTransfer(from, to, *amount, memo)
 	transferAction.Authorization = []eos.PermissionLevel{
 		{Actor: from, Permission: eos.PN(casinoName)},
 	}

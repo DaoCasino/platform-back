@@ -1,5 +1,7 @@
 package models
 
+import "github.com/eoscanada/eos-go"
+
 type GameSessionState uint16
 
 const (
@@ -20,4 +22,7 @@ type GameSession struct {
 	BlockchainSesID uint64           `json:"blockchainSesId"`
 	State           GameSessionState `json:"state"`
 	LastOffset      uint64           `json:"lastOffset"`
+	Deposit         *eos.Asset       `json:"deposit"`
+	LastUpdate      int64            `json:"lastUpdate"`
+	PlayerWinAmount *eos.Asset       `json:"playerWinAmount"`
 }

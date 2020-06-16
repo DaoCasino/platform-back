@@ -22,6 +22,9 @@ type GameSessionResponse struct {
 	GameID          string                  `json:"gameId"`
 	BlockchainSesID string                  `json:"blockchainSesId"`
 	State           models.GameSessionState `json:"state"`
+	LastUpdate      int64                   `json:"lastUpdate"`
+	Deposit         *eos.Asset              `json:"deposit"`
+	PlayerWinAmount *eos.Asset              `json:"playerWinAmount"`
 }
 
 func toGameSessionResponse(s *models.GameSession) *GameSessionResponse {
@@ -32,6 +35,9 @@ func toGameSessionResponse(s *models.GameSession) *GameSessionResponse {
 		GameID:          strconv.FormatUint(s.GameID, 10),
 		BlockchainSesID: strconv.FormatUint(s.BlockchainSesID, 10),
 		State:           s.State,
+		LastUpdate:      s.LastUpdate,
+		Deposit:         s.Deposit,
+		PlayerWinAmount: s.PlayerWinAmount,
 	}
 }
 
