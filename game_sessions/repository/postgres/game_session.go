@@ -14,7 +14,7 @@ import (
 const (
 	selectGameSessionByIdStmt    = "SELECT * FROM game_sessions WHERE id = $1"
 	selectGameSessionByBcIDStmt  = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
-	selectUserGameSessionsStmt   = "SELECT * FROM game_sessions WHERE player = $1"
+	selectUserGameSessionsStmt   = "SELECT * FROM game_sessions WHERE player = $1 ORDER BY last_update DESC"
 	selectAllGameSessionsStmt    = "SELECT * FROM game_sessions"
 	selectFirstGameActionStmt    = "SELECT * FROM first_game_actions WHERE ses_id = $1"
 	updateSessionStateStmt       = "UPDATE game_sessions SET state = $2, last_update = $3 WHERE id = $1"

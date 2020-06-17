@@ -1,0 +1,1 @@
+DROP INDEX sessions_player_upd_idx;
