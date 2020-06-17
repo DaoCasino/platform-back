@@ -141,9 +141,11 @@ func onGameFinished(ctx context.Context, p *EventProcessor, event *eventlistener
 	}
 
 	var resultsArray []uint64
-	err = eos.NewDecoder(eventData.Msg).Decode(&resultsArray)
-	if err != nil {
-		return err
+	if len(eventData.Msg) > 0 {
+		err = eos.NewDecoder(eventData.Msg).Decode(&resultsArray)
+		if err != nil {
+			return err
+		}
 	}
 
 	updateData, err := json.Marshal(finishedUpdateData{
@@ -207,9 +209,11 @@ func onGameMessage(ctx context.Context, p *EventProcessor, event *eventlistener.
 	}
 
 	var resultsArray []uint64
-	err = eos.NewDecoder(eventData.Msg).Decode(&resultsArray)
-	if err != nil {
-		return err
+	if len(eventData.Msg) > 0 {
+		err = eos.NewDecoder(eventData.Msg).Decode(&resultsArray)
+		if err != nil {
+			return err
+		}
 	}
 
 	updateData, err := json.Marshal(messageUpdateData{
