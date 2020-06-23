@@ -122,21 +122,16 @@ func (r *GameSessionsPostgresRepo) GetGlobalSessions(ctx context.Context, filter
 	switch filter {
 	case gamesessions.All:
 		rows, err = conn.Query(ctx, selectGlobalSessionsStmt, models.GameFinished, GlobalCnt)
-		if err != nil {
-			return nil, err
-		}
 	case gamesessions.Wins:
 		rows, err = conn.Query(ctx, selectGlobalSessionsWinsStmt, models.GameFinished, GlobalCnt)
-		if err != nil {
-			return nil, err
-		}
 	case gamesessions.Losts:
 		rows, err = conn.Query(ctx, selectGlobalSessionsLostStmt, models.GameFinished, GlobalCnt)
-		if err != nil {
-			return nil, err
-		}
 	default:
 		return nil, errors.New("bad filter")
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	gameSessions := make([]*models.GameSession, 0, GlobalCnt)
