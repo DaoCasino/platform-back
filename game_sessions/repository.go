@@ -2,6 +2,7 @@ package gamesessions
 
 import (
 	"context"
+	"github.com/eoscanada/eos-go"
 	"platform-backend/models"
 )
 
@@ -34,4 +35,5 @@ type Repository interface {
 	GetGameSessionUpdates(ctx context.Context, id uint64) ([]*models.GameSessionUpdate, error)
 	AddGameSessionUpdate(ctx context.Context, upd *models.GameSessionUpdate) error
 	DeleteGameSessionUpdates(ctx context.Context, sesId uint64) error
+	GetCasinoSessions(ctx context.Context, filter FilterType, casinoId eos.Uint64) ([]*models.GameSession, error)
 }
