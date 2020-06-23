@@ -5,9 +5,18 @@ import (
 	"platform-backend/models"
 )
 
+type FilterType string
+
+const (
+	All   FilterType = "all"
+	Wins             = "wins"
+	Losts            = "losts"
+)
+
 type Repository interface {
 	HasGameSession(ctx context.Context, id uint64) (bool, error)
 	GetGameSession(ctx context.Context, id uint64) (*models.GameSession, error)
+	GetGlobalSessions(ctx context.Context, filter FilterType) ([]*models.GameSession, error)
 	GetSessionByBlockChainID(ctx context.Context, bcID uint64) (*models.GameSession, error)
 	UpdateSessionState(ctx context.Context, id uint64, state models.GameSessionState) error
 	UpdateSessionOffset(ctx context.Context, id uint64, offset uint64) error

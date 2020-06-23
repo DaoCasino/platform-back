@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"platform-backend/db"
@@ -15,6 +16,9 @@ const (
 	selectGameSessionByIdStmt    = "SELECT * FROM game_sessions WHERE id = $1"
 	selectGameSessionByBcIDStmt  = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
 	selectUserGameSessionsStmt   = "SELECT * FROM game_sessions WHERE player = $1 ORDER BY last_update DESC"
+	selectGlobalSessionsStmt     = "SELECT * FROM game_sessions WHERE state = $1 ORDER BY last_update DESC LIMIT $2"
+	selectGlobalSessionsLostStmt = "SELECT * FROM game_sessions WHERE state = $1 AND player_win_amount LIKE '-%' ORDER BY last_update DESC LIMIT $2"
+	selectGlobalSessionsWinsStmt = "SELECT * FROM game_sessions WHERE state = $1 AND player_win_amount NOT LIKE '-%' ORDER BY last_update DESC LIMIT $2"
 	selectAllGameSessionsStmt    = "SELECT * FROM game_sessions"
 	selectFirstGameActionStmt    = "SELECT * FROM first_game_actions WHERE ses_id = $1"
 	updateSessionStateStmt       = "UPDATE game_sessions SET state = $2, last_update = $3 WHERE id = $1"
@@ -103,6 +107,50 @@ func (r *GameSessionsPostgresRepo) GetGameSession(ctx context.Context, id uint64
 		return nil, err
 	}
 	return toModelGameSession(session)
+}
+
+func (r *GameSessionsPostgresRepo) GetGlobalSessions(ctx context.Context, filter gamesessions.FilterType) ([]*models.GameSession, error) {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	var rows pgx.Rows
+	if filter == gamesessions.All {
+		rows, err = conn.Query(ctx, selectGlobalSessionsStmt, models.GameFinished, 30)
+		if err != nil {
+			return nil, err
+		}
+	} else if filter == gamesessions.Wins {
+		rows, err = conn.Query(ctx, selectGlobalSessionsWinsStmt, models.GameFinished, 30)
+		if err != nil {
+			return nil, err
+		}
+	} else if filter == gamesessions.Losts {
+		rows, err = conn.Query(ctx, selectGlobalSessionsLostStmt, models.GameFinished, 30)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("bad filter")
+	}
+
+	gameSessions := make([]*models.GameSession, 0)
+	for rows.Next() {
+		session := new(GameSession)
+		err = session.Scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		ses, err := toModelGameSession(session)
+		if err != nil {
+			return nil, err
+		}
+		gameSessions = append(gameSessions, ses)
+	}
+
+	return gameSessions, nil
 }
 
 func (r *GameSessionsPostgresRepo) GetFirstAction(ctx context.Context, sesID uint64) (*models.GameAction, error) {
