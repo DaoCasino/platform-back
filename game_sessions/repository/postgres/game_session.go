@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+const GlobalCnt = 30
+
 const (
 	selectGameSessionByIdStmt    = "SELECT * FROM game_sessions WHERE id = $1"
 	selectGameSessionByBcIDStmt  = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
@@ -117,26 +119,27 @@ func (r *GameSessionsPostgresRepo) GetGlobalSessions(ctx context.Context, filter
 	defer conn.Release()
 
 	var rows pgx.Rows
-	if filter == gamesessions.All {
-		rows, err = conn.Query(ctx, selectGlobalSessionsStmt, models.GameFinished, 30)
+	switch filter {
+	case gamesessions.All:
+		rows, err = conn.Query(ctx, selectGlobalSessionsStmt, models.GameFinished, GlobalCnt)
 		if err != nil {
 			return nil, err
 		}
-	} else if filter == gamesessions.Wins {
-		rows, err = conn.Query(ctx, selectGlobalSessionsWinsStmt, models.GameFinished, 30)
+	case gamesessions.Wins:
+		rows, err = conn.Query(ctx, selectGlobalSessionsWinsStmt, models.GameFinished, GlobalCnt)
 		if err != nil {
 			return nil, err
 		}
-	} else if filter == gamesessions.Losts {
-		rows, err = conn.Query(ctx, selectGlobalSessionsLostStmt, models.GameFinished, 30)
+	case gamesessions.Losts:
+		rows, err = conn.Query(ctx, selectGlobalSessionsLostStmt, models.GameFinished, GlobalCnt)
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	default:
 		return nil, errors.New("bad filter")
 	}
 
-	gameSessions := make([]*models.GameSession, 0)
+	gameSessions := make([]*models.GameSession, 0, GlobalCnt)
 	for rows.Next() {
 		session := new(GameSession)
 		err = session.Scan(rows)
