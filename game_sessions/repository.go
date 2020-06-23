@@ -9,8 +9,8 @@ type FilterType string
 
 const (
 	All   FilterType = "all"
-	Wins             = "wins"
-	Losts            = "losts"
+	Wins  FilterType = "wins"
+	Losts FilterType = "losts"
 )
 
 type Repository interface {
