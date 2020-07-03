@@ -14,8 +14,8 @@ import (
 	authPgRepo "platform-backend/auth/repository/postgres"
 	authUC "platform-backend/auth/usecase"
 	"platform-backend/blockchain"
-	casinoBcRepo "platform-backend/contracts/repository/blockchain"
 	"platform-backend/config"
+	casinoBcRepo "platform-backend/contracts/repository/blockchain"
 	"platform-backend/db"
 	"platform-backend/eventprocessor"
 	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
@@ -26,6 +26,7 @@ import (
 	"platform-backend/server/session_manager"
 	smLocalRepo "platform-backend/server/session_manager/repository/localstorage"
 	signidiceUC "platform-backend/signidice/usecase"
+	subscriptionUc "platform-backend/subscription/usecase"
 	"platform-backend/usecases"
 	"time"
 )
@@ -186,6 +187,7 @@ func NewApp(config *config.Config) (*App, error) {
 			config.Blockchain.Contracts.Platform,
 			config.Signidice.Key,
 		),
+		subscriptionUc.NewSubscriptionUseCase(),
 	)
 
 	events := make(chan *eventlistener.EventMessage)
@@ -304,7 +306,7 @@ func startAmc(a *App, ctx context.Context) error {
 
 	go listener.Run(ctx)
 
-	if ok, err := listener.BatchSubscribe( eventprocessor.GetEventsToSubscribe(), 0); err != nil || !ok {
+	if ok, err := listener.BatchSubscribe(eventprocessor.GetEventsToSubscribe(), 0); err != nil || !ok {
 		log.Fatal().Msgf("Action monitor subscribe to events, error: %v", err)
 	}
 
