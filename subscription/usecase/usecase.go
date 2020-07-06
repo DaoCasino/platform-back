@@ -16,30 +16,25 @@ type Subscription struct {
 }
 
 type SubscriptionUseCase struct {
-	subscriptions []*Subscription
+	subscriptions map[uuid.UUID]*Subscription
 }
 
 func NewSubscriptionUseCase() *SubscriptionUseCase {
 	return &SubscriptionUseCase{
-		subscriptions: make([]*Subscription, 0),
+		subscriptions: make(map[uuid.UUID]*Subscription),
 	}
 }
 
 func (s *SubscriptionUseCase) AddSession(uuid uuid.UUID, user *models.User, send chan []byte) {
-	s.subscriptions = append(s.subscriptions, &Subscription{
+	s.subscriptions[uuid] = &Subscription{
 		uuid: uuid,
 		user: user,
 		send: send,
-	})
+	}
 }
 
 func (s *SubscriptionUseCase) RemoveSession(uuid uuid.UUID) {
-	for i := 0; i < len(s.subscriptions); i++ {
-		if s.subscriptions[i].uuid == uuid {
-			s.subscriptions = append(s.subscriptions[:i], s.subscriptions[i+1:]...)
-			return
-		}
-	}
+	delete(s.subscriptions, uuid)
 }
 
 func (s *SubscriptionUseCase) Notify(user string, reason string, payload interface{}) {

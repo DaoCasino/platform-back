@@ -87,13 +87,13 @@ func (s *Session) readLoop() {
 			// add user info into context
 			ctx = context.WithValue(ctx, "user", s.User)
 
-			resp, subscribed, err := s.wsApi.ProcessRawRequest(ctx, messageType, message)
+			resp, request, err := s.wsApi.ProcessRawRequest(ctx, messageType, message)
 			if err != nil {
 				log.Debug().Msgf("Websocket request fatal error, disconnection, %s", err.Error())
 				return
 			}
 
-			if subscribed {
+			if request == "subscribe" {
 				s.wsApi.UseCases.Subscriptions.AddSession(s.Uuid, s.User, s.Send)
 			}
 

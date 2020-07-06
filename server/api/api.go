@@ -121,14 +121,14 @@ func respondWithOK(reqId string, payload interface{}) *ws_interface.WsResponse {
 	}
 }
 
-func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, message []byte) (*ws_interface.WsResponse, bool, error) {
+func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, message []byte) (*ws_interface.WsResponse, string, error) {
 	var messageObj ws_interface.WsRequest
 	if err := json.Unmarshal(message, &messageObj); err != nil {
-		return nil, false, err
+		return nil, "", err
 	}
 
 	if messageObj.Id == "" || messageObj.Request == "" {
-		return nil, false, fmt.Errorf("invalid request JSON format")
+		return nil, "", fmt.Errorf("invalid request JSON format")
 	}
 
 	suid := context.Value("suid").(uuid.UUID).String()
@@ -140,12 +140,12 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 	if handler, found := handlersMap[messageObj.Request]; found {
 		if handler.messageType != messageType {
 			log.Info().Msgf("WS request from: %s has wrong message type: %d", suid, messageType)
-			return nil, false, fmt.Errorf("message type is wrong")
+			return nil, "", fmt.Errorf("message type is wrong")
 		}
 
 		if handler.needAuth && user == nil {
 			log.Info().Msgf("WS request from: %s unauthorized", suid)
-			return respondWithError(messageObj.Id, ws_interface.UnauthorizedError), false, nil
+			return respondWithError(messageObj.Id, ws_interface.UnauthorizedError), messageObj.Request, nil
 		}
 
 		// process request
@@ -162,13 +162,13 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 			} else {
 				log.Info().Msgf("WS request failed from suid: %s, code: %d, err: %s", suid, handlerError.Code, handlerError.InternalError.Error())
 			}
-			return respondWithError(messageObj.Id, handlerError.Code), false, nil
+			return respondWithError(messageObj.Id, handlerError.Code), messageObj.Request, nil
 		}
 
 		log.Info().Msgf("WS successfully finished request from suid: %s", suid)
-		return respondWithOK(messageObj.Id, wsResp), messageObj.Request == "subscribe", nil
+		return respondWithOK(messageObj.Id, wsResp), messageObj.Request, nil
 	}
 
 	log.Info().Msgf("WS request from '%s' has wrong request type: %s", suid, messageObj.Request)
-	return nil, false, fmt.Errorf("unknown request type: %s", messageObj.Request)
+	return nil, messageObj.Request, fmt.Errorf("unknown request type: %s", messageObj.Request)
 }
