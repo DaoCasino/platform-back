@@ -30,20 +30,40 @@ type messageUpdateData struct {
 	Msg []uint64 `json:"msg"`
 }
 
+func notifySubscibers(ctx context.Context, p *EventProcessor, session *models.GameSession) error {
+	updates, err := p.repos.GameSession.GetGameSessionUpdates(ctx, session.ID)
+	if err != nil {
+		return err
+	}
+	updateMsgs := make([]*models.GameSessionUpdateMsg, len(updates))
+	for i, update := range updates {
+		updateMsgs[i] = models.ToGameSessionUpdateMsg(update)
+	}
+	go p.useCases.Subscriptions.Notify(session.Player, "session_update", updateMsgs)
+	return nil
+}
+
 func onGameStarted(ctx context.Context, p *EventProcessor, event *eventlistener.Event, session *models.GameSession) error {
 	log.Debug().Msgf("Got started event for session: %d", session.ID)
 
-	err := p.repos.GameSession.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
+	update := &models.GameSessionUpdate{
 		SessionID:  session.ID,
 		UpdateType: models.SessionStartedUpdate,
 		Timestamp:  time.Now(),
 		Data:       event.Data,
-	})
+	}
+
+	err := p.repos.GameSession.AddGameSessionUpdate(ctx, update)
 	if err != nil {
 		return err
 	}
 
 	err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameStartedInBC)
+	if err != nil {
+		return err
+	}
+
+	err = notifySubscibers(ctx, p, session)
 	if err != nil {
 		return err
 	}
@@ -156,12 +176,14 @@ func onGameFinished(ctx context.Context, p *EventProcessor, event *eventlistener
 		return err
 	}
 
-	err = p.repos.GameSession.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
+	update := &models.GameSessionUpdate{
 		SessionID:  session.ID,
 		UpdateType: models.GameFinishedUpdate,
 		Timestamp:  time.Now(),
 		Data:       updateData,
-	})
+	}
+
+	err = p.repos.GameSession.AddGameSessionUpdate(ctx, update)
 	if err != nil {
 		return err
 	}
@@ -176,23 +198,35 @@ func onGameFinished(ctx context.Context, p *EventProcessor, event *eventlistener
 		return err
 	}
 
+	err = notifySubscibers(ctx, p, session)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func onGameFailed(ctx context.Context, p *EventProcessor, event *eventlistener.Event, session *models.GameSession) error {
 	log.Debug().Msgf("Got failed event for session: %d", session.ID)
 
-	err := p.repos.GameSession.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
+	update := &models.GameSessionUpdate{
 		SessionID:  session.ID,
 		UpdateType: models.GameFailedUpdate,
 		Timestamp:  time.Now(),
 		Data:       event.Data,
-	})
+	}
+
+	err := p.repos.GameSession.AddGameSessionUpdate(ctx, update)
 	if err != nil {
 		return err
 	}
 
 	err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameFailed)
+	if err != nil {
+		return err
+	}
+
+	err = notifySubscibers(ctx, p, session)
 	if err != nil {
 		return err
 	}
@@ -223,10 +257,17 @@ func onGameMessage(ctx context.Context, p *EventProcessor, event *eventlistener.
 		return err
 	}
 
-	return p.repos.GameSession.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
+	update := &models.GameSessionUpdate{
 		SessionID:  session.ID,
 		UpdateType: models.GameMessageUpdate,
 		Timestamp:  time.Now(),
 		Data:       updateData,
-	})
+	}
+
+	err = notifySubscibers(ctx, p, session)
+	if err != nil {
+		return err
+	}
+
+	return p.repos.GameSession.AddGameSessionUpdate(ctx, update)
 }

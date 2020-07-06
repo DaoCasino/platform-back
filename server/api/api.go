@@ -15,14 +15,14 @@ import (
 )
 
 type WsApi struct {
-	useCases *usecases.UseCases
-	repos    *repositories.Repos
+	UseCases *usecases.UseCases
+	Repos    *repositories.Repos
 }
 
 func NewWsApi(useCases *usecases.UseCases, repos *repositories.Repos) *WsApi {
 	wsApi := new(WsApi)
-	wsApi.useCases = useCases
-	wsApi.repos = repos
+	wsApi.UseCases = useCases
+	wsApi.Repos = repos
 	return wsApi
 }
 
@@ -121,14 +121,14 @@ func respondWithOK(reqId string, payload interface{}) *ws_interface.WsResponse {
 	}
 }
 
-func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, message []byte) (*ws_interface.WsResponse, error) {
+func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, message []byte) (*ws_interface.WsResponse, string, error) {
 	var messageObj ws_interface.WsRequest
 	if err := json.Unmarshal(message, &messageObj); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if messageObj.Id == "" || messageObj.Request == "" {
-		return nil, fmt.Errorf("invalid request JSON format")
+		return nil, "", fmt.Errorf("invalid request JSON format")
 	}
 
 	suid := context.Value("suid").(uuid.UUID).String()
@@ -140,18 +140,18 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 	if handler, found := handlersMap[messageObj.Request]; found {
 		if handler.messageType != messageType {
 			log.Info().Msgf("WS request from: %s has wrong message type: %d", suid, messageType)
-			return nil, fmt.Errorf("message type is wrong")
+			return nil, "", fmt.Errorf("message type is wrong")
 		}
 
 		if handler.needAuth && user == nil {
 			log.Info().Msgf("WS request from: %s unauthorized", suid)
-			return respondWithError(messageObj.Id, ws_interface.UnauthorizedError), nil
+			return respondWithError(messageObj.Id, ws_interface.UnauthorizedError), messageObj.Request, nil
 		}
 
 		// process request
 		wsResp, handlerError := handler.handler(context, &ws_interface.ApiRequest{
-			UseCases: api.useCases,
-			Repos:    api.repos,
+			UseCases: api.UseCases,
+			Repos:    api.Repos,
 			User:     user,
 			Data:     &messageObj,
 		})
@@ -162,13 +162,13 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 			} else {
 				log.Info().Msgf("WS request failed from suid: %s, code: %d, err: %s", suid, handlerError.Code, handlerError.InternalError.Error())
 			}
-			return respondWithError(messageObj.Id, handlerError.Code), nil
+			return respondWithError(messageObj.Id, handlerError.Code), messageObj.Request, nil
 		}
 
 		log.Info().Msgf("WS successfully finished request from suid: %s", suid)
-		return respondWithOK(messageObj.Id, wsResp), nil
+		return respondWithOK(messageObj.Id, wsResp), messageObj.Request, nil
 	}
 
 	log.Info().Msgf("WS request from '%s' has wrong request type: %s", suid, messageObj.Request)
-	return nil, fmt.Errorf("unknown request type: %s", messageObj.Request)
+	return nil, messageObj.Request, fmt.Errorf("unknown request type: %s", messageObj.Request)
 }

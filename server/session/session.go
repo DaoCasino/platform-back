@@ -51,6 +51,7 @@ type Session struct {
 func (s *Session) close() {
 	if !s.closing.Load() {
 		_ = s.wsConn.Close()
+		s.wsApi.UseCases.Subscriptions.RemoveSession(s.Uuid)
 		s.onClose()
 		s.closing.Store(true)
 	}
@@ -86,10 +87,14 @@ func (s *Session) readLoop() {
 			// add user info into context
 			ctx = context.WithValue(ctx, "user", s.User)
 
-			resp, err := s.wsApi.ProcessRawRequest(ctx, messageType, message)
+			resp, request, err := s.wsApi.ProcessRawRequest(ctx, messageType, message)
 			if err != nil {
 				log.Debug().Msgf("Websocket request fatal error, disconnection, %s", err.Error())
 				return
+			}
+
+			if request == "subscribe" {
+				s.wsApi.UseCases.Subscriptions.AddSession(s.Uuid, s.User, s.Send)
 			}
 
 			if marshal, err := json.Marshal(resp); err != nil {
