@@ -6,7 +6,7 @@ import (
 )
 
 type UseCase interface {
-	AddSession(uuid uuid.UUID, user *models.User, send chan []byte)
+	AddSession(uuid uuid.UUID, user *models.User, send chan<- []byte)
 	RemoveSession(uuid uuid.UUID)
 	Notify(user string, reason string, payload interface{})
 }

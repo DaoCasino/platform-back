@@ -13,7 +13,7 @@ import (
 type Subscription struct {
 	uuid uuid.UUID
 	user *models.User
-	send chan []byte
+	send chan<- []byte
 }
 
 type SubscriptionUseCase struct {
@@ -27,7 +27,7 @@ func NewSubscriptionUseCase() *SubscriptionUseCase {
 	}
 }
 
-func (s *SubscriptionUseCase) AddSession(uuid uuid.UUID, user *models.User, send chan []byte) {
+func (s *SubscriptionUseCase) AddSession(uuid uuid.UUID, user *models.User, send chan<- []byte) {
 	s.Lock()
 	defer s.Unlock()
 
