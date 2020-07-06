@@ -17,8 +17,8 @@ type Subscription struct {
 }
 
 type SubscriptionUseCase struct {
-	subscriptions map[uuid.UUID]*Subscription
 	sync.Mutex
+	subscriptions map[uuid.UUID]*Subscription
 }
 
 func NewSubscriptionUseCase() *SubscriptionUseCase {
