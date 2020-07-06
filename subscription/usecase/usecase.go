@@ -46,6 +46,20 @@ func (s *SubscriptionUseCase) RemoveSession(uuid uuid.UUID) {
 }
 
 func (s *SubscriptionUseCase) Notify(user string, reason string, payload interface{}) {
+	resp := &ws_interface.WsUpdate{
+		Type:    "update",
+		Reason:  reason,
+		Time:    time.Now().Unix(),
+		Payload: payload,
+	}
+
+	marshal, err := json.Marshal(resp)
+
+	if err != nil {
+		log.Debug().Msgf("Websocket answer marshal error, %s", err.Error())
+		return
+	}
+
 	s.Lock()
 	defer s.Unlock()
 
@@ -54,18 +68,11 @@ func (s *SubscriptionUseCase) Notify(user string, reason string, payload interfa
 			continue
 		}
 
-		resp := &ws_interface.WsUpdate{
-			Type:    "update",
-			Reason:  reason,
-			Time:    time.Now().Unix(),
-			Payload: payload,
-		}
-
-		if marshal, err := json.Marshal(resp); err != nil {
-			log.Debug().Msgf("Websocket answer marshal error, %s", err.Error())
-			return
-		} else {
-			subscription.send <- marshal
+		// Select to prevent lock when send channel is not listening
+		select {
+		case subscription.send <- marshal:
+		default:
+			log.Info().Msgf("Subscribe: notify called when send channel is dead")
 		}
 	}
 }
