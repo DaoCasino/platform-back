@@ -18,7 +18,7 @@ type Subscription struct {
 
 type SubscriptionUseCase struct {
 	subscriptions map[uuid.UUID]*Subscription
-	lock          sync.Mutex
+	sync.Mutex
 }
 
 func NewSubscriptionUseCase() *SubscriptionUseCase {
@@ -28,8 +28,8 @@ func NewSubscriptionUseCase() *SubscriptionUseCase {
 }
 
 func (s *SubscriptionUseCase) AddSession(uuid uuid.UUID, user *models.User, send chan []byte) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	s.subscriptions[uuid] = &Subscription{
 		uuid: uuid,
@@ -39,15 +39,15 @@ func (s *SubscriptionUseCase) AddSession(uuid uuid.UUID, user *models.User, send
 }
 
 func (s *SubscriptionUseCase) RemoveSession(uuid uuid.UUID) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	delete(s.subscriptions, uuid)
 }
 
 func (s *SubscriptionUseCase) Notify(user string, reason string, payload interface{}) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	for _, subscription := range s.subscriptions {
 		if subscription.user.AccountName != user {
