@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
+	"sync"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type Subscription struct {
 
 type SubscriptionUseCase struct {
 	subscriptions map[uuid.UUID]*Subscription
+	lock          sync.Mutex
 }
 
 func NewSubscriptionUseCase() *SubscriptionUseCase {
@@ -26,6 +28,9 @@ func NewSubscriptionUseCase() *SubscriptionUseCase {
 }
 
 func (s *SubscriptionUseCase) AddSession(uuid uuid.UUID, user *models.User, send chan []byte) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	s.subscriptions[uuid] = &Subscription{
 		uuid: uuid,
 		user: user,
@@ -34,10 +39,16 @@ func (s *SubscriptionUseCase) AddSession(uuid uuid.UUID, user *models.User, send
 }
 
 func (s *SubscriptionUseCase) RemoveSession(uuid uuid.UUID) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	delete(s.subscriptions, uuid)
 }
 
 func (s *SubscriptionUseCase) Notify(user string, reason string, payload interface{}) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	for _, subscription := range s.subscriptions {
 		if subscription.user.AccountName != user {
 			continue
