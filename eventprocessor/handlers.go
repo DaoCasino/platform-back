@@ -264,10 +264,15 @@ func onGameMessage(ctx context.Context, p *EventProcessor, event *eventlistener.
 		Data:       updateData,
 	}
 
+	err = p.repos.GameSession.AddGameSessionUpdate(ctx, update)
+	if err != nil {
+		return err
+	}
+
 	err = notifySubscibers(ctx, p, session)
 	if err != nil {
 		return err
 	}
 
-	return p.repos.GameSession.AddGameSessionUpdate(ctx, update)
+	return nil
 }
