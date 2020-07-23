@@ -250,7 +250,7 @@ func NewApp(config *config.Config) (*App, error) {
 	handle := func(path string, handler http.Handler) *mux.Route {
 		fullPath := "/" + path
 		requestDurationHistograms[fullPath] = prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name:    path + "_ms",
+			Name:    "http_" + path + "_ms",
 			Buckets: commonBuckets,
 		})
 		return r.Handle(fullPath, handler)
