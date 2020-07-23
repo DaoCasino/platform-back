@@ -19,22 +19,22 @@ import (
 type WsApi struct {
 	UseCases        *usecases.UseCases
 	Repos           *repositories.Repos
-	eventHistograms map[string]prometheus.Histogram
+	eventHistograms map[string]*prometheus.HistogramVec
 }
 
 func NewWsApi(useCases *usecases.UseCases, repos *repositories.Repos, registerer prometheus.Registerer) *WsApi {
 	wsApi := new(WsApi)
 	wsApi.UseCases = useCases
 	wsApi.Repos = repos
-	wsApi.eventHistograms = make(map[string]prometheus.Histogram)
+	wsApi.eventHistograms = make(map[string]*prometheus.HistogramVec)
 
 	wsApiBuckets := prometheus.LinearBuckets(0, 5, 200)
 
 	for reqName := range handlersMap {
-		hist := prometheus.NewHistogram(prometheus.HistogramOpts{
+		hist := prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "ws_request_" + reqName + "_ms",
 			Buckets: wsApiBuckets,
-		})
+		}, []string{"result"})
 		registerer.MustRegister(hist)
 		wsApi.eventHistograms[reqName] = hist
 	}
@@ -174,15 +174,17 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 		})
 		t := time.Now()
 		elapsed := t.Sub(start)
-		api.eventHistograms[messageObj.Request].Observe(float64(elapsed.Milliseconds()))
 
 		if handlerError != nil {
+			api.eventHistograms[messageObj.Request].WithLabelValues("error").Observe(float64(elapsed.Milliseconds()))
 			if handlerError.Code == ws_interface.InternalError {
 				log.Error().Msgf("WS request internal error from suid: %s, err: %s", suid, handlerError.InternalError.Error())
 			} else {
 				log.Info().Msgf("WS request failed from suid: %s, code: %d, err: %s", suid, handlerError.Code, handlerError.InternalError.Error())
 			}
 			return respondWithError(messageObj.Id, handlerError.Code), messageObj.Request, nil
+		} else {
+			api.eventHistograms[messageObj.Request].WithLabelValues("success").Observe(float64(elapsed.Milliseconds()))
 		}
 
 		log.Info().Msgf("WS successfully finished request from suid: %s", suid)

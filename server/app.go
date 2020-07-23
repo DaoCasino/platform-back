@@ -31,6 +31,8 @@ import (
 	signidiceUC "platform-backend/signidice/usecase"
 	subscriptionUc "platform-backend/subscription/usecase"
 	"platform-backend/usecases"
+	"reflect"
+	"strconv"
 	"time"
 )
 
@@ -228,18 +230,16 @@ func NewApp(config *config.Config) (*App, error) {
 		refreshTokensHandler(app, w, r)
 	})
 
-	requestDurationHistograms := make(map[string]prometheus.Histogram)
+	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
 
 	requestDurationsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			// Use this to get response code
-			// lrw := utils.NewLoggingResponseWriter(w)
-			//next.ServeHTTP(lrw, r)
 			next.ServeHTTP(w, r)
 			t := time.Now()
 			elapsed := t.Sub(start)
-			requestDurationHistograms[r.RequestURI].Observe(float64(elapsed.Milliseconds()))
+			code := reflect.Indirect(reflect.ValueOf(w)).FieldByName("status").Int()
+			requestDurationHistograms[r.RequestURI].WithLabelValues(strconv.FormatInt(code, 10)).Observe(float64(elapsed.Milliseconds()))
 		})
 	}
 
@@ -247,22 +247,21 @@ func NewApp(config *config.Config) (*App, error) {
 	r := mux.NewRouter()
 	r.Use(requestDurationsMiddleware)
 
-	handle := func(path string, handler http.Handler) *mux.Route {
+	addHistogramVec := func(path string) string {
 		fullPath := "/" + path
-		requestDurationHistograms[fullPath] = prometheus.NewHistogram(prometheus.HistogramOpts{
+		requestDurationHistograms[fullPath] = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "http_" + path + "_ms",
 			Buckets: commonBuckets,
-		})
-		return r.Handle(fullPath, handler)
+		}, []string{"response_code"})
+		return fullPath
+	}
+
+	handle := func(path string, handler http.Handler) *mux.Route {
+		return r.Handle(addHistogramVec(path), handler)
 	}
 
 	handleFunc := func(path string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
-		fullPath := "/" + path
-		requestDurationHistograms[fullPath] = prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name:    path + "_ms",
-			Buckets: commonBuckets,
-		})
-		return r.HandleFunc(fullPath, f)
+		return r.HandleFunc(addHistogramVec(path), f)
 	}
 
 	handle("connect", wsHandler)
