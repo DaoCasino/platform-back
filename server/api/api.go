@@ -6,23 +6,39 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"platform-backend/models"
 	"platform-backend/repositories"
 	"platform-backend/server/api/handlers"
 	"platform-backend/server/api/ws_interface"
 	"platform-backend/usecases"
+	"time"
 )
 
 type WsApi struct {
-	UseCases *usecases.UseCases
-	Repos    *repositories.Repos
+	UseCases        *usecases.UseCases
+	Repos           *repositories.Repos
+	eventHistograms map[string]prometheus.Histogram
 }
 
-func NewWsApi(useCases *usecases.UseCases, repos *repositories.Repos) *WsApi {
+func NewWsApi(useCases *usecases.UseCases, repos *repositories.Repos, registerer prometheus.Registerer) *WsApi {
 	wsApi := new(WsApi)
 	wsApi.UseCases = useCases
 	wsApi.Repos = repos
+	wsApi.eventHistograms = make(map[string]prometheus.Histogram)
+
+	wsApiBuckets := prometheus.LinearBuckets(0, 5, 200)
+
+	for reqName := range handlersMap {
+		hist := prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "event_" + reqName + "_ms",
+			Buckets: wsApiBuckets,
+		})
+		registerer.MustRegister(hist)
+		wsApi.eventHistograms[reqName] = hist
+	}
+
 	return wsApi
 }
 
@@ -148,6 +164,7 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 			return respondWithError(messageObj.Id, ws_interface.UnauthorizedError), messageObj.Request, nil
 		}
 
+		start := time.Now()
 		// process request
 		wsResp, handlerError := handler.handler(context, &ws_interface.ApiRequest{
 			UseCases: api.UseCases,
@@ -155,6 +172,9 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 			User:     user,
 			Data:     &messageObj,
 		})
+		t := time.Now()
+		elapsed := t.Sub(start)
+		api.eventHistograms[messageObj.Request].Observe(float64(elapsed.Milliseconds()))
 
 		if handlerError != nil {
 			if handlerError.Code == ws_interface.InternalError {

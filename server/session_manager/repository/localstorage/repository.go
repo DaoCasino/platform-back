@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"platform-backend/models"
 	"platform-backend/server/api"
@@ -20,11 +21,19 @@ type LocalRepository struct {
 	sessionByUser map[string]*session.Session
 }
 
-func NewLocalRepository() *LocalRepository {
-	return &LocalRepository{
+func NewLocalRepository(reg prometheus.Registerer) *LocalRepository {
+	lr := &LocalRepository{
 		sessionById:   make(map[uuid.UUID]*session.Session),
 		sessionByUser: make(map[string]*session.Session),
 	}
+
+	reg.MustRegister(prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Name: "ws_sessions_amount",
+		},
+		func() float64 { return float64(len(lr.sessionById)) }))
+
+	return lr
 }
 
 func (r *LocalRepository) AddSession(context context.Context, wsConn *websocket.Conn, wsApi *api.WsApi) {
