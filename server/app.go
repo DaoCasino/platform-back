@@ -54,8 +54,6 @@ type App struct {
 	eventProcessor *eventprocessor.EventProcessor
 	useCases       *usecases.UseCases
 	events         chan *eventlistener.EventMessage
-
-	reg prometheus.Registerer
 }
 
 const PrometheusPrefix = "platformback_"
