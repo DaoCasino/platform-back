@@ -21,7 +21,7 @@ const (
 	selectUserGameSessionsStmt   = "SELECT * FROM game_sessions WHERE player = $1 ORDER BY last_update DESC"
 	selectGlobalSessionsStmt     = "SELECT * FROM game_sessions WHERE state = $1 ORDER BY last_update DESC LIMIT $2"
 	selectGlobalSessionsLostStmt = "SELECT * FROM game_sessions WHERE state = $1 AND player_win_amount LIKE '-%' ORDER BY last_update DESC LIMIT $2"
-	selectGlobalSessionsWinsStmt = "SELECT * FROM game_sessions WHERE state = $1 AND player_win_amount NOT LIKE '-%' ORDER BY last_update DESC LIMIT $2"
+	selectGlobalSessionsWinsStmt = "SELECT * FROM game_sessions WHERE state = $1 AND player_win_amount NOT LIKE '(-%|0.0000 %)' ORDER BY last_update DESC LIMIT $2"
 	selectCasinoSessionsStmt     = "SELECT * FROM game_sessions WHERE state = $1 AND casino_id = $2 ORDER BY last_update DESC LIMIT $3"
 	selectCasinoSessionsLostStmt = "SELECT * FROM game_sessions WHERE state = $1 AND casino_id = $2 AND player_win_amount LIKE '-%' ORDER BY last_update DESC LIMIT $3"
 	selectCasinoSessionsWinsStmt = "SELECT * FROM game_sessions WHERE state = $1 AND casino_id = $2 AND player_win_amount NOT LIKE '-%' ORDER BY last_update DESC LIMIT $3"
