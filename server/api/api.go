@@ -32,7 +32,7 @@ func NewWsApi(useCases *usecases.UseCases, repos *repositories.Repos, registerer
 
 	for reqName := range handlersMap {
 		hist := prometheus.NewHistogram(prometheus.HistogramOpts{
-			Name:    "event_" + reqName + "_ms",
+			Name:    "ws_request_" + reqName + "_ms",
 			Buckets: wsApiBuckets,
 		})
 		registerer.MustRegister(hist)
