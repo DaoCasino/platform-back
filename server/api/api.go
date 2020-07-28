@@ -13,6 +13,7 @@ import (
 	"platform-backend/server/api/handlers"
 	"platform-backend/server/api/ws_interface"
 	"platform-backend/usecases"
+	"strconv"
 	"time"
 )
 
@@ -176,7 +177,7 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 		elapsed := t.Sub(start)
 
 		if handlerError != nil {
-			api.eventHistograms[messageObj.Request].WithLabelValues("error").Observe(float64(elapsed.Milliseconds()))
+			api.eventHistograms[messageObj.Request].WithLabelValues(strconv.FormatInt(int64(handlerError.Code), 10)).Observe(float64(elapsed.Milliseconds()))
 			if handlerError.Code == ws_interface.InternalError {
 				log.Error().Msgf("WS request internal error from suid: %s, err: %s", suid, handlerError.InternalError.Error())
 			} else {
