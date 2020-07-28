@@ -183,9 +183,9 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 				log.Info().Msgf("WS request failed from suid: %s, code: %d, err: %s", suid, handlerError.Code, handlerError.InternalError.Error())
 			}
 			return respondWithError(messageObj.Id, handlerError.Code), messageObj.Request, nil
-		} else {
-			api.eventHistograms[messageObj.Request].WithLabelValues("success").Observe(float64(elapsed.Milliseconds()))
 		}
+
+		api.eventHistograms[messageObj.Request].WithLabelValues("success").Observe(float64(elapsed.Milliseconds()))
 
 		log.Info().Msgf("WS successfully finished request from suid: %s", suid)
 		return respondWithOK(messageObj.Id, wsResp), messageObj.Request, nil
