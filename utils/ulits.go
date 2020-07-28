@@ -1,6 +1,8 @@
 package utils
 
-import "github.com/eoscanada/eos-go"
+import (
+	"github.com/eoscanada/eos-go"
+)
 
 const (
 	DAOBetAssetSymbol = "BET"

@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"platform-backend/config"
 )
@@ -60,7 +61,7 @@ func migrateDatabase(pgxCfg *pgx.ConnConfig) error {
 	return nil
 }
 
-func InitDB(ctx context.Context, config *config.DbConfig) error {
+func InitDB(ctx context.Context, config *config.DbConfig, reg prometheus.Registerer) error {
 	poolCfg, err := pgxpool.ParseConfig(config.Url)
 	if err != nil {
 		log.Fatal().Msgf("Database parseConfig error, %s", err.Error())
@@ -79,6 +80,12 @@ func InitDB(ctx context.Context, config *config.DbConfig) error {
 		return err
 	}
 	DbPool = pool
+
+	reg.MustRegister(prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Name: "db_connection_total_connections",
+		},
+		func() float64 { return float64(pool.Stat().TotalConns()) }))
 
 	log.Info().Msgf("Database initialized")
 

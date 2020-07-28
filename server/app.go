@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
@@ -28,6 +31,8 @@ import (
 	signidiceUC "platform-backend/signidice/usecase"
 	subscriptionUc "platform-backend/subscription/usecase"
 	"platform-backend/usecases"
+	"reflect"
+	"strconv"
 	"time"
 )
 
@@ -52,6 +57,8 @@ type App struct {
 	useCases       *usecases.UseCases
 	events         chan *eventlistener.EventMessage
 }
+
+const PrometheusPrefix = "platformback_"
 
 func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New connect request")
@@ -138,7 +145,7 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(response)
 }
 
-func pingHandler(w http.ResponseWriter, r *http.Request) {
+func pingHandler(w http.ResponseWriter, _ *http.Request) {
 	log.Debug().Msgf("New ping request")
 	w.WriteHeader(http.StatusOK)
 }
@@ -146,7 +153,14 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 func NewApp(config *config.Config) (*App, error) {
 	logger.InitLogger(config.LogLevel)
 
-	err := db.InitDB(context.Background(), &config.Db)
+	// Create prometheus things
+	commonBuckets := prometheus.LinearBuckets(0, 5, 200)
+	registry := prometheus.NewRegistry()
+	registerer := prometheus.WrapRegistererWithPrefix(PrometheusPrefix, registry)
+
+	registerer.MustRegister(prometheus.NewGoCollector())
+
+	err := db.InitDB(context.Background(), &config.Db, registerer)
 	if err != nil {
 		log.Fatal().Msgf("Database init error, %s", err.Error())
 		return nil, err
@@ -158,7 +172,7 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	smRepo := smLocalRepo.NewLocalRepository()
+	smRepo := smLocalRepo.NewLocalRepository(registerer)
 
 	repos := repositories.NewRepositories(
 		casinoBcRepo.NewCasinoBlockchainRepo(bc, config.Blockchain.Contracts.Platform),
@@ -200,7 +214,7 @@ func NewApp(config *config.Config) (*App, error) {
 		smRepo:         smRepo,
 		eventProcessor: eventprocessor.New(repos, bc, useCases),
 		useCases:       useCases,
-		wsApi:          api.NewWsApi(useCases, repos),
+		wsApi:          api.NewWsApi(useCases, repos, registerer),
 		events:         events,
 	}
 
@@ -216,14 +230,53 @@ func NewApp(config *config.Config) (*App, error) {
 		refreshTokensHandler(app, w, r)
 	})
 
-	mux := http.NewServeMux()
+	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
 
-	mux.Handle("/connect", wsHandler)
-	mux.HandleFunc("/auth", authHandler)
-	mux.HandleFunc("/refresh_token", refreshTokensHandler)
-	mux.HandleFunc("/ping", pingHandler)
+	requestDurationsMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			next.ServeHTTP(w, r)
+			t := time.Now()
+			elapsed := t.Sub(start)
+			code := reflect.Indirect(reflect.ValueOf(w)).FieldByName("status").Int()
+			requestDurationHistograms[r.RequestURI].WithLabelValues(strconv.FormatInt(code, 10)).Observe(float64(elapsed.Milliseconds()))
+		})
+	}
 
-	app.httpHandler = cors.Default().Handler(mux)
+	// Create router and add handlers
+	r := mux.NewRouter()
+	r.Use(requestDurationsMiddleware)
+
+	addHistogramVec := func(path string) string {
+		fullPath := "/" + path
+		requestDurationHistograms[fullPath] = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "http_" + path + "_ms",
+			Buckets: commonBuckets,
+		}, []string{"response_code"})
+		return fullPath
+	}
+
+	handle := func(path string, handler http.Handler) *mux.Route {
+		return r.Handle(addHistogramVec(path), handler)
+	}
+
+	handleFunc := func(path string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
+		return r.HandleFunc(addHistogramVec(path), f)
+	}
+
+	handle("connect", wsHandler)
+	handleFunc("auth", authHandler)
+	handleFunc("refresh_token", refreshTokensHandler)
+	handleFunc("ping", pingHandler)
+	handle("metrics", promhttp.InstrumentMetricHandler(
+		registerer, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
+	))
+
+	for _, hist := range requestDurationHistograms {
+		registerer.MustRegister(hist)
+	}
+
+	app.httpHandler = cors.Default().Handler(r)
 
 	log.Info().Msg("App created")
 

@@ -6,23 +6,40 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"platform-backend/models"
 	"platform-backend/repositories"
 	"platform-backend/server/api/handlers"
 	"platform-backend/server/api/ws_interface"
 	"platform-backend/usecases"
+	"strconv"
+	"time"
 )
 
 type WsApi struct {
-	UseCases *usecases.UseCases
-	Repos    *repositories.Repos
+	UseCases        *usecases.UseCases
+	Repos           *repositories.Repos
+	eventHistograms map[string]*prometheus.HistogramVec
 }
 
-func NewWsApi(useCases *usecases.UseCases, repos *repositories.Repos) *WsApi {
+func NewWsApi(useCases *usecases.UseCases, repos *repositories.Repos, registerer prometheus.Registerer) *WsApi {
 	wsApi := new(WsApi)
 	wsApi.UseCases = useCases
 	wsApi.Repos = repos
+	wsApi.eventHistograms = make(map[string]*prometheus.HistogramVec)
+
+	wsApiBuckets := prometheus.LinearBuckets(0, 5, 200)
+
+	for reqName := range handlersMap {
+		hist := prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "ws_request_" + reqName + "_ms",
+			Buckets: wsApiBuckets,
+		}, []string{"result"})
+		registerer.MustRegister(hist)
+		wsApi.eventHistograms[reqName] = hist
+	}
+
 	return wsApi
 }
 
@@ -148,6 +165,7 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 			return respondWithError(messageObj.Id, ws_interface.UnauthorizedError), messageObj.Request, nil
 		}
 
+		start := time.Now()
 		// process request
 		wsResp, handlerError := handler.handler(context, &ws_interface.ApiRequest{
 			UseCases: api.UseCases,
@@ -155,8 +173,11 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 			User:     user,
 			Data:     &messageObj,
 		})
+		t := time.Now()
+		elapsed := t.Sub(start)
 
 		if handlerError != nil {
+			api.eventHistograms[messageObj.Request].WithLabelValues(strconv.FormatInt(int64(handlerError.Code), 10)).Observe(float64(elapsed.Milliseconds()))
 			if handlerError.Code == ws_interface.InternalError {
 				log.Error().Msgf("WS request internal error from suid: %s, err: %s", suid, handlerError.InternalError.Error())
 			} else {
@@ -164,6 +185,8 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 			}
 			return respondWithError(messageObj.Id, handlerError.Code), messageObj.Request, nil
 		}
+
+		api.eventHistograms[messageObj.Request].WithLabelValues("success").Observe(float64(elapsed.Milliseconds()))
 
 		log.Info().Msgf("WS successfully finished request from suid: %s", suid)
 		return respondWithOK(messageObj.Id, wsResp), messageObj.Request, nil
