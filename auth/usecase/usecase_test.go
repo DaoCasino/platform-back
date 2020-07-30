@@ -92,8 +92,8 @@ func TestTokenRefresh(t *testing.T) {
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("CreateUser", user).Return(nil)
 	repo.On("AddUser", user).Return(nil)
-	repo.On("UpdateTokenNonce", user.AccountName).Return(nil)
-	repo.On("GetTokenNonce", user.AccountName).Return(tokenNonce, nil)
+	repo.On("UpdateLastTokenNonce", user.AccountName).Return(nil)
+	repo.On("GetLastTokenNonce", user.AccountName).Return(tokenNonce, nil)
 	refreshToken, _, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
 
@@ -101,7 +101,7 @@ func TestTokenRefresh(t *testing.T) {
 	ctx = context.WithValue(ctx, "suid", suid)
 	repo.On("GetUser", user.AccountName).Return(user, nil)
 	sm.On("SetUser", suid, user).Return(nil)
-	repo.On("GetTokenNonce", user.AccountName).Return(tokenNonce+1, nil)
+	repo.On("GetLastTokenNonce", user.AccountName).Return(tokenNonce+1, nil)
 	_, accessToken, err := uc.RefreshToken(ctx, refreshToken)
 	assert.NoError(t, err)
 

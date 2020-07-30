@@ -28,14 +28,23 @@ func (s *UserStorageMock) AddUser(ctx context.Context, user *models.User) error 
 	return args.Error(0)
 }
 
-func (s *UserStorageMock) UpdateTokenNonce(ctx context.Context, accountName string) error {
-	args := s.Called(accountName)
+func (s *UserStorageMock) IsSessionActive(ctx context.Context, accountName string, nonce int64) (bool, error) {
+	args := s.Called(accountName, nonce)
+
+	return args.Bool(0), args.Error(1)
+}
+func (s *UserStorageMock) InvalidateSession(ctx context.Context, accountName string, nonce int64) error {
+	args := s.Called(accountName, nonce)
 
 	return args.Error(0)
 }
-
-func (s *UserStorageMock) GetTokenNonce(ctx context.Context, accountName string) (int64, error) {
+func (s *UserStorageMock) AddNewSession(ctx context.Context, accountName string) (int64, error) {
 	args := s.Called(accountName)
 
-	return args.Get(0).(int64), args.Error(1)
+	return 0, args.Error(0)
+}
+func (s *UserStorageMock) InvalidateOldSessions(ctx context.Context) error {
+	args := s.Called()
+
+	return args.Error(0)
 }

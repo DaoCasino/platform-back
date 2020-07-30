@@ -34,10 +34,11 @@ type BlockchainConfig struct {
 }
 
 type AuthConfig struct {
-	JwtSecret       string `json:"jwtSecret"`
-	AccessTokenTTL  int64  `json:"accessTokenTTL"`
-	RefreshTokenTTL int64  `json:"refreshTokenTTL"`
-
+	JwtSecret          string `json:"jwtSecret"`
+	AccessTokenTTL     int64  `json:"accessTokenTTL"`
+	RefreshTokenTTL    int64  `json:"refreshTokenTTL"`
+	MaxUserSessions    int64  `json:"maxUserSessions"`
+	CleanerInterval    int64  `json:"cleanerInterval"`
 	WalletURL          string `json:"walletUrl"`
 	WalletClientID     int64  `json:"walletClientID"`
 	WalletClientSecret string `json:"walletClientSecret"`
@@ -56,14 +57,14 @@ type SignidiceConfig struct {
 }
 
 type Config struct {
-	Db              DbConfig            `json:"db"`
-	Amc             AmcConfig           `json:"amc"`
-	SessionsCleaner SessionsCleaner     `json:"sessionsCleaner"`
-	Blockchain      BlockchainConfig    `json:"blockchain"`
-	Auth            AuthConfig          `json:"auth"`
-	Signidice       SignidiceConfig     `json:"signidice"`
-	LogLevel        string              `json:"loglevel"`
-	Port            string              `json:"port"`
+	Db              DbConfig         `json:"db"`
+	Amc             AmcConfig        `json:"amc"`
+	SessionsCleaner SessionsCleaner  `json:"sessionsCleaner"`
+	Blockchain      BlockchainConfig `json:"blockchain"`
+	Auth            AuthConfig       `json:"auth"`
+	Signidice       SignidiceConfig  `json:"signidice"`
+	LogLevel        string           `json:"loglevel"`
+	Port            string           `json:"port"`
 }
 
 func Read(fileName string) (*Config, error) {

@@ -158,12 +158,7 @@ func (a *AuthUseCase) RefreshToken(ctx context.Context, refreshTokenStr string) 
 }
 
 func (a *AuthUseCase) generateTokens(ctx context.Context, accountName string) (string, string, error) {
-	err := a.userRepo.UpdateTokenNonce(ctx, accountName)
-	if err != nil {
-		return "", "", err
-	}
-
-	newNonce, err := a.userRepo.GetTokenNonce(ctx, accountName)
+	newNonce, err := a.userRepo.AddNewSession(ctx, accountName)
 	if err != nil {
 		return "", "", err
 	}
@@ -223,6 +218,21 @@ func (a *AuthUseCase) validateAccessToken(ctx context.Context, token *jwt.Token)
 	return nil
 }
 
+func (a *AuthUseCase) Logout(ctx context.Context, accessToken string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	token, err := a.parseToken(accessToken)
+	if err != nil {
+		return err
+	}
+	if err := a.validateAccessToken(ctx, token); err != nil {
+		return err
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	return a.userRepo.InvalidateSession(ctx, claims["account_name"].(string), int64(claims["nonce"].(float64)))
+}
+
 func (a *AuthUseCase) validateToken(ctx context.Context, token *jwt.Token) error {
 	claims := token.Claims.(jwt.MapClaims)
 
@@ -251,13 +261,12 @@ func (a *AuthUseCase) validateToken(ctx context.Context, token *jwt.Token) error
 		return auth.ErrInvalidToken
 	}
 
-	nonce, err := a.userRepo.GetTokenNonce(ctx, claims["account_name"].(string))
+	active, err := a.userRepo.IsSessionActive(ctx, claims["account_name"].(string), int64(claims["nonce"].(float64)))
 	if err != nil {
 		return auth.ErrInvalidToken
 	}
 
-	tokenNonce := int64(claims["nonce"].(float64))
-	if nonce > tokenNonce {
+	if !active {
 		return auth.ErrExpiredTokenNonce
 	}
 
