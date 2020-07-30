@@ -41,7 +41,7 @@ func (s *UserStorageMock) InvalidateSession(ctx context.Context, accountName str
 func (s *UserStorageMock) AddNewSession(ctx context.Context, accountName string) (int64, error) {
 	args := s.Called(accountName)
 
-	return 0, args.Error(0)
+	return 0, args.Error(1)
 }
 func (s *UserStorageMock) InvalidateOldSessions(ctx context.Context) error {
 	args := s.Called()
