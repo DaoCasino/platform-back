@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"platform-backend/auth"
 	authPgRepo "platform-backend/auth/repository/postgres"
 	authUC "platform-backend/auth/usecase"
 	"platform-backend/blockchain"
@@ -42,6 +43,10 @@ type RefreshRequest struct {
 	RefreshToken string `json:"refreshToken"`
 }
 
+type LogoutRequest struct {
+	AccessToken string `json:"accessToken"`
+}
+
 type AuthRequest struct {
 	TmpToken string `json:"tmpToken"`
 }
@@ -53,6 +58,7 @@ type App struct {
 	wsApi       *api.WsApi
 
 	smRepo         session_manager.Repository
+	uRepo          auth.UserRepository
 	eventProcessor *eventprocessor.EventProcessor
 	useCases       *usecases.UseCases
 	events         chan *eventlistener.EventMessage
@@ -111,6 +117,27 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(response)
+}
+
+func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New logout request")
+
+	var req LogoutRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("Http body parse error, %s", err.Error())
+		return
+	}
+
+	err := app.useCases.Auth.Logout(context.Background(), req.AccessToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("RefreshToken error: %s", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }
 
 func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -179,9 +206,11 @@ func NewApp(config *config.Config) (*App, error) {
 		gameSessionPgRepo.NewGameSessionsPostgresRepo(db.DbPool),
 	)
 
+	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
+
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
-			authPgRepo.NewUserPostgresRepo(db.DbPool),
+			uRepo,
 			smRepo,
 			[]byte(config.Auth.JwtSecret),
 			config.Auth.AccessTokenTTL,
@@ -212,6 +241,7 @@ func NewApp(config *config.Config) (*App, error) {
 			return true
 		}},
 		smRepo:         smRepo,
+		uRepo:          uRepo,
 		eventProcessor: eventprocessor.New(repos, bc, useCases),
 		useCases:       useCases,
 		wsApi:          api.NewWsApi(useCases, repos, registerer),
@@ -228,6 +258,10 @@ func NewApp(config *config.Config) (*App, error) {
 
 	refreshTokensHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		refreshTokensHandler(app, w, r)
+	})
+
+	logoutHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logoutHandler(app, w, r)
 	})
 
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
@@ -266,6 +300,7 @@ func NewApp(config *config.Config) (*App, error) {
 
 	handle("connect", wsHandler)
 	handleFunc("auth", authHandler)
+	handleFunc("logout", logoutHandler)
 	handleFunc("refresh_token", refreshTokensHandler)
 	handleFunc("ping", pingHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(
@@ -316,6 +351,42 @@ func startSessionsCleaner(a *App, ctx context.Context) error {
 		case <-ctx.Done():
 			ticker.Stop()
 			log.Info().Msg("Sessions cleaner is stopped")
+			return nil
+		}
+	}
+}
+
+func startAuthSessionsCleaner(a *App, ctx context.Context) error {
+	interval := a.config.Auth.CleanerInterval
+	if interval <= 0 {
+		log.Info().Msg("Auth sessions cleaner is disabled")
+		<-ctx.Done()
+		return nil
+	}
+
+	log.Info().Msg("Auth sessions cleaner is started")
+	clean := func() error {
+		log.Info().Msg("Auth sessions cleaner is cleaning sessions...")
+		if err := a.uRepo.InvalidateOldSessions(ctx); err != nil {
+			return err
+		}
+		log.Info().Msgf("Old auth sessions were cleaned!")
+		return nil
+	}
+	if err := clean(); err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			if err := clean(); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			log.Info().Msg("Auth Sessions cleaner is stopped")
 			return nil
 		}
 	}
@@ -397,6 +468,10 @@ func (a *App) Run() error {
 	errGroup.Go(func() error {
 		defer cancelRun()
 		return startSessionsCleaner(a, runCtx)
+	})
+	errGroup.Go(func() error {
+		defer cancelRun()
+		return startAuthSessionsCleaner(a, runCtx)
 	})
 
 	errGroup.Go(func() error {

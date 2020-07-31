@@ -36,6 +36,8 @@
     "jwtSecret": "top_secret",
     "accessTokenTTL": 1800,
     "refreshTokenTTL": 86400,
+    "maxUserSessions": 10,
+    "cleanerInterval": 30,
     "walletUrl": "url",
     "walletClientID": 0,
     "walletClientSecret": "secret"
