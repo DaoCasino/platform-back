@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"platform-backend/auth"
 	"platform-backend/db"
 	"platform-backend/models"
 	"strconv"
@@ -14,6 +13,7 @@ const (
 	selectUserByAccNameStmt    = "SELECT * FROM users WHERE account_name = $1"
 	insertUserStmt             = "INSERT INTO users VALUES ($1, $2)"
 	updateUserTokenNonce       = "UPDATE users SET token_nonce = token_nonce + 1 WHERE account_name = $1"
+	invalidateOldestSessions   = "DELETE FROM active_token_nonces WHERE id = (SELECT id FROM active_token_nonces WHERE account_name = $1 ORDER BY id ASC LIMIT 1)"
 	insertActiveSession        = "INSERT INTO active_token_nonces (account_name, token_nonce) VALUES ($1, $2)"
 	selectSessionsCnt          = "SELECT count(*) FROM active_token_nonces WHERE account_name = $1"
 	selectSessionCnt           = "SELECT count(*) FROM active_token_nonces WHERE account_name = $1 AND token_nonce = $2"
@@ -140,7 +140,10 @@ func (r *UserPostgresRepo) AddNewSession(ctx context.Context, accountName string
 	}
 
 	if cnt >= uint(r.maxSessions) {
-		return 0, auth.ErrTooManySessions
+		_, err = conn.Exec(ctx, invalidateOldestSessions, accountName)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	_, err = conn.Exec(ctx, updateUserTokenNonce, accountName)
