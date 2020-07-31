@@ -154,6 +154,12 @@ func (a *AuthUseCase) RefreshToken(ctx context.Context, refreshTokenStr string) 
 		return "", "", err
 	}
 
+	claims := refreshToken.Claims.(jwt.MapClaims)
+	err = a.userRepo.InvalidateSession(ctx, claims["account_name"].(string), int64(claims["nonce"].(float64)))
+	if err != nil {
+		return "", "", err
+	}
+
 	return a.generateTokens(ctx, refreshToken.Claims.(jwt.MapClaims)["account_name"].(string))
 }
 
