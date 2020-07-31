@@ -96,7 +96,7 @@ func TestTokenRefresh(t *testing.T) {
 	repo.On("CreateUser", user).Return(nil)
 	repo.On("AddUser", user).Return(nil)
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
-	repo.On("InvalidateSession", user.AccountName).Return(nil)
+	repo.On("InvalidateSession", user.AccountName, tokenNonce).Return(nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
 	refreshToken, _, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
