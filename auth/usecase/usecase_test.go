@@ -39,13 +39,15 @@ func TestAuthFlow(t *testing.T) {
 	)
 
 	tokenNonce := int64(0)
+	nextTokenNonce := int64(1)
 
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("CreateUser", user).Return(nil)
 	repo.On("AddUser", user).Return(nil)
-	repo.On("UpdateTokenNonce", user.AccountName).Return(nil)
-	repo.On("GetTokenNonce", user.AccountName).Return(tokenNonce, nil)
+	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
+	repo.On("InvalidateSession", user.AccountName).Return(nil)
+	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
 	_, accessToken, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
 
@@ -87,13 +89,15 @@ func TestTokenRefresh(t *testing.T) {
 	)
 
 	tokenNonce := int64(0)
+	nextTokenNonce := int64(1)
 
 	// Sign Up (Get auth tokens)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("CreateUser", user).Return(nil)
 	repo.On("AddUser", user).Return(nil)
-	repo.On("UpdateTokenNonce", user.AccountName).Return(nil)
-	repo.On("GetTokenNonce", user.AccountName).Return(tokenNonce, nil)
+	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
+	repo.On("InvalidateSession", user.AccountName, tokenNonce).Return(nil)
+	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
 	refreshToken, _, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
 
@@ -101,7 +105,7 @@ func TestTokenRefresh(t *testing.T) {
 	ctx = context.WithValue(ctx, "suid", suid)
 	repo.On("GetUser", user.AccountName).Return(user, nil)
 	sm.On("SetUser", suid, user).Return(nil)
-	repo.On("GetTokenNonce", user.AccountName).Return(tokenNonce+1, nil)
+	repo.On("GetLastTokenNonce", user.AccountName).Return(tokenNonce+1, nil)
 	_, accessToken, err := uc.RefreshToken(ctx, refreshToken)
 	assert.NoError(t, err)
 
