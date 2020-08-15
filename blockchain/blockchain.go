@@ -183,6 +183,8 @@ func (b *Blockchain) GetSponsoredTrx(trx *eos.Transaction) (*eos.SignedTransacti
 	if err != nil {
 		return nil, errors.New("sponsorship provider request error: " + err.Error())
 	}
+	// don't forget to close response body
+	defer httpResp.Body.Close()
 	if httpResp.StatusCode != http.StatusOK {
 		return nil, errors.New("sponsorship provider respond with error: " + httpResp.Status)
 	}
