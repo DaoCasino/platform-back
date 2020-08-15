@@ -366,6 +366,8 @@ func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transa
 		log.Debug().Msgf("Casino request error: %s", err.Error())
 		return err
 	}
+	// don't forget to close response body
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		errBody, _ := ioutil.ReadAll(resp.Body)
