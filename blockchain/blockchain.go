@@ -18,6 +18,9 @@ import (
 
 const (
 	txOptsCacheTTL = 2 //seconds
+
+	EosInternalErrorCode = 500 // internal error HTTP code
+	EosInternalDuplicateErrorCode = 3040008 // see: https://github.com/DaoCasino/DAObet/blob/master/libraries/chain/include/eosio/chain/exceptions.hpp
 )
 
 type ByteArray []byte
@@ -66,13 +69,13 @@ type Blockchain struct {
 	disableSponsor      bool
 	trxPushAttempts     int
 
-	optsMutex       sync.Mutex
-	lastInfoTime    time.Time
-	lastHeadBlockID eos.Checksum256
+	optsMutex      sync.Mutex
+	lastInfoTime   time.Time
+	lastLibBlockID eos.Checksum256
 }
 
-func (b *Blockchain) PushTransaction(actions []*eos.Action, requiredKeys []ecc.PublicKey, sponsored bool) (out *eos.PushTransactionFullResp, err error) {
-	sendTrx := func() (*eos.PushTransactionFullResp, error) {
+func (b *Blockchain) PushTransaction(actions []*eos.Action, requiredKeys []ecc.PublicKey, sponsored bool) (eos.Checksum256, error) {
+	sendTrx := func() (eos.Checksum256, error) {
 		trxOpts := b.GetTrxOpts()
 		err := trxOpts.FillFromChain(b.Api)
 		if err != nil {
@@ -98,18 +101,31 @@ func (b *Blockchain) PushTransaction(actions []*eos.Action, requiredKeys []ecc.P
 		if err != nil {
 			return nil, err
 		}
-		out, err = b.Api.PushTransaction(packedTrx)
+		trxID, err := packedTrx.ID()
 		if err != nil {
 			return nil, err
 		}
-		return out, nil
+		log.Debug().Msgf("Pushing trx to blockchain, trx_id: %s", trxID.String())
+
+		_, err = b.Api.PushTransaction(packedTrx)
+		if err != nil {
+			if apiErr, ok := err.(eos.APIError); ok {
+				// if error is duplicate trx assume as OK
+				if apiErr.Code == EosInternalErrorCode && apiErr.ErrorStruct.Code == EosInternalDuplicateErrorCode {
+					log.Debug().Msgf("Got duplicate trx error, assuming as OK, trx_id: %s", trxID.String())
+					return trxID, nil
+				}
+			}
+			return nil, err
+		}
+		return trxID, nil
 	}
 
 	attempts := 0
 	for {
-		out, err := sendTrx()
+		trxID, err := sendTrx()
 		if err == nil {
-			return out, nil
+			return trxID, nil
 		}
 		attempts++
 		log.Error().Msgf("Send transaction error (attempt %d of %d): %s", attempts, b.trxPushAttempts, err.Error())
@@ -135,7 +151,7 @@ func Init(config *config.BlockchainConfig) (*Blockchain, error) {
 	blockchain.Api.EnableKeepAlives()
 	blockchain.ChainId = info.ChainID
 	blockchain.lastInfoTime = time.Now()
-	blockchain.lastHeadBlockID = info.HeadBlockID
+	blockchain.lastLibBlockID = info.HeadBlockID
 
 	keyBag := &eos.KeyBag{}
 	if err := keyBag.ImportPrivateKey(config.Permissions.Deposit); err != nil {
@@ -225,14 +241,15 @@ func (b *Blockchain) GetTrxOpts() *eos.TxOptions {
 	if b.lastInfoTime.Unix()+txOptsCacheTTL < time.Now().Unix() {
 		resp, err := b.Api.GetInfo()
 		if err != nil {
-			b.lastHeadBlockID = nil
+			b.lastLibBlockID = nil
 		} else {
-			b.lastHeadBlockID = resp.HeadBlockID
+			b.lastLibBlockID = resp.LastIrreversibleBlockID
 		}
 	}
 
+	// set 'HeadBlockID' as last LIB block, that used only for TAPOS reference block calculation
 	return &eos.TxOptions{
 		ChainID:     b.ChainId,
-		HeadBlockID: b.lastHeadBlockID,
+		HeadBlockID: b.lastLibBlockID,
 	}
 }

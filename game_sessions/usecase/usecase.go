@@ -3,6 +3,8 @@ package usecase
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -167,10 +169,12 @@ func (a *GameSessionsUseCase) NewSession(
 	}
 
 	trx := eos.NewTransaction([]*eos.Action{transferAction, newGameAction}, txOpts)
-	err = a.trxByCasino(casino, trx)
+	trxID, err := a.trxByCasino(casino, trx)
 	if err != nil {
 		return nil, err
 	}
+
+	log.Info().Msgf("Successfully sent new game and deposit trx, sessionID: %d, trxID: %s", sessionId, trxID.String())
 
 	gameSession := &models.GameSession{
 		ID:              sessionId,
@@ -226,15 +230,16 @@ func (a *GameSessionsUseCase) GameAction(
 		}),
 	}
 
-	_, err = a.bc.PushTransaction(
+	trxID, err := a.bc.PushTransaction(
 		[]*eos.Action{bcAction},
 		[]ecc.PublicKey{a.bc.PubKeys.GameAction},
 		false,
 	)
-
 	if err != nil {
 		return err
 	}
+
+	log.Info().Msgf("Successfully sent game action trx, sessionID: %d, trxID: %s", sessionId, trxID.String())
 
 	err = a.repo.UpdateSessionState(ctx, sessionId, models.GameActionTrxSent)
 	if err != nil {
@@ -301,10 +306,12 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 	}
 
 	trx := eos.NewTransaction([]*eos.Action{transferAction, gameAction}, txOpts)
-	err = a.trxByCasino(casino, trx)
+	trxID, err := a.trxByCasino(casino, trx)
 	if err != nil {
 		return err
 	}
+
+	log.Info().Msgf("Successfully sent game action with deposit trx, sessionID: %d, trxID: %s", sessionId, trxID.String())
 
 	err = a.repo.UpdateSessionState(ctx, sessionId, models.GameActionTrxSent)
 	if err != nil {
@@ -342,29 +349,37 @@ func (a *GameSessionsUseCase) getTransferAction(
 	return transferAction, nil
 }
 
-func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transaction) error {
+func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transaction) (eos.Checksum256, error) {
 	// Add sponsorship to the transaction
 	sponsoredTrx, err := a.bc.GetSponsoredTrx(trx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Sign transaction with GameAction and deposit platform keys
 	requiredKeys := []ecc.PublicKey{a.bc.PubKeys.GameAction, a.bc.PubKeys.Deposit}
 	signedTrx, err := a.bc.Api.Signer.Sign(sponsoredTrx, a.bc.ChainId, requiredKeys...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	packedTrx, _, err := signedTrx.PackedTransactionAndCFD()
+	if err != nil {
+		return nil, err
+	}
+	h := sha256.New()
+	_, _ = h.Write(packedTrx)
+	trxID := h.Sum(nil)
+
 	toSend, _ := json.Marshal(signedTrx)
-	log.Debug().Msgf("Trx for casino: %s", string(toSend))
+	log.Debug().Msgf("Prepared trx for casino, trx_id: %s, trx: %s", hex.EncodeToString(trxID), string(toSend))
 
 	// Send sponsored and signed transaction to casino Backend
 	reader := bytes.NewReader(toSend)
 	resp, err := http.Post(casino.Meta.ApiURL+"/sign_transaction", "application/json", reader)
 	if err != nil {
 		log.Debug().Msgf("Casino request error: %s", err.Error())
-		return err
+		return nil, err
 	}
 	// don't forget to close response body
 	defer resp.Body.Close()
@@ -372,8 +387,8 @@ func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transa
 	if resp.StatusCode != http.StatusOK {
 		errBody, _ := ioutil.ReadAll(resp.Body)
 		log.Error().Msgf("deposit error from casino back, code %s, body: %s", resp.Status, string(errBody))
-		return errors.New("casino error")
+		return nil, errors.New("casino error")
 	}
 
-	return nil
+	return trxID, nil
 }
