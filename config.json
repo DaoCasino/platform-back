@@ -2,7 +2,7 @@
   "loglevel": "debug",
   "port": "8080",
   "db": {
-    "url": "postgresql://postgres:postgres@localhost:5432/test_platform",
+    "url": "postgresql://postgres:postgres@localhost:5555/test_platform",
     "maxPoolConns": 10,
     "minPoolConns": 1
   },

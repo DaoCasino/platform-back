@@ -76,15 +76,16 @@ func (a *SignidiceUseCase) PerformSignidice(ctx context.Context, gameName string
 		}),
 	}
 
-	_, err = a.bc.PushTransaction(
+	trxID, err := a.bc.PushTransaction(
 		[]*eos.Action{action},
 		[]ecc.PublicKey{a.bc.PubKeys.SigniDice},
 		false,
 	)
-
 	if err != nil {
 		return err
 	}
+
+	log.Info().Msgf("Successfully sent signidice_1 trx, sessionID: %d, trxID: %s", bcSessionID, trxID.String())
 
 	return nil
 }

@@ -18,6 +18,9 @@ import (
 
 const (
 	txOptsCacheTTL = 2 //seconds
+
+	EosInternalErrorCode = 500
+	EosInternalDuplicateErrorCode = 3040008
 )
 
 type ByteArray []byte
@@ -71,8 +74,8 @@ type Blockchain struct {
 	lastHeadBlockID eos.Checksum256
 }
 
-func (b *Blockchain) PushTransaction(actions []*eos.Action, requiredKeys []ecc.PublicKey, sponsored bool) (out *eos.PushTransactionFullResp, err error) {
-	sendTrx := func() (*eos.PushTransactionFullResp, error) {
+func (b *Blockchain) PushTransaction(actions []*eos.Action, requiredKeys []ecc.PublicKey, sponsored bool) (eos.Checksum256, error) {
+	sendTrx := func() (eos.Checksum256, error) {
 		trxOpts := b.GetTrxOpts()
 		err := trxOpts.FillFromChain(b.Api)
 		if err != nil {
@@ -98,18 +101,31 @@ func (b *Blockchain) PushTransaction(actions []*eos.Action, requiredKeys []ecc.P
 		if err != nil {
 			return nil, err
 		}
-		out, err = b.Api.PushTransaction(packedTrx)
+		trxID, err := packedTrx.ID()
 		if err != nil {
 			return nil, err
 		}
-		return out, nil
+		log.Debug().Msgf("Pushing trx to blockchain, trx_id: %s", trxID.String())
+
+		_, err = b.Api.PushTransaction(packedTrx)
+		if err != nil {
+			if apiErr, ok := err.(eos.APIError); ok {
+				// if error is duplicate trx assume as OK
+				if apiErr.Code == EosInternalErrorCode && apiErr.ErrorStruct.Code == EosInternalDuplicateErrorCode {
+					log.Debug().Msgf("Got duplicate trx error, assuming as OK, trx_id: %s", trxID.String())
+					return trxID, nil
+				}
+			}
+			return nil, err
+		}
+		return trxID, nil
 	}
 
 	attempts := 0
 	for {
-		out, err := sendTrx()
+		trxID, err := sendTrx()
 		if err == nil {
-			return out, nil
+			return trxID, nil
 		}
 		attempts++
 		log.Error().Msgf("Send transaction error (attempt %d of %d): %s", attempts, b.trxPushAttempts, err.Error())
