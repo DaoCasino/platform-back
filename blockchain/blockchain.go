@@ -19,8 +19,8 @@ import (
 const (
 	txOptsCacheTTL = 2 //seconds
 
-	EosInternalErrorCode = 500
-	EosInternalDuplicateErrorCode = 3040008
+	EosInternalErrorCode = 500 // internal error HTTP code
+	EosInternalDuplicateErrorCode = 3040008 // see: https://github.com/DaoCasino/DAObet/blob/master/libraries/chain/include/eosio/chain/exceptions.hpp
 )
 
 type ByteArray []byte
