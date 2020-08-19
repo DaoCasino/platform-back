@@ -69,9 +69,9 @@ type Blockchain struct {
 	disableSponsor      bool
 	trxPushAttempts     int
 
-	optsMutex       sync.Mutex
-	lastInfoTime    time.Time
-	lastHeadBlockID eos.Checksum256
+	optsMutex      sync.Mutex
+	lastInfoTime   time.Time
+	lastLibBlockID eos.Checksum256
 }
 
 func (b *Blockchain) PushTransaction(actions []*eos.Action, requiredKeys []ecc.PublicKey, sponsored bool) (eos.Checksum256, error) {
@@ -151,7 +151,7 @@ func Init(config *config.BlockchainConfig) (*Blockchain, error) {
 	blockchain.Api.EnableKeepAlives()
 	blockchain.ChainId = info.ChainID
 	blockchain.lastInfoTime = time.Now()
-	blockchain.lastHeadBlockID = info.HeadBlockID
+	blockchain.lastLibBlockID = info.HeadBlockID
 
 	keyBag := &eos.KeyBag{}
 	if err := keyBag.ImportPrivateKey(config.Permissions.Deposit); err != nil {
@@ -241,14 +241,15 @@ func (b *Blockchain) GetTrxOpts() *eos.TxOptions {
 	if b.lastInfoTime.Unix()+txOptsCacheTTL < time.Now().Unix() {
 		resp, err := b.Api.GetInfo()
 		if err != nil {
-			b.lastHeadBlockID = nil
+			b.lastLibBlockID = nil
 		} else {
-			b.lastHeadBlockID = resp.HeadBlockID
+			b.lastLibBlockID = resp.LastIrreversibleBlockID
 		}
 	}
 
+	// set 'HeadBlockID' as last LIB block, that used only for TAPOS reference block calculation
 	return &eos.TxOptions{
 		ChainID:     b.ChainId,
-		HeadBlockID: b.lastHeadBlockID,
+		HeadBlockID: b.lastLibBlockID,
 	}
 }
