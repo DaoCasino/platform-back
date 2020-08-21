@@ -1,0 +1,3 @@
+DROP INDEX sessions_last_wins_idx;
+DROP INDEX sessions_last_lost_idx;
+DROP INDEX sessions_last_all_idx
