@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/eoscanada/eos-go"
 	"github.com/eoscanada/eos-go/ecc"
@@ -19,6 +18,7 @@ import (
 	"platform-backend/contracts"
 	"platform-backend/game_sessions"
 	"platform-backend/models"
+	"platform-backend/subscription"
 	"platform-backend/utils"
 	"strconv"
 	"time"
@@ -29,6 +29,7 @@ type GameSessionsUseCase struct {
 	repo             gamesessions.Repository
 	contractsRepo    contracts.Repository
 	platformContract string
+	subsUseCase      subscription.UseCase
 }
 
 func NewGameSessionsUseCase(
@@ -36,6 +37,7 @@ func NewGameSessionsUseCase(
 	repo gamesessions.Repository,
 	contractsRepo contracts.Repository,
 	platformContract string,
+	subsUseCase subscription.UseCase,
 ) *GameSessionsUseCase {
 	rand.Seed(time.Now().Unix())
 	return &GameSessionsUseCase{
@@ -43,6 +45,7 @@ func NewGameSessionsUseCase(
 		repo:             repo,
 		contractsRepo:    contractsRepo,
 		platformContract: platformContract,
+		subsUseCase:      subsUseCase,
 	}
 }
 
@@ -50,6 +53,11 @@ func NewGameSessionsUseCase(
 type gameSession struct {
 	ReqId      eos.Uint64 `json:"req_id"`
 	LastUpdate string     `json:"last_update"`
+}
+
+// casino error message
+type casinoError struct {
+	Error string `json:"error"`
 }
 
 func (a *GameSessionsUseCase) CleanExpiredSessions(
@@ -126,7 +134,8 @@ func (a *GameSessionsUseCase) CleanExpiredSessions(
 func (a *GameSessionsUseCase) NewSession(
 	ctx context.Context, casino *models.Casino,
 	game *models.Game, user *models.User,
-	deposit string,
+	deposit string, actionType uint16,
+	actionParams []uint64,
 ) (*models.GameSession, error) {
 	if casino.Meta == nil {
 		return nil, gamesessions.ErrCasinoMetaEmpty
@@ -159,22 +168,36 @@ func (a *GameSessionsUseCase) NewSession(
 	newGameAction := &eos.Action{
 		Account: eos.AN(game.Contract),
 		Name:    eos.ActN("newgame"),
-		Authorization: []eos.PermissionLevel{
-			{Actor: eos.AN(a.platformContract), Permission: eos.PN("gameaction")},
-		},
+		Authorization: []eos.PermissionLevel{{
+			Actor:      eos.AN(a.platformContract),
+			Permission: eos.PN("gameaction"),
+		}},
 		ActionData: eos.NewActionData(struct {
-			ReqId    uint64 `json:"req_id"`
+			SesId    uint64 `json:"ses_id"`
 			CasinoID uint64 `json:"casino_id"`
-		}{ReqId: sessionId, CasinoID: casino.Id}),
+		}{
+			SesId:    sessionId,
+			CasinoID: casino.Id,
+		}),
 	}
 
-	trx := eos.NewTransaction([]*eos.Action{transferAction, newGameAction}, txOpts)
-	trxID, err := a.trxByCasino(casino, trx)
-	if err != nil {
-		return nil, err
+	firstGameAction := &eos.Action{
+		Account: eos.AN(game.Contract),
+		Name:    eos.ActN("gameaction"),
+		Authorization: []eos.PermissionLevel{{
+			Actor:      eos.AN(a.platformContract),
+			Permission: eos.PN("gameaction"),
+		}},
+		ActionData: eos.NewActionData(struct {
+			SessionId    uint64   `json:"ses_id"`
+			ActionType   uint16   `json:"type"`
+			ActionParams []uint64 `json:"params"`
+		}{
+			SessionId:    sessionId,
+			ActionType:   actionType,
+			ActionParams: actionParams,
+		}),
 	}
-
-	log.Info().Msgf("Successfully sent new game and deposit trx, sessionID: %d, trxID: %s", sessionId, trxID.String())
 
 	gameSession := &models.GameSession{
 		ID:              sessionId,
@@ -192,6 +215,70 @@ func (a *GameSessionsUseCase) NewSession(
 	if err := a.repo.AddGameSession(ctx, gameSession); err != nil {
 		return nil, err
 	}
+
+	err = a.repo.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
+		SessionID:  sessionId,
+		UpdateType: models.SessionCreatedUpdate,
+		Timestamp:  time.Now(),
+		Data:       nil,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug().Msgf("Created new session, sessionID: %d", sessionId)
+
+	// no need to wait response, because that can cause race between action monitor event and casino response
+	// sometimes action monitor event about created session handles earlier than casino response
+	go func() {
+		trx := eos.NewTransaction([]*eos.Action{transferAction, newGameAction, firstGameAction}, txOpts)
+		trxID, err := a.trxByCasino(casino, trx)
+		if err != nil {
+			log.Info().Msgf("Error while newgame trx, sessionID: %d, error: %s", sessionId, err.Error())
+
+			e := a.repo.UpdateSessionState(ctx, sessionId, models.GameFailed)
+			if e != nil {
+				log.Error().Msgf("Error while updating state to failed: %s", e.Error())
+				return
+			}
+
+			failedUpdateData, e := json.Marshal(struct {
+				Details string `json:"details"`
+			}{
+				Details: err.Error(),
+			})
+			if e != nil {
+				log.Error().Msgf("Error while marshal failed update date: %s", e.Error())
+				return
+			}
+
+			e = a.repo.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
+				SessionID:  sessionId,
+				UpdateType: models.GameFailedUpdate,
+				Timestamp:  time.Now(),
+				Data:       failedUpdateData,
+			})
+			if e != nil {
+				log.Error().Msgf("Error pushing session failed update: %s", err.Error())
+				return
+			}
+
+			//TODO move notify logic to AddGameSessionUpdate
+			updates, e := a.repo.GetGameSessionUpdates(ctx, sessionId)
+			if e != nil {
+				log.Error().Msgf("Error fetching session updates: %s", e.Error())
+				return
+			}
+			updateMsgs := make([]*models.GameSessionUpdateMsg, len(updates))
+			for i, update := range updates {
+				updateMsgs[i] = models.ToGameSessionUpdateMsg(update)
+			}
+			go a.subsUseCase.Notify(user.AccountName, "session_update", updateMsgs)
+			return
+		}
+
+		log.Info().Msgf("Successfully sent newgame trx, sessionID: %d, trxID: %s", sessionId, trxID.String())
+	}()
 
 	return gameSession, nil
 }
@@ -386,8 +473,14 @@ func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transa
 
 	if resp.StatusCode != http.StatusOK {
 		errBody, _ := ioutil.ReadAll(resp.Body)
-		log.Error().Msgf("deposit error from casino back, code %s, body: %s", resp.Status, string(errBody))
-		return nil, errors.New("casino error")
+		log.Debug().Msgf("deposit error from casino back, code %s, body: %s", resp.Status, string(errBody))
+		//TODO handle error types
+		casError := &casinoError{}
+		e := json.Unmarshal(errBody, casError)
+		if e != nil {
+			return nil, fmt.Errorf("unknown casino error")
+		}
+		return nil, fmt.Errorf("%s", casError.Error)
 	}
 
 	return trxID, nil

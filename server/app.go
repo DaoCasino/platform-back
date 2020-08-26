@@ -220,6 +220,8 @@ func NewApp(config *config.Config) (*App, error) {
 
 	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
 
+	subsUC := subscriptionUc.NewSubscriptionUseCase();
+
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			uRepo,
@@ -236,13 +238,14 @@ func NewApp(config *config.Config) (*App, error) {
 			repos.GameSession,
 			repos.Contracts,
 			config.Blockchain.Contracts.Platform,
+			subsUC,
 		),
 		signidiceUC.NewSignidiceUseCase(
 			bc,
 			config.Blockchain.Contracts.Platform,
 			config.Signidice.Key,
 		),
-		subscriptionUc.NewSubscriptionUseCase(),
+		subsUC,
 	)
 
 	events := make(chan *eventlistener.EventMessage)
