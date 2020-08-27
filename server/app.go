@@ -25,6 +25,7 @@ import (
 	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
 	gameSessionUC "platform-backend/game_sessions/usecase"
 	"platform-backend/logger"
+	"platform-backend/models"
 	"platform-backend/repositories"
 	"platform-backend/server/api"
 	"platform-backend/server/session_manager"
@@ -62,6 +63,8 @@ type App struct {
 	eventProcessor *eventprocessor.EventProcessor
 	useCases       *usecases.UseCases
 	events         chan *eventlistener.EventMessage
+
+	developmentMode bool
 }
 
 const PrometheusPrefix = "platformback_"
@@ -81,20 +84,29 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 }
 
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	var req AuthRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Debug().Msgf("Http body parse error, %s", err.Error())
-		return
-	}
+	var user *models.User
+	if app.developmentMode {
+		user = &models.User{
+			AccountName: "testuserever",
+			Email:       "test@user.ever",
+		}
+	} else {
+		var req AuthRequest
+		err := json.NewDecoder(r.Body).Decode(&req);
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			log.Debug().Msgf("Http body parse error, %s", err.Error())
+			return
+		}
 
-	log.Debug().Msgf("New auth request with token %s", req.TmpToken)
+		log.Debug().Msgf("New auth request with token %s", req.TmpToken)
 
-	user, err := app.useCases.Auth.ResolveUser(context.Background(), req.TmpToken)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Debug().Msgf("Token validate error: %s", err.Error())
-		return
+		user, err = app.useCases.Auth.ResolveUser(context.Background(), req.TmpToken)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			log.Debug().Msgf("Token validate error: %s", err.Error())
+			return
+		}
 	}
 
 	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user)
@@ -208,6 +220,8 @@ func NewApp(config *config.Config) (*App, error) {
 
 	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
 
+	subsUC := subscriptionUc.NewSubscriptionUseCase();
+
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			uRepo,
@@ -224,16 +238,20 @@ func NewApp(config *config.Config) (*App, error) {
 			repos.GameSession,
 			repos.Contracts,
 			config.Blockchain.Contracts.Platform,
+			subsUC,
 		),
 		signidiceUC.NewSignidiceUseCase(
 			bc,
 			config.Blockchain.Contracts.Platform,
 			config.Signidice.Key,
 		),
-		subscriptionUc.NewSubscriptionUseCase(),
+		subsUC,
 	)
 
 	events := make(chan *eventlistener.EventMessage)
+
+	// Hack for development mode, just set DEV_MODE env to enable
+	_, devMode := os.LookupEnv("DEV_MODE")
 
 	app := &App{
 		config: config,
@@ -246,6 +264,7 @@ func NewApp(config *config.Config) (*App, error) {
 		useCases:       useCases,
 		wsApi:          api.NewWsApi(useCases, repos, registerer),
 		events:         events,
+		developmentMode: devMode,
 	}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
