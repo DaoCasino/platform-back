@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	"github.com/eoscanada/eos-go"
 	"platform-backend/models"
 )
 
@@ -14,4 +15,5 @@ type Repository interface {
 	AllGames(ctx context.Context) ([]*models.Game, error)
 
 	GetPlayerInfo(ctx context.Context, accountName string) (*models.PlayerInfo, error)
+	GetRawAccount(accountName string) (*eos.AccountResp, error)
 }

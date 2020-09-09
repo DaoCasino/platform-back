@@ -31,6 +31,7 @@ type BlockchainConfig struct {
 	} `json:"permissions"`
 	DisableSponsor  bool `json:"disableSponsor"`
 	TrxPushAttempts int  `default:"5" json:"trxPushAttempts"`
+	ListingCacheTTL int64 `json:"listingCacheTTL"`
 }
 
 type AuthConfig struct {
