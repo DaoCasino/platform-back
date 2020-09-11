@@ -115,6 +115,7 @@ func (r *MockedListingRepo) RemoveGame(gameId uint64) {
 
 func (r *MockedListingRepo) AddCasino(casino *models.Casino) {
 	r.casinos[casino.Id] = casino
+	r.casinoGames[casino.Contract] = make([]*models.CasinoGame, 0)
 }
 
 func (r *MockedListingRepo) AddCasinoGames(casinoName string, casinoGames []*models.CasinoGame) {

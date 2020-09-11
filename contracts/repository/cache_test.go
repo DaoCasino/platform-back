@@ -199,3 +199,62 @@ func TestCacheUpdateItem(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, updatedTestGame, *game)
 }
+
+func TestSortedGames(t *testing.T) {
+	cacheTTL := int64(1)
+	mockRepo := mock.NewMockedListingRepo()
+
+	testRawAccount, testGame, testCasino, testCasinoGames := getInitialData()
+
+	mockRepo.AddRawAccount(&testRawAccount)
+	mockRepo.AddGame(&testGame)
+	mockRepo.AddCasino(&testCasino)
+	mockRepo.AddCasinoGames(testCasino.Contract, testCasinoGames)
+
+	// add one more game
+	newTestGame := models.Game{
+		Id:        1,
+		Contract:  "testgame2",
+		ParamsCnt: 2,
+		Paused:    0,
+		Meta:      nil,
+	}
+	mockRepo.AddGame(&newTestGame)
+
+	cachedMockRepo, err := cached.NewCachedListingRepo(mockRepo, cacheTTL)
+	assert.NoError(t, err)
+
+	games, err := cachedMockRepo.AllGames(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, testGame, *games[0])
+	assert.Equal(t, newTestGame, *games[1])
+}
+
+func TestSortedCasinos(t *testing.T) {
+	cacheTTL := int64(1)
+	mockRepo := mock.NewMockedListingRepo()
+
+	testRawAccount, testGame, testCasino, testCasinoGames := getInitialData()
+
+	mockRepo.AddRawAccount(&testRawAccount)
+	mockRepo.AddGame(&testGame)
+	mockRepo.AddCasino(&testCasino)
+	mockRepo.AddCasinoGames(testCasino.Contract, testCasinoGames)
+
+	// add one more game
+	newTestCasino := models.Casino{
+		Id:        1,
+		Contract:  "testcasino2",
+		Paused:    false,
+		Meta:      nil,
+	}
+	mockRepo.AddCasino(&newTestCasino)
+
+	cachedMockRepo, err := cached.NewCachedListingRepo(mockRepo, cacheTTL)
+	assert.NoError(t, err)
+
+	casinos, err := cachedMockRepo.AllCasinos(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, testCasino, *casinos[0])
+	assert.Equal(t, newTestCasino, *casinos[1])
+}
