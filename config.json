@@ -27,7 +27,8 @@
       "gameaction": "5J2FdJeALHgYRkNZh9htUo3PgwXyY9XLyXXXXXX",
       "signidice": "5HyvDP9LRqJYzGPorVN34mfbsuuoAwDrAqXXXXXX"
     },
-    "disableSponsor": true
+    "disableSponsor": true,
+    "listingCacheTTL": 1
   },
   "signidice": {
     "key": "base64 encoded pem key"
