@@ -168,11 +168,19 @@ func (r *CachedListingRepo) GetCasinoGames(ctx context.Context, casinoName strin
 	}()
 	r.cacheMutex.RLock()
 
-	if casGames, ok := r.casinoGames[casinoName]; ok {
-		return casGames, nil
+	casGames, ok := r.casinoGames[casinoName]
+	if !ok {
+		return  nil, contracts.CasinoNotFound
 	}
 
-	return nil, contracts.CasinoNotFound
+	// preallocate array with known capacity
+	ret := make([]*models.CasinoGame, 0, len(casGames))
+	for _, casGame := range casGames {
+		casGameCopy := *casGame
+		ret = append(ret, &casGameCopy)
+	}
+
+	return ret, nil
 }
 
 func (r *CachedListingRepo) AllGames(ctx context.Context) ([]*models.Game, error) {
