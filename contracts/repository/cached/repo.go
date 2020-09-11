@@ -7,6 +7,7 @@ import (
 	"go.uber.org/atomic"
 	"platform-backend/contracts"
 	"platform-backend/models"
+	"sort"
 	"sync"
 	"time"
 )
@@ -136,8 +137,11 @@ func (r *CachedListingRepo) AllCasinos(ctx context.Context) ([]*models.Casino, e
 
 	// preallocate array with known capacity
 	ret := make([]*models.Casino, 0, len(r.casinos))
-	for _, casino := range r.casinos {
-		casCopy := *casino
+
+	// sort by id
+	sortedKeys := r.sortedKeysCasino(&r.casinos)
+	for _, key := range sortedKeys {
+		casCopy := *r.casinos[key]
 		ret = append(ret, &casCopy)
 	}
 
@@ -193,8 +197,11 @@ func (r *CachedListingRepo) AllGames(ctx context.Context) ([]*models.Game, error
 
 	// preallocate array with known capacity
 	ret := make([]*models.Game, 0, len(r.games))
-	for _, game := range r.games {
-		gameCopy := *game
+
+	// sort by id
+	sortedKeys := r.sortedKeysGame(&r.games)
+	for _, key := range sortedKeys {
+		gameCopy := *r.games[key]
 		ret = append(ret, &gameCopy)
 	}
 
@@ -238,4 +245,28 @@ func (r *CachedListingRepo) GetPlayerInfo(ctx context.Context, accountName strin
 // without cache, just fwd to original repo
 func (r *CachedListingRepo) GetRawAccount(accountName string) (*eos.AccountResp, error) {
 	return r.origRepo.GetRawAccount(accountName)
+}
+
+// return sorted games map keys
+func (r *CachedListingRepo) sortedKeysGame(m *map[uint64]*models.Game) []uint64 {
+	keys := make([]uint64, 0, len(*m))
+	for k := range *m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
+// return sorted games map keys
+func (r *CachedListingRepo) sortedKeysCasino(m *map[uint64]*models.Casino) []uint64 {
+	keys := make([]uint64, 0, len(*m))
+	for k := range *m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
 }
