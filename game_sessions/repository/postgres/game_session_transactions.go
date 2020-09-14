@@ -8,9 +8,9 @@ import (
 
 const (
 	InsertGameSessionTransaction = `
-        insert into game_session_txns 
+        INSERT INTO game_session_txns 
             (trx_id, ses_id, action_type, action_params)
-        values
+        VALUES
             ($1, $2, $3, $4)`
 )
 

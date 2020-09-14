@@ -417,13 +417,16 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 	totalDeposit := gs.Deposit.Add(*asset)
 	err = a.repo.UpdateSessionDeposit(ctx, sessionId, totalDeposit.String())
 	if err != nil {
-		log.Debug().Msg("failed to update session deposit")
+		log.Error().Msgf("Failed to update session deposit, "+
+			"sesID: %d, trxID: %s, reason: %s", sessionId, trxID.String(), err.Error())
+		return err
 	}
 	if err = a.repo.AddGameSessionTransaction(ctx, trxID.String(), sessionId, actionType, actionParams); err != nil {
 		log.Debug().Msgf("Failed to add transaction to game_transactions_table, "+
-			"reason: %s", err.Error())
+			"sesID: %d, trxID: %s, reason: %s", sessionId, trxID.String(), err.Error())
+		return err
 	}
-	return err
+	return nil
 }
 
 func (a *GameSessionsUseCase) getTransferAction(
