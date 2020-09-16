@@ -279,7 +279,7 @@ func (a *GameSessionsUseCase) NewSession(
 		}
 		if err = a.repo.AddGameSessionTransaction(ctx, trxID.String(), sessionId, actionType, actionParams); err != nil {
 			log.Warn().Msgf("Failed to add transaction to game_transactions_table, "+
-				"sessionID: %d, trxID: %s, reason: %s", err.Error())
+				"sessionID: %d, trxID: %s, reason: %s", sessionId, trxID.String(), err.Error())
 		}
 		log.Info().Msgf("Successfully sent newgame trx, sessionID: %d, trxID: %s", sessionId, trxID.String())
 	}()
