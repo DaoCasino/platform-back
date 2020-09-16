@@ -15,14 +15,16 @@ import (
 )
 
 type SignidiceUseCase struct {
-	bc                  *blockchain.Blockchain
-	rsaKey              *rsa.PrivateKey
-	platformAccountName string
+	bc                   *blockchain.Blockchain
+	rsaKey               *rsa.PrivateKey
+	platformAccountName  string
+	signidiceAccountName string
 }
 
 func NewSignidiceUseCase(
 	bc *blockchain.Blockchain,
 	platformAccountName string,
+	signidiceAccountName string,
 	rsaBase64 string,
 ) *SignidiceUseCase {
 	rsaPem, err := base64.StdEncoding.DecodeString(rsaBase64)
@@ -39,9 +41,10 @@ func NewSignidiceUseCase(
 	}
 
 	return &SignidiceUseCase{
-		bc:                  bc,
-		rsaKey:              key,
-		platformAccountName: platformAccountName,
+		bc:                   bc,
+		rsaKey:               key,
+		platformAccountName:  platformAccountName,
+		signidiceAccountName: signidiceAccountName,
 	}
 }
 
@@ -65,7 +68,7 @@ func (a *SignidiceUseCase) PerformSignidice(ctx context.Context, gameName string
 		Account: eos.AN(gameName),
 		Name:    eos.ActN("sgdicefirst"),
 		Authorization: []eos.PermissionLevel{
-			{Actor: eos.AN(a.platformAccountName), Permission: eos.PN("signidice")},
+			{Actor: eos.AN(a.signidiceAccountName), Permission: eos.PN("active")},
 		},
 		ActionData: eos.NewActionData(struct {
 			SessionId uint64 `json:"ses_id"`

@@ -257,6 +257,7 @@ func NewApp(config *config.Config) (*App, error) {
 		signidiceUC.NewSignidiceUseCase(
 			bc,
 			config.Blockchain.Contracts.Platform,
+			config.Signidice.AccountName,
 			config.Signidice.Key,
 		),
 		subsUC,

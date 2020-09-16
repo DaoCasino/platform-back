@@ -54,7 +54,8 @@ type AmcConfig struct {
 }
 
 type SignidiceConfig struct {
-	Key string `json:"key"`
+	AccountName string `json:"accountName"`
+	Key         string `json:"key"`
 }
 
 type Config struct {
