@@ -36,4 +36,7 @@ type Repository interface {
 	AddGameSessionUpdate(ctx context.Context, upd *models.GameSessionUpdate) error
 	DeleteGameSessionUpdates(ctx context.Context, sesId uint64) error
 	GetCasinoSessions(ctx context.Context, filter FilterType, casinoId eos.Uint64) ([]*models.GameSession, error)
+
+	AddGameSessionTransaction(ctx context.Context, trxID string, sesID uint64,
+		actionType uint16, actionParams []uint64) error
 }
