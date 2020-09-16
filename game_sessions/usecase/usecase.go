@@ -339,10 +339,11 @@ func (a *GameSessionsUseCase) GameAction(
 		return err
 	}
 	if err = a.repo.AddGameSessionTransaction(ctx, trxID.String(), sessionId, actionType, actionParams); err != nil {
-		log.Debug().Msgf("Failed to add transaction to game_transactions_table, "+
-			"reason: %s", err.Error())
+		log.Warn().Msgf("Failed to add transaction to game_transactions_table, "+
+			"sessionID: %d, trxID: %s, reason: %s", sessionId, trxID.String(), err.Error())
+		return err
 	}
-	return err
+	return nil
 }
 
 func (a *GameSessionsUseCase) GameActionWithDeposit(
