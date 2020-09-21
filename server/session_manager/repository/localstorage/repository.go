@@ -63,7 +63,7 @@ func (r *LocalRepository) removeSession(uid uuid.UUID) {
 		return
 	}
 
-	// remove from by user map
+	// if user is logged in
 	if r.sessionById[uid].User != nil {
 		delete(r.sessionByUser, r.sessionById[uid].User.AccountName)
 	}
@@ -85,11 +85,16 @@ func (r *LocalRepository) HasSessionByUser(accountName string) bool {
 }
 
 func (r *LocalRepository) SetUser(uid uuid.UUID, user *models.User) error {
+	r.Lock()
+	defer r.Unlock()
+
 	if _, ok := r.sessionById[uid]; !ok {
 		return errors.New("session not found")
 	}
 
 	// set user info
 	r.sessionById[uid].User = user
+	r.sessionByUser[user.AccountName] = r.sessionById[uid]
+
 	return nil
 }

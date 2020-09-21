@@ -124,7 +124,7 @@ func (a *GameSessionsUseCase) CleanExpiredSessions(
 				if _, err := a.bc.Api.PushTransaction(packedTrx); err != nil {
 					// Do not return error, because it can be caused by bug in contract
 					// So just log it and ignore
-					log.Warn().Msgf("EXP_CLEAN: transaction error: %s", err)
+					log.Warn().Msgf("EXP_CLEAN: transaction error, sessionID: %d, error: %s", session.ReqId, err.Error())
 				}
 			}
 		}
@@ -236,6 +236,7 @@ func (a *GameSessionsUseCase) NewSession(
 		UpdateType: models.SessionCreatedUpdate,
 		Timestamp:  time.Now(),
 		Data:       nil,
+		Offset:     nil,
 	})
 	if err != nil {
 		return nil, err
@@ -272,6 +273,7 @@ func (a *GameSessionsUseCase) NewSession(
 				UpdateType: models.GameFailedUpdate,
 				Timestamp:  time.Now(),
 				Data:       failedUpdateData,
+				Offset:     nil,
 			})
 			if e != nil {
 				log.Error().Msgf("Error pushing session failed update: %s", err.Error())

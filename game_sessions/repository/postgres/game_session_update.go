@@ -2,16 +2,20 @@ package postgres
 
 import (
 	"context"
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"platform-backend/db"
+	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 	"time"
 )
 
 const (
 	selectGameSessionUpdatesByIdStmt = "SELECT * FROM game_session_updates WHERE ses_id = $1 ORDER BY timestamp ASC"
-	insertGameSessionUpdateStmt      = "INSERT INTO game_session_updates VALUES ($1, $2, $3, $4)"
+	insertGameSessionUpdateStmt      = "INSERT INTO game_session_updates VALUES ($1, $2, $3, $4, $5)"
 	deleteGameSessionUpdatesByIdStmt = "DELETE FROM game_session_updates WHERE ses_id = $1"
+
+	sqlDuplicateUniqueErrorCode = "23505"
 )
 
 type GameSessionUpdate struct {
@@ -19,6 +23,7 @@ type GameSessionUpdate struct {
 	UpdateType uint16    `db:"update_type"`
 	Timestamp  time.Time `db:"timestamp"`
 	Data       []byte    `db:"data"`
+	Offset     *uint64   `db:"offset"`
 }
 
 func (u *GameSessionUpdate) Scan(row pgx.Row) error {
@@ -27,6 +32,7 @@ func (u *GameSessionUpdate) Scan(row pgx.Row) error {
 		&u.UpdateType,
 		&u.Timestamp,
 		&u.Data,
+		&u.Offset,
 	)
 }
 
@@ -64,7 +70,12 @@ func (r *GameSessionsPostgresRepo) AddGameSessionUpdate(ctx context.Context, upd
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(ctx, insertGameSessionUpdateStmt, upd.SessionID, upd.UpdateType, upd.Timestamp, upd.Data)
+	_, err = conn.Exec(ctx, insertGameSessionUpdateStmt, upd.SessionID, upd.UpdateType, upd.Timestamp, upd.Data, upd.Offset)
+	if pgErr, ok := err.(*pgconn.PgError); ok {
+		if pgErr.Code == sqlDuplicateUniqueErrorCode {
+			return gamesessions.ErrUpdateAlreadyProcessed
+		}
+	}
 	return err
 }
 
@@ -85,5 +96,6 @@ func toModelGameSessionUpdate(gsu *GameSessionUpdate) *models.GameSessionUpdate 
 		UpdateType: models.GameSessionUpdateType(gsu.UpdateType),
 		Timestamp:  gsu.Timestamp,
 		Data:       gsu.Data,
+		Offset:     gsu.Offset,
 	}
 }
