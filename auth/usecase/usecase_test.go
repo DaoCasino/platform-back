@@ -119,3 +119,41 @@ func TestTokenRefresh(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, user, parsedUser)
 }
+
+func TestSignUpWithAffiliate(t *testing.T) {
+	repo := new(mock.UserStorageMock)
+	sm := new(smMockRepo.MockRepository)
+
+	uc := NewAuthUseCase(
+		repo,
+		sm,
+		[]byte("secret"),
+		10,
+		10,
+		"",
+		0,
+		"",
+	)
+
+	var (
+		accountName = "user"
+		email       = "user@user.com"
+		affiliateID = "someAffiliateID"
+
+		ctx = context.Background()
+
+		user = &models.User{
+			AccountName: accountName,
+			Email:       email,
+		}
+	)
+
+	nextTokenNonce := int64(1)
+
+	// Sign Up (Get auth token)
+	repo.On("HasUser", user.AccountName).Return(false, nil)
+	repo.On("AddUserWithAffiliate", user, affiliateID).Return(nil)
+	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
+	_, _, err := uc.SignUp(ctx, user, affiliateID)
+	assert.NoError(t, err)
+}

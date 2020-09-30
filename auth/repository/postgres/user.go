@@ -103,13 +103,13 @@ func (r *UserPostgresRepo) AddUserWithAffiliate(ctx context.Context, user *model
 
 	_, err = tx.Exec(ctx, insertUserStmt, user.AccountName, user.Email)
 	if err != nil {
-		tx.Rollback(ctx)
+		_ = tx.Rollback(ctx)
 		return err
 	}
 
 	_, err = tx.Exec(ctx, insertAffiliateStmt, user.AccountName, affiliateID)
 	if err != nil {
-		tx.Rollback(ctx)
+		_ = tx.Rollback(ctx)
 		return err
 	}
 
