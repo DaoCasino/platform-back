@@ -51,7 +51,8 @@ type LogoutRequest struct {
 }
 
 type AuthRequest struct {
-	TmpToken string `json:"tmpToken"`
+	TmpToken    string `json:"tmpToken"`
+	AffiliateID string `json:"affiliateID"`
 }
 
 type App struct {
@@ -87,6 +88,7 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	var user *models.User
+	var affiliateID string
 	if app.developmentMode {
 		user = &models.User{
 			AccountName: "testuserever",
@@ -94,7 +96,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		var req AuthRequest
-		err := json.NewDecoder(r.Body).Decode(&req);
+		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Debug().Msgf("Http body parse error, %s", err.Error())
@@ -103,6 +105,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 		log.Debug().Msgf("New auth request with token %s", req.TmpToken)
 
+		affiliateID = req.AffiliateID
 		user, err = app.useCases.Auth.ResolveUser(context.Background(), req.TmpToken)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -110,8 +113,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user)
+	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user, affiliateID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Debug().Msgf("SignUp error: %s", err.Error())
@@ -273,12 +275,12 @@ func NewApp(config *config.Config) (*App, error) {
 		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		smRepo:         smRepo,
-		uRepo:          uRepo,
-		eventProcessor: eventprocessor.New(repos, bc, useCases),
-		useCases:       useCases,
-		wsApi:          api.NewWsApi(useCases, repos, registerer),
-		events:         events,
+		smRepo:          smRepo,
+		uRepo:           uRepo,
+		eventProcessor:  eventprocessor.New(repos, bc, useCases),
+		useCases:        useCases,
+		wsApi:           api.NewWsApi(useCases, repos, registerer),
+		events:          events,
 		developmentMode: devMode,
 	}
 

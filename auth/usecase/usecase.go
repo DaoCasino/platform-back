@@ -98,18 +98,22 @@ func (a *AuthUseCase) ResolveUser(ctx context.Context, tmpToken string) (*models
 	}, nil
 }
 
-func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User) (string, string, error) {
+func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User, affiliateID string) (string, string, error) {
 	hasUser, err := a.userRepo.HasUser(context.Background(), user.AccountName)
 	if err != nil {
 		log.Debug().Msgf("User existing check error, %s", err.Error())
 		return "", "", err
 	}
-	if !hasUser {
+	if !hasUser && affiliateID == "" {
 		if err := a.userRepo.AddUser(ctx, user); err != nil {
 			return "", "", err
 		}
 	}
-
+	if !hasUser && affiliateID != "" {
+		if err := a.userRepo.AddUserWithAffiliate(ctx, user, affiliateID); err != nil {
+			return "", "", err
+		}
+	}
 	return a.generateTokens(ctx, user.AccountName)
 }
 

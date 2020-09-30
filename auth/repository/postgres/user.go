@@ -12,6 +12,7 @@ const (
 	selectUserCntByAccNameStmt = "SELECT count(*) FROM users WHERE account_name = $1"
 	selectUserByAccNameStmt    = "SELECT * FROM users WHERE account_name = $1"
 	insertUserStmt             = "INSERT INTO users VALUES ($1, $2)"
+	insertAffiliateStmt        = "INSERT INTO affiliates VALUES ($1, $2)"
 	updateUserTokenNonce       = "UPDATE users SET token_nonce = token_nonce + 1 WHERE account_name = $1"
 	invalidateOldestSessions   = "DELETE FROM active_token_nonces WHERE id = (SELECT id FROM active_token_nonces WHERE account_name = $1 ORDER BY id ASC LIMIT 1)"
 	insertActiveSession        = "INSERT INTO active_token_nonces (account_name, token_nonce) VALUES ($1, $2)"
@@ -85,6 +86,34 @@ func (r *UserPostgresRepo) AddUser(ctx context.Context, user *models.User) error
 	defer conn.Release()
 
 	_, err = conn.Exec(ctx, insertUserStmt, user.AccountName, user.Email)
+	return err
+}
+
+func (r *UserPostgresRepo) AddUserWithAffiliate(ctx context.Context, user *models.User, affiliateID string) error {
+	conn, err := r.dbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, insertUserStmt, user.AccountName, user.Email)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	_, err = tx.Exec(ctx, insertAffiliateStmt, user.AccountName, affiliateID)
+	if err != nil {
+		tx.Rollback(ctx)
+		return err
+	}
+
+	err = tx.Commit(ctx)
 	return err
 }
 

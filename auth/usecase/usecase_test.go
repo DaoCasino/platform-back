@@ -29,6 +29,7 @@ func TestAuthFlow(t *testing.T) {
 		accountName = "user"
 		email       = "user@user.com"
 		suid, _     = uuid.NewRandom()
+		affiliateID = ""
 
 		ctx = context.Background()
 
@@ -48,7 +49,7 @@ func TestAuthFlow(t *testing.T) {
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
 	repo.On("InvalidateSession", user.AccountName).Return(nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
-	_, accessToken, err := uc.SignUp(ctx, user)
+	_, accessToken, err := uc.SignUp(ctx, user, affiliateID)
 	assert.NoError(t, err)
 
 	// Auth with access token
@@ -79,6 +80,7 @@ func TestTokenRefresh(t *testing.T) {
 		accountName = "user"
 		email       = "user@user.com"
 		suid, _     = uuid.NewRandom()
+		affiliateID = ""
 
 		ctx = context.Background()
 
@@ -98,7 +100,7 @@ func TestTokenRefresh(t *testing.T) {
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
 	repo.On("InvalidateSession", user.AccountName, tokenNonce).Return(nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
-	refreshToken, _, err := uc.SignUp(ctx, user)
+	refreshToken, _, err := uc.SignUp(ctx, user, affiliateID)
 	assert.NoError(t, err)
 
 	// Refresh tokens with refresh token

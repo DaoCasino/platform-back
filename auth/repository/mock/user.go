@@ -28,6 +28,12 @@ func (s *UserStorageMock) AddUser(ctx context.Context, user *models.User) error 
 	return args.Error(0)
 }
 
+func (s *UserStorageMock) AddUserWithAffiliate(ctx context.Context, user *models.User, affiliateID string) error {
+	args := s.Called(user, affiliateID)
+
+	return args.Error(0)
+}
+
 func (s *UserStorageMock) IsSessionActive(ctx context.Context, accountName string, nonce int64) (bool, error) {
 	args := s.Called(accountName, nonce)
 
