@@ -36,6 +36,7 @@ func TestAuthFlow(t *testing.T) {
 		user = &models.User{
 			AccountName: accountName,
 			Email:       email,
+			AffiliateID: affiliateID,
 		}
 	)
 
@@ -49,7 +50,7 @@ func TestAuthFlow(t *testing.T) {
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
 	repo.On("InvalidateSession", user.AccountName).Return(nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
-	_, accessToken, err := uc.SignUp(ctx, user, affiliateID)
+	_, accessToken, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
 
 	// Auth with access token
@@ -87,6 +88,7 @@ func TestTokenRefresh(t *testing.T) {
 		user = &models.User{
 			AccountName: accountName,
 			Email:       email,
+			AffiliateID: affiliateID,
 		}
 	)
 
@@ -100,7 +102,7 @@ func TestTokenRefresh(t *testing.T) {
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
 	repo.On("InvalidateSession", user.AccountName, tokenNonce).Return(nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
-	refreshToken, _, err := uc.SignUp(ctx, user, affiliateID)
+	refreshToken, _, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
 
 	// Refresh tokens with refresh token
@@ -145,6 +147,7 @@ func TestSignUpWithAffiliate(t *testing.T) {
 		user = &models.User{
 			AccountName: accountName,
 			Email:       email,
+			AffiliateID: affiliateID,
 		}
 	)
 
@@ -152,8 +155,8 @@ func TestSignUpWithAffiliate(t *testing.T) {
 
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
-	repo.On("AddUserWithAffiliate", user, affiliateID).Return(nil)
+	repo.On("AddUser", user).Return(nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
-	_, _, err := uc.SignUp(ctx, user, affiliateID)
+	_, _, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
 }

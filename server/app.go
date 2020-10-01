@@ -88,11 +88,11 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	var user *models.User
-	var affiliateID string
 	if app.developmentMode {
 		user = &models.User{
 			AccountName: "testuserever",
 			Email:       "test@user.ever",
+			AffiliateID: "afff",
 		}
 	} else {
 		var req AuthRequest
@@ -105,15 +105,15 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 		log.Debug().Msgf("New auth request with token %s", req.TmpToken)
 
-		affiliateID = req.AffiliateID
 		user, err = app.useCases.Auth.ResolveUser(context.Background(), req.TmpToken)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Debug().Msgf("Token validate error: %s", err.Error())
 			return
 		}
+		user.AffiliateID = req.AffiliateID
 	}
-	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user, affiliateID)
+	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Debug().Msgf("SignUp error: %s", err.Error())

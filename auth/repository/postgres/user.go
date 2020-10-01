@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"platform-backend/db"
 	"platform-backend/models"
@@ -11,6 +12,7 @@ import (
 const (
 	selectUserCntByAccNameStmt = "SELECT count(*) FROM users WHERE account_name = $1"
 	selectUserByAccNameStmt    = "SELECT * FROM users WHERE account_name = $1"
+	selectAffIDByNameStmt      = "SELECT affiliate_id FROM affiliates WHERE account_name $1"
 	insertUserStmt             = "INSERT INTO users VALUES ($1, $2)"
 	insertAffiliateStmt        = "INSERT INTO affiliates VALUES ($1, $2)"
 	updateUserTokenNonce       = "UPDATE users SET token_nonce = token_nonce + 1 WHERE account_name = $1"
@@ -75,21 +77,16 @@ func (r *UserPostgresRepo) GetUser(ctx context.Context, accountName string) (*mo
 		return nil, err
 	}
 
-	return toModelUser(user), nil
+	var affiliateID string
+	err = conn.QueryRow(ctx, selectAffIDByNameStmt, accountName).Scan(&affiliateID)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	return toModelUser(user, affiliateID), nil
 }
 
 func (r *UserPostgresRepo) AddUser(ctx context.Context, user *models.User) error {
-	conn, err := r.dbPool.Acquire(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Release()
-
-	_, err = conn.Exec(ctx, insertUserStmt, user.AccountName, user.Email)
-	return err
-}
-
-func (r *UserPostgresRepo) AddUserWithAffiliate(ctx context.Context, user *models.User, affiliateID string) error {
 	conn, err := r.dbPool.Acquire(ctx)
 	if err != nil {
 		return err
@@ -107,10 +104,12 @@ func (r *UserPostgresRepo) AddUserWithAffiliate(ctx context.Context, user *model
 		return err
 	}
 
-	_, err = tx.Exec(ctx, insertAffiliateStmt, user.AccountName, affiliateID)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		return err
+	if user.AffiliateID != "" {
+		_, err = tx.Exec(ctx, insertAffiliateStmt, user.AccountName, user.AffiliateID)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return err
+		}
 	}
 
 	err = tx.Commit(ctx)
@@ -198,9 +197,10 @@ func (r *UserPostgresRepo) AddNewSession(ctx context.Context, accountName string
 	return user.TokenNonce, nil
 }
 
-func toModelUser(u *User) *models.User {
+func toModelUser(u *User, affiliateID string) *models.User {
 	return &models.User{
 		AccountName: u.AccountName,
 		Email:       u.Email,
+		AffiliateID: affiliateID,
 	}
 }
