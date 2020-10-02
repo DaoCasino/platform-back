@@ -29,7 +29,7 @@ func TestAuthFlow(t *testing.T) {
 		accountName = "user"
 		email       = "user@user.com"
 		suid, _     = uuid.NewRandom()
-		affiliateID = ""
+		affiliateID = "affiliate_1"
 
 		ctx = context.Background()
 
@@ -81,7 +81,7 @@ func TestTokenRefresh(t *testing.T) {
 		accountName = "user"
 		email       = "user@user.com"
 		suid, _     = uuid.NewRandom()
-		affiliateID = ""
+		affiliateID = "affiliate_1"
 
 		ctx = context.Background()
 
@@ -122,7 +122,7 @@ func TestTokenRefresh(t *testing.T) {
 	assert.Equal(t, user, parsedUser)
 }
 
-func TestSignUpWithAffiliate(t *testing.T) {
+func TestSignUpWithoutAffiliate(t *testing.T) {
 	repo := new(mock.UserStorageMock)
 	sm := new(smMockRepo.MockRepository)
 
@@ -140,7 +140,7 @@ func TestSignUpWithAffiliate(t *testing.T) {
 	var (
 		accountName = "user"
 		email       = "user@user.com"
-		affiliateID = "someAffiliateID"
+		affiliateID = ""
 
 		ctx = context.Background()
 
