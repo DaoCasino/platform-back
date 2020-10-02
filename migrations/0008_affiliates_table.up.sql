@@ -1,6 +1,6 @@
 CREATE TABLE affiliates
 (
-    account_name VARCHAR(13) PRIMARY KEY UNIQUE,
+    account_name VARCHAR(13) REFERENCES users(account_name),
     affiliate_id VARCHAR NOT NULL
 );
 
