@@ -12,7 +12,7 @@ import (
 const (
 	selectUserCntByAccNameStmt = "SELECT count(*) FROM users WHERE account_name = $1"
 	selectUserByAccNameStmt    = "SELECT * FROM users WHERE account_name = $1"
-	selectAffIDByNameStmt      = "SELECT affiliate_id FROM affiliates WHERE account_name $1"
+	selectAffIDByNameStmt      = "SELECT affiliate_id FROM affiliates WHERE account_name = $1"
 	insertUserStmt             = "INSERT INTO users VALUES ($1, $2)"
 	insertAffiliateStmt        = "INSERT INTO affiliates VALUES ($1, $2)"
 	updateUserTokenNonce       = "UPDATE users SET token_nonce = token_nonce + 1 WHERE account_name = $1"
