@@ -19,7 +19,9 @@ import (
 	authUC "platform-backend/auth/usecase"
 	"platform-backend/blockchain"
 	"platform-backend/config"
-	casinoBcRepo "platform-backend/contracts/repository/blockchain"
+	"platform-backend/contracts"
+	contractsBcRepo "platform-backend/contracts/repository/blockchain"
+	contractsCachedRepo "platform-backend/contracts/repository/cached"
 	"platform-backend/db"
 	"platform-backend/eventprocessor"
 	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
@@ -211,16 +213,28 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	var contractRepo contracts.Repository
+	contractRepo = contractsBcRepo.NewCasinoBlockchainRepo(bc, config.Blockchain.Contracts.Platform)
+
+	// use cached contract repo if cache enabled
+	if config.Blockchain.ListingCacheTTL > 0 {
+		contractRepo, err = contractsCachedRepo.NewCachedListingRepo(contractRepo, config.Blockchain.ListingCacheTTL)
+		if err != nil {
+			log.Fatal().Msgf("Contracts cached repo creation error, %s", err.Error())
+			return nil, err
+		}
+	}
+
+	gsRepo := gameSessionPgRepo.NewGameSessionsPostgresRepo(db.DbPool)
 	smRepo := smLocalRepo.NewLocalRepository(registerer)
-
-	repos := repositories.NewRepositories(
-		casinoBcRepo.NewCasinoBlockchainRepo(bc, config.Blockchain.Contracts.Platform),
-		gameSessionPgRepo.NewGameSessionsPostgresRepo(db.DbPool),
-	)
-
 	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
 
-	subsUC := subscriptionUc.NewSubscriptionUseCase();
+	repos := repositories.NewRepositories(
+		contractRepo,
+		gsRepo,
+	)
+
+	subsUC := subscriptionUc.NewSubscriptionUseCase()
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
@@ -243,6 +257,7 @@ func NewApp(config *config.Config) (*App, error) {
 		signidiceUC.NewSignidiceUseCase(
 			bc,
 			config.Blockchain.Contracts.Platform,
+			config.Signidice.AccountName,
 			config.Signidice.Key,
 		),
 		subsUC,

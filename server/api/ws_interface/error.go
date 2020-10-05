@@ -1,5 +1,7 @@
 package ws_interface
 
+import "errors"
+
 type WsErrorCode uint64
 
 type WsError struct {
@@ -13,10 +15,14 @@ type HandlerError struct {
 }
 
 func NewHandlerError(code WsErrorCode, internal error) *HandlerError {
-	return &HandlerError{
+	err := HandlerError{
 		Code:          code,
 		InternalError: internal,
 	}
+	if internal == nil {
+		err.InternalError = errors.New(GetErrorMsg(code))
+	}
+	return &err
 }
 
 const (
@@ -25,10 +31,13 @@ const (
 	AuthCheckError    WsErrorCode = 4002
 	UnauthorizedError WsErrorCode = 4003
 
-	ContentNotFoundError WsErrorCode = 4004
-	CasinoNotFoundError  WsErrorCode = 4005
-	GameNotFoundError    WsErrorCode = 4006
-	SessionNotFoundError WsErrorCode = 4007
+	ContentNotFoundError  WsErrorCode = 4004
+	CasinoNotFoundError   WsErrorCode = 4005
+	GameNotFoundError     WsErrorCode = 4006
+	SessionNotFoundError  WsErrorCode = 4007
+	GameNotListedInCasino WsErrorCode = 4008
+	GamePaused            WsErrorCode = 4009
+	CasinoPaused          WsErrorCode = 4010
 
 	SessionInvalidStateError WsErrorCode = 4100
 
@@ -54,6 +63,12 @@ func GetErrorMsg(code WsErrorCode) string {
 		return "game not found"
 	case SessionNotFoundError:
 		return "session not found"
+	case GameNotListedInCasino:
+		return "game not listed in casino"
+	case GamePaused:
+		return "game paused"
+	case CasinoPaused:
+		return "casino paused"
 
 	case SessionInvalidStateError:
 		return "action while session invalid state"

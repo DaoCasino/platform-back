@@ -7,21 +7,22 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/eoscanada/eos-go"
-	"github.com/eoscanada/eos-go/ecc"
-	"github.com/eoscanada/eos-go/token"
-	"github.com/rs/zerolog/log"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"platform-backend/blockchain"
 	"platform-backend/contracts"
-	"platform-backend/game_sessions"
+	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 	"platform-backend/subscription"
 	"platform-backend/utils"
 	"strconv"
 	"time"
+
+	"github.com/eoscanada/eos-go"
+	"github.com/eoscanada/eos-go/ecc"
+	"github.com/eoscanada/eos-go/token"
+	"github.com/rs/zerolog/log"
 )
 
 type GameSessionsUseCase struct {
@@ -276,7 +277,10 @@ func (a *GameSessionsUseCase) NewSession(
 			go a.subsUseCase.Notify(user.AccountName, "session_update", updateMsgs)
 			return
 		}
-
+		if err = a.repo.AddGameSessionTransaction(ctx, trxID.String(), sessionId, actionType, actionParams); err != nil {
+			log.Warn().Msgf("Failed to add transaction to game_transactions_table, "+
+				"sessionID: %d, trxID: %s, reason: %s", sessionId, trxID.String(), err.Error())
+		}
 		log.Info().Msgf("Successfully sent newgame trx, sessionID: %d, trxID: %s", sessionId, trxID.String())
 	}()
 
@@ -330,10 +334,15 @@ func (a *GameSessionsUseCase) GameAction(
 
 	err = a.repo.UpdateSessionState(ctx, sessionId, models.GameActionTrxSent)
 	if err != nil {
-		log.Debug().Msgf("%s", err.Error())
+		log.Debug().Msgf("Failed to update session state, "+
+			"reason: %s", err.Error())
 		return err
 	}
-
+	if err = a.repo.AddGameSessionTransaction(ctx, trxID.String(), sessionId, actionType, actionParams); err != nil {
+		log.Warn().Msgf("Failed to add transaction to game_transactions_table, "+
+			"sessionID: %d, trxID: %s, reason: %s", sessionId, trxID.String(), err.Error())
+		return err
+	}
 	return nil
 }
 
@@ -409,9 +418,15 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 	totalDeposit := gs.Deposit.Add(*asset)
 	err = a.repo.UpdateSessionDeposit(ctx, sessionId, totalDeposit.String())
 	if err != nil {
+		log.Error().Msgf("Failed to update session deposit, "+
+			"sesID: %d, trxID: %s, reason: %s", sessionId, trxID.String(), err.Error())
 		return err
 	}
-
+	if err = a.repo.AddGameSessionTransaction(ctx, trxID.String(), sessionId, actionType, actionParams); err != nil {
+		log.Warn().Msgf("Failed to add transaction to game_transactions_table, "+
+			"sesID: %d, trxID: %s, reason: %s", sessionId, trxID.String(), err.Error())
+		return err
+	}
 	return nil
 }
 

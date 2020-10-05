@@ -23,7 +23,8 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 
 	// Maximum message size allowed from peer.
-	maxMessageSize = 512
+	// TODO: need move this to config, max websocket packet size 64kB
+	maxMessageSize = 1024 * 2
 )
 
 type OnCloseCb func()

@@ -31,6 +31,7 @@ type BlockchainConfig struct {
 	} `json:"permissions"`
 	DisableSponsor  bool `json:"disableSponsor"`
 	TrxPushAttempts int  `default:"5" json:"trxPushAttempts"`
+	ListingCacheTTL int64 `json:"listingCacheTTL"`
 }
 
 type AuthConfig struct {
@@ -53,7 +54,8 @@ type AmcConfig struct {
 }
 
 type SignidiceConfig struct {
-	Key string `json:"key"`
+	AccountName string `json:"accountName"`
+	Key         string `json:"key"`
 }
 
 type Config struct {

@@ -25,11 +25,13 @@
     "permissions": {
       "deposit": "5JJvavvETHcGEx7ueoDry8zvcfPenbBCKcUQXXXXXX",
       "gameaction": "5J2FdJeALHgYRkNZh9htUo3PgwXyY9XLyXXXXXX",
-      "signidice": "5HyvDP9LRqJYzGPorVN34mfbsuuoAwDrAqXXXXXX"
+      "signidice": "5J2FdJeALHHGJKGDaw76o3PgwXyY9XLyXXXXXX"
     },
-    "disableSponsor": true
+    "disableSponsor": true,
+    "listingCacheTTL": 1
   },
   "signidice": {
+    "accountName": "sg.platform",
     "key": "base64 encoded pem key"
   },
   "auth": {
