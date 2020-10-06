@@ -205,11 +205,10 @@ func onGameFinished(ctx context.Context, p *EventProcessor, event *eventlistener
 	err = p.repos.GameSession.AddGameSessionUpdate(ctx, update)
 	if err != nil && err != gamesessions.ErrUpdateAlreadyProcessed {
 		return err
-	} else {
-		log.Warn().Msgf("Handled already processed event for session: %d, type: %d, offset: %d",
-			session.ID, event.EventType, event.Offset,
-		)
 	}
+	log.Warn().Msgf("Handled already processed event for session: %d, type: %d, offset: %d",
+		session.ID, event.EventType, event.Offset,
+	)
 
 	// if not already processed event
 	if err == nil {
@@ -302,11 +301,10 @@ func onGameMessage(ctx context.Context, p *EventProcessor, event *eventlistener.
 	err = p.repos.GameSession.AddGameSessionUpdate(ctx, update)
 	if err != nil && err != gamesessions.ErrUpdateAlreadyProcessed {
 		return err
-	} else {
-		log.Warn().Msgf("Handled already processed event for session: %d, type: %d, offset: %d",
-			session.ID, event.EventType, event.Offset,
-		)
 	}
+	log.Warn().Msgf("Handled already processed event for session: %d, type: %d, offset: %d",
+		session.ID, event.EventType, event.Offset,
+	)
 
 	err = notifySubscibers(ctx, p, session)
 	if err != nil {
