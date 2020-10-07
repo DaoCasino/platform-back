@@ -2,7 +2,7 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"platform-backend/db"
 	"platform-backend/models"
@@ -79,7 +79,7 @@ func (r *UserPostgresRepo) GetUser(ctx context.Context, accountName string) (*mo
 
 	var affiliateID string
 	err = conn.QueryRow(ctx, selectAffIDByNameStmt, accountName).Scan(&affiliateID)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && err != pgx.ErrNoRows {
 		return nil, err
 	}
 
