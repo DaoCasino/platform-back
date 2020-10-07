@@ -182,6 +182,20 @@ func (a *GameSessionsUseCase) NewSession(
 		}),
 	}
 
+	// if user has affiliate call "newgameaffl" action with affiliateID
+	if user.AffiliateID != "" {
+		newGameAction.Name = eos.ActN("newgameaffl")
+		newGameAction.ActionData = eos.NewActionData(struct {
+			SesId       uint64 `json:"ses_id"`
+			CasinoID    uint64 `json:"casino_id"`
+			AffiliateID string `json:"affiliate_id"`
+		}{
+			SesId:       sessionId,
+			CasinoID:    casino.Id,
+			AffiliateID: user.AffiliateID,
+		})
+	}
+
 	firstGameAction := &eos.Action{
 		Account: eos.AN(game.Contract),
 		Name:    eos.ActN("gameaction"),
