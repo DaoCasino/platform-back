@@ -51,7 +51,8 @@ type LogoutRequest struct {
 }
 
 type AuthRequest struct {
-	TmpToken string `json:"tmpToken"`
+	TmpToken    string `json:"tmpToken"`
+	AffiliateID string `json:"affiliateID"`
 }
 
 type App struct {
@@ -91,10 +92,11 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		user = &models.User{
 			AccountName: "testuserever",
 			Email:       "test@user.ever",
+			AffiliateID: "afff",
 		}
 	} else {
 		var req AuthRequest
-		err := json.NewDecoder(r.Body).Decode(&req);
+		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Debug().Msgf("Http body parse error, %s", err.Error())
@@ -109,8 +111,8 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 			log.Debug().Msgf("Token validate error: %s", err.Error())
 			return
 		}
+		user.AffiliateID = req.AffiliateID
 	}
-
 	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -273,12 +275,12 @@ func NewApp(config *config.Config) (*App, error) {
 		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		smRepo:         smRepo,
-		uRepo:          uRepo,
-		eventProcessor: eventprocessor.New(repos, bc, useCases),
-		useCases:       useCases,
-		wsApi:          api.NewWsApi(useCases, repos, registerer),
-		events:         events,
+		smRepo:          smRepo,
+		uRepo:           uRepo,
+		eventProcessor:  eventprocessor.New(repos, bc, useCases),
+		useCases:        useCases,
+		wsApi:           api.NewWsApi(useCases, repos, registerer),
+		events:          events,
 		developmentMode: devMode,
 	}
 
