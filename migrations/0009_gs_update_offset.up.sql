@@ -1,0 +1,1 @@
+ALTER TABLE game_session_updates ADD COLUMN "offset" NUMERIC UNIQUE;
