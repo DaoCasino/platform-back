@@ -132,7 +132,7 @@ func pingHandler(w http.ResponseWriter, _ *http.Request) {
 func whoHandler(w http.ResponseWriter, _ *http.Request) {
 	log.Debug().Msgf("New who request")
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte(ProjectName))
+	_, err := w.Write([]byte(ServiceName))
 	if err != nil {
 		log.Debug().Msgf("Failed to response /who")
 	}

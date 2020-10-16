@@ -70,7 +70,7 @@ type App struct {
 
 const (
 	PrometheusPrefix = "platformback_"
-	ProjectName      = "platform"
+	ServiceName      = "platform"
 )
 
 func NewApp(config *config.Config) (*App, error) {
