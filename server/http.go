@@ -22,6 +22,20 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	app.smRepo.AddSession(context.Background(), c, app.wsApi)
 }
 
+func respondWithError(w http.ResponseWriter, code int, message string) {
+	respondWithJSON(w, code, JsonResponse{"error": message})
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	response, _ := json.Marshal(payload)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_, err := w.Write(response)
+	if err != nil {
+		log.Warn().Msg("Failed to respond to client")
+	}
+}
+
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	var user *models.User
 	if app.developmentMode {
@@ -34,7 +48,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		var req AuthRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, err.Error())
 			log.Debug().Msgf("Http body parse error, %s", err.Error())
 			return
 		}
@@ -43,7 +57,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 		user, err = app.useCases.Auth.ResolveUser(context.Background(), req.TmpToken)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, err.Error())
 			log.Debug().Msgf("Token validate error: %s", err.Error())
 			return
 		}
@@ -51,7 +65,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	}
 	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("SignUp error: %s", err.Error())
 		return
 	}
@@ -61,7 +75,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		"accessToken":  accessToken,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondWithError(w, http.StatusInternalServerError, err.Error())
 		log.Debug().Msgf("Response marshal error: %s", err.Error())
 		return
 	}
@@ -76,14 +90,14 @@ func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	var req LogoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
 
 	err := app.useCases.Auth.Logout(context.Background(), req.AccessToken)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("RefreshToken error: %s", err.Error())
 		return
 	}
@@ -97,14 +111,14 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	var req RefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
 
 	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(context.Background(), req.RefreshToken)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("RefreshToken error: %s", err.Error())
 		return
 	}
@@ -114,7 +128,7 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		"accessToken":  accessToken,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondWithError(w, http.StatusInternalServerError, err.Error())
 		log.Debug().Msgf("Response marshal error: %s", err.Error())
 		return
 	}
