@@ -68,8 +68,10 @@ type App struct {
 	developmentMode bool
 }
 
-const PrometheusPrefix = "platformback_"
-
+const (
+	PrometheusPrefix = "platformback_"
+	ServiceName      = "platform"
+)
 
 func NewApp(config *config.Config) (*App, error) {
 	logger.InitLogger(config.LogLevel)
@@ -217,6 +219,7 @@ func NewApp(config *config.Config) (*App, error) {
 	handleFunc("logout", logoutHandler)
 	handleFunc("refresh_token", refreshTokensHandler)
 	handleFunc("ping", pingHandler)
+	handleFunc("who", whoHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(
 		registerer, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 	))
