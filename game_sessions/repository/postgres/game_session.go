@@ -16,26 +16,27 @@ import (
 const GlobalCnt = 30
 
 const (
-	selectGameSessionByIdStmt    = "SELECT * FROM game_sessions WHERE id = $1"
-	selectGameSessionByBcIDStmt  = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
-	selectUserGameSessionsStmt   = "SELECT * FROM game_sessions WHERE player = $1 ORDER BY last_update DESC"
-	selectGlobalSessionsStmt     = "SELECT * FROM game_sessions WHERE state = $1 ORDER BY last_update DESC LIMIT $2"
-	selectGlobalSessionsLostStmt = "SELECT * FROM game_sessions WHERE state = $1 AND player_win_amount SIMILAR TO '-%' ORDER BY last_update DESC LIMIT $2"
-	selectGlobalSessionsWinsStmt = "SELECT * FROM game_sessions WHERE state = $1 AND player_win_amount NOT SIMILAR TO '(-%|0.0000 %)' ORDER BY last_update DESC LIMIT $2"
-	selectCasinoSessionsStmt     = "SELECT * FROM game_sessions WHERE state = $1 AND casino_id = $2 ORDER BY last_update DESC LIMIT $3"
-	selectCasinoSessionsLostStmt = "SELECT * FROM game_sessions WHERE state = $1 AND casino_id = $2 AND player_win_amount SIMILAR TO '-%' ORDER BY last_update DESC LIMIT $3"
-	selectCasinoSessionsWinsStmt = "SELECT * FROM game_sessions WHERE state = $1 AND casino_id = $2 AND player_win_amount NOT SIMILAR TO '(-%|0.0000 %)' ORDER BY last_update DESC LIMIT $3"
-	selectAllGameSessionsStmt    = "SELECT * FROM game_sessions"
-	selectFirstGameActionStmt    = "SELECT * FROM first_game_actions WHERE ses_id = $1"
-	updateSessionStateStmt       = "UPDATE game_sessions SET state = $2, last_update = $3 WHERE id = $1"
-	updateSessionDepositStmt     = "UPDATE game_sessions SET deposit = $2 WHERE id = $1"
-	updateSessionPlayerWinStmt   = "UPDATE game_sessions SET player_win_amount = $2 WHERE id = $1"
-	updateSessionOffsetStmt      = "UPDATE game_sessions SET last_offset = $2 WHERE id = $1"
-	selectGameSessionCntByIdStmt = "SELECT count(*) FROM game_sessions WHERE id = $1"
-	insertGameSessionStmt        = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
-	insertFirstGameActionStmt    = "INSERT INTO first_game_actions VALUES ($1, $2, $3)"
-	deleteGameSessionByIdStmt    = "DELETE FROM game_sessions WHERE id = $1"
-	deleteFirstGameActionStmt    = "DELETE FROM first_game_actions WHERE ses_id = $1"
+	selectGameSessionByIdStmt        = "SELECT * FROM game_sessions WHERE id = $1"
+	selectGameSessionByBcIDStmt      = "SELECT * FROM game_sessions WHERE blockchain_req_id = $1"
+	selectUserGameSessionsStmt       = "SELECT * FROM game_sessions WHERE player = $1 ORDER BY last_update DESC"
+	selectGlobalSessionsStmt         = "SELECT * FROM game_sessions WHERE state = $1 ORDER BY last_update DESC LIMIT $2"
+	selectGlobalSessionsLostStmt     = "SELECT * FROM game_sessions WHERE state = $1 AND player_win_amount SIMILAR TO '-%' ORDER BY last_update DESC LIMIT $2"
+	selectGlobalSessionsWinsStmt     = "SELECT * FROM game_sessions WHERE state = $1 AND player_win_amount NOT SIMILAR TO '(-%|0.0000 %)' ORDER BY last_update DESC LIMIT $2"
+	selectCasinoSessionsStmt         = "SELECT * FROM game_sessions WHERE state = $1 AND casino_id = $2 ORDER BY last_update DESC LIMIT $3"
+	selectCasinoSessionsLostStmt     = "SELECT * FROM game_sessions WHERE state = $1 AND casino_id = $2 AND player_win_amount SIMILAR TO '-%' ORDER BY last_update DESC LIMIT $3"
+	selectCasinoSessionsWinsStmt     = "SELECT * FROM game_sessions WHERE state = $1 AND casino_id = $2 AND player_win_amount NOT SIMILAR TO '(-%|0.0000 %)' ORDER BY last_update DESC LIMIT $3"
+	selectAllGameSessionsStmt        = "SELECT * FROM game_sessions"
+	selectFirstGameActionStmt        = "SELECT * FROM first_game_actions WHERE ses_id = $1"
+	updateSessionStateStmt           = "UPDATE game_sessions SET state = $2, last_update = $3 WHERE id = $1"
+	updateSessionDepositStmt         = "UPDATE game_sessions SET deposit = $2 WHERE id = $1"
+	updateSessionPlayerWinStmt       = "UPDATE game_sessions SET player_win_amount = $2 WHERE id = $1"
+	updateSessionOffsetStmt          = "UPDATE game_sessions SET last_offset = $2 WHERE id = $1"
+	updateSessionStateBeforeFailStmt = "UPDATE game_sessions SET state_before_fail = $2 WHERE id = $1"
+	selectGameSessionCntByIdStmt     = "SELECT count(*) FROM game_sessions WHERE id = $1"
+	insertGameSessionStmt            = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
+	insertFirstGameActionStmt        = "INSERT INTO first_game_actions VALUES ($1, $2, $3)"
+	deleteGameSessionByIdStmt        = "DELETE FROM game_sessions WHERE id = $1"
+	deleteFirstGameActionStmt        = "DELETE FROM first_game_actions WHERE ses_id = $1"
 )
 
 type GameSession struct {
@@ -49,6 +50,7 @@ type GameSession struct {
 	Deposit         *string `db:"deposit"`
 	LastUpdate      int64   `db:"last_update"`
 	PlayerWinAmount *string `db:"player_win_amount"`
+	StateBeforeFail uint64  `db:"state_before_fail"`
 }
 
 func (s *GameSession) Scan(row pgx.Row) error {
@@ -63,6 +65,7 @@ func (s *GameSession) Scan(row pgx.Row) error {
 		&s.Deposit,
 		&s.LastUpdate,
 		&s.PlayerWinAmount,
+		&s.StateBeforeFail,
 	)
 }
 
@@ -278,6 +281,17 @@ func (r *GameSessionsPostgresRepo) UpdateSessionState(ctx context.Context, id ui
 	return err
 }
 
+func (r *GameSessionsPostgresRepo) UpdateSessionStateBeforeFail(ctx context.Context, id uint64, prevSate models.GameSessionState) error {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, updateSessionStateBeforeFailStmt, id, uint16(prevSate))
+	return err
+}
+
 func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *models.GameSession) error {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
@@ -295,6 +309,7 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 		ses.LastOffset,
 		ses.Deposit.String(),
 		ses.LastUpdate,
+		nil,
 		nil,
 	)
 	if err != nil {
@@ -413,6 +428,7 @@ func toModelGameSession(gs *GameSession) (*models.GameSession, error) {
 		State:           models.GameSessionState(gs.State),
 		LastOffset:      gs.LastOffset,
 		LastUpdate:      gs.LastUpdate,
+		StateBeforeFail: models.GameSessionState(gs.StateBeforeFail),
 	}
 
 	if gs.Deposit == nil {

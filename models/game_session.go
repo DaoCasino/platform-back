@@ -25,4 +25,5 @@ type GameSession struct {
 	Deposit         *eos.Asset       `json:"deposit"`
 	LastUpdate      int64            `json:"lastUpdate"`
 	PlayerWinAmount *eos.Asset       `json:"playerWinAmount"`
+	StateBeforeFail GameSessionState `json:"stateBeforeFail"`
 }

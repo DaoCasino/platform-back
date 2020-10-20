@@ -253,6 +253,10 @@ func onGameFailed(ctx context.Context, p *EventProcessor, event *eventlistener.E
 
 	// if not already processed event
 	if err == nil {
+		err = p.repos.GameSession.UpdateSessionStateBeforeFail(ctx, session.ID, session.State)
+		if err != nil {
+			return err
+		}
 		err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameFailed)
 		if err != nil {
 			return err
