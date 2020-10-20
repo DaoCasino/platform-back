@@ -3,10 +3,21 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/rs/zerolog/log"
 	"net/http"
+	"platform-backend/auth"
 	"platform-backend/models"
 )
+
+const (
+	TokenExpired = 401
+)
+
+type HTTPError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
 
 func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New connect request")
@@ -23,7 +34,7 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 }
 
 func respondWithError(w http.ResponseWriter, code int, message string) {
-	respondWithJSON(w, code, JsonResponse{"error": message})
+	respondWithJSON(w, code, HTTPError{Code: code, Message: message})
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -118,8 +129,12 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(context.Background(), req.RefreshToken)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("RefreshToken error: %s", err.Error())
+		if errors.Is(err, auth.ErrExpiredToken) {
+			respondWithError(w, TokenExpired, err.Error())
+			return
+		}
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
