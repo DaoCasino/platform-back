@@ -14,6 +14,11 @@ const (
 	TokenExpired = 401
 )
 
+type HTTPResponse struct {
+	Response interface{} `json:"response"`
+	Error    *HTTPError  `json:"error"`
+}
+
 type HTTPError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -33,8 +38,18 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	app.smRepo.AddSession(context.Background(), c, app.wsApi)
 }
 
+func respondOK(w http.ResponseWriter, response interface{}) {
+	respondWithJSON(w, http.StatusOK, HTTPResponse{
+		Response: response,
+		Error:    nil,
+	})
+}
+
 func respondWithError(w http.ResponseWriter, code int, message string) {
-	respondWithJSON(w, code, HTTPError{Code: code, Message: message})
+	respondWithJSON(w, code, HTTPResponse{
+		Response: nil,
+		Error:    &HTTPError{Code: code, Message: message},
+	})
 }
 
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
@@ -91,9 +106,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	respondOK(w, response)
 }
 
 func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -113,8 +126,7 @@ func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	respondOK(w, nil)
 }
 
 func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -148,9 +160,7 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	respondOK(w, response)
 }
 
 func pingHandler(w http.ResponseWriter, _ *http.Request) {
