@@ -8,28 +8,10 @@ import (
 	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
-	"strconv"
-	"time"
 )
 
 type FetchSessionUpdatesPayload struct {
 	SessionId eos.Uint64 `json:"sessionId"`
-}
-
-type SessionUpdateResponse struct {
-	SessionID  string                       `json:"sessionId"`
-	UpdateType models.GameSessionUpdateType `json:"updateType"`
-	Timestamp  time.Time                    `json:"timestamp"`
-	Data       json.RawMessage              `json:"data"`
-}
-
-func toSessionUpdateResponse(su *models.GameSessionUpdate) *SessionUpdateResponse {
-	return &SessionUpdateResponse{
-		SessionID:  strconv.FormatUint(su.SessionID, 10),
-		UpdateType: su.UpdateType,
-		Timestamp:  su.Timestamp,
-		Data:       su.Data,
-	}
 }
 
 func ProcessFetchSessionUpdatesRequest(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
@@ -55,9 +37,9 @@ func ProcessFetchSessionUpdatesRequest(context context.Context, req *ws_interfac
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	response := make([]*SessionUpdateResponse, len(gameSessionUpdates))
+	response := make([]*models.GameSessionUpdateMsg, len(gameSessionUpdates))
 	for i, su := range gameSessionUpdates {
-		response[i] = toSessionUpdateResponse(su)
+		response[i] = models.ToGameSessionUpdateMsg(su)
 	}
 
 	return response, nil

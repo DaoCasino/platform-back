@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -27,7 +26,6 @@ import (
 	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
 	gameSessionUC "platform-backend/game_sessions/usecase"
 	"platform-backend/logger"
-	"platform-backend/models"
 	"platform-backend/repositories"
 	"platform-backend/server/api"
 	"platform-backend/server/session_manager"
@@ -51,7 +49,8 @@ type LogoutRequest struct {
 }
 
 type AuthRequest struct {
-	TmpToken string `json:"tmpToken"`
+	TmpToken    string `json:"tmpToken"`
+	AffiliateID string `json:"affiliateID"`
 }
 
 type App struct {
@@ -69,127 +68,10 @@ type App struct {
 	developmentMode bool
 }
 
-const PrometheusPrefix = "platformback_"
-
-func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msgf("New connect request")
-
-	c, err := app.wsUpgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Err(err)
-		return
-	}
-
-	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
-
-	app.smRepo.AddSession(context.Background(), c, app.wsApi)
-}
-
-func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	var user *models.User
-	if app.developmentMode {
-		user = &models.User{
-			AccountName: "testuserever",
-			Email:       "test@user.ever",
-		}
-	} else {
-		var req AuthRequest
-		err := json.NewDecoder(r.Body).Decode(&req);
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			log.Debug().Msgf("Http body parse error, %s", err.Error())
-			return
-		}
-
-		log.Debug().Msgf("New auth request with token %s", req.TmpToken)
-
-		user, err = app.useCases.Auth.ResolveUser(context.Background(), req.TmpToken)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			log.Debug().Msgf("Token validate error: %s", err.Error())
-			return
-		}
-	}
-
-	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Debug().Msgf("SignUp error: %s", err.Error())
-		return
-	}
-
-	response, err := json.Marshal(JsonResponse{
-		"refreshToken": refreshToken,
-		"accessToken":  accessToken,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Debug().Msgf("Response marshal error: %s", err.Error())
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
-}
-
-func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msgf("New logout request")
-
-	var req LogoutRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Debug().Msgf("Http body parse error, %s", err.Error())
-		return
-	}
-
-	err := app.useCases.Auth.Logout(context.Background(), req.AccessToken)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Debug().Msgf("RefreshToken error: %s", err.Error())
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-}
-
-func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msgf("New refresh_token request")
-
-	var req RefreshRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Debug().Msgf("Http body parse error, %s", err.Error())
-		return
-	}
-
-	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(context.Background(), req.RefreshToken)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Debug().Msgf("RefreshToken error: %s", err.Error())
-		return
-	}
-
-	response, err := json.Marshal(JsonResponse{
-		"refreshToken": refreshToken,
-		"accessToken":  accessToken,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Debug().Msgf("Response marshal error: %s", err.Error())
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
-}
-
-func pingHandler(w http.ResponseWriter, _ *http.Request) {
-	log.Debug().Msgf("New ping request")
-	w.WriteHeader(http.StatusOK)
-}
+const (
+	PrometheusPrefix = "platformback_"
+	ServiceName      = "platform"
+)
 
 func NewApp(config *config.Config) (*App, error) {
 	logger.InitLogger(config.LogLevel)
@@ -273,12 +155,12 @@ func NewApp(config *config.Config) (*App, error) {
 		wsUpgrader: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 			return true
 		}},
-		smRepo:         smRepo,
-		uRepo:          uRepo,
-		eventProcessor: eventprocessor.New(repos, bc, useCases),
-		useCases:       useCases,
-		wsApi:          api.NewWsApi(useCases, repos, registerer),
-		events:         events,
+		smRepo:          smRepo,
+		uRepo:           uRepo,
+		eventProcessor:  eventprocessor.New(repos, bc, useCases),
+		useCases:        useCases,
+		wsApi:           api.NewWsApi(useCases, repos, registerer),
+		events:          events,
 		developmentMode: devMode,
 	}
 
@@ -337,6 +219,7 @@ func NewApp(config *config.Config) (*App, error) {
 	handleFunc("logout", logoutHandler)
 	handleFunc("refresh_token", refreshTokensHandler)
 	handleFunc("ping", pingHandler)
+	handleFunc("who", whoHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(
 		registerer, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 	))

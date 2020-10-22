@@ -7,4 +7,5 @@ var (
 	ErrFirstGameActionNotFound = errors.New("first game action not found")
 	ErrCasinoMetaEmpty = errors.New("casino meta is empty")
 	ErrCasinoUrlNotDefined = errors.New("casino api url not defined")
+	ErrUpdateAlreadyProcessed = errors.New("session update already processed")
 )

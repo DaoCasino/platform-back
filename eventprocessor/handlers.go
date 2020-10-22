@@ -51,16 +51,24 @@ func onGameStarted(ctx context.Context, p *EventProcessor, event *eventlistener.
 		UpdateType: models.SessionStartedUpdate,
 		Timestamp:  time.Now(),
 		Data:       event.Data,
+		Offset:     &event.Offset,
 	}
 
 	err := p.repos.GameSession.AddGameSessionUpdate(ctx, update)
-	if err != nil {
+	if err != nil && err != gamesessions.ErrUpdateAlreadyProcessed {
 		return err
+	} else {
+		log.Warn().Msgf("Handled already processed event for session: %d, type: %d, offset: %d",
+			session.ID, event.EventType, event.Offset,
+		)
 	}
 
-	err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameStartedInBC)
-	if err != nil {
-		return err
+	// if not already processed event
+	if err == nil {
+		err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameStartedInBC)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = notifySubscibers(ctx, p, session)
@@ -99,19 +107,29 @@ func onActionRequest(ctx context.Context, p *EventProcessor, event *eventlistene
 		return nil
 	}
 
-	err := p.repos.GameSession.AddGameSessionUpdate(ctx, &models.GameSessionUpdate{
+	update := &models.GameSessionUpdate{
 		SessionID:  session.ID,
 		UpdateType: models.GameActionRequestedUpdate,
 		Timestamp:  time.Now(),
 		Data:       event.Data,
-	})
-	if err != nil {
-		return err
+		Offset:     &event.Offset,
 	}
 
-	err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.RequestedGameAction)
-	if err != nil {
+	err := p.repos.GameSession.AddGameSessionUpdate(ctx, update)
+	if err != nil && err != gamesessions.ErrUpdateAlreadyProcessed {
 		return err
+	} else {
+		log.Warn().Msgf("Handled already processed event for session: %d, type: %d, offset: %d",
+			session.ID, event.EventType, event.Offset,
+		)
+	}
+
+	// if not already processed event
+	if err == nil {
+		err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.RequestedGameAction)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -181,21 +199,28 @@ func onGameFinished(ctx context.Context, p *EventProcessor, event *eventlistener
 		UpdateType: models.GameFinishedUpdate,
 		Timestamp:  time.Now(),
 		Data:       updateData,
+		Offset:     &event.Offset,
 	}
 
 	err = p.repos.GameSession.AddGameSessionUpdate(ctx, update)
-	if err != nil {
+	if err != nil && err != gamesessions.ErrUpdateAlreadyProcessed {
 		return err
 	}
+	log.Warn().Msgf("Handled already processed event for session: %d, type: %d, offset: %d",
+		session.ID, event.EventType, event.Offset,
+	)
 
-	err = p.repos.GameSession.UpdateSessionPlayerWin(ctx, session.ID, eventData.PlayerWin.String())
-	if err != nil {
-		return err
-	}
+	// if not already processed event
+	if err == nil {
+		err = p.repos.GameSession.UpdateSessionPlayerWin(ctx, session.ID, eventData.PlayerWin.String())
+		if err != nil {
+			return err
+		}
 
-	err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameFinished)
-	if err != nil {
-		return err
+		err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameFinished)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = notifySubscibers(ctx, p, session)
@@ -214,16 +239,24 @@ func onGameFailed(ctx context.Context, p *EventProcessor, event *eventlistener.E
 		UpdateType: models.GameFailedUpdate,
 		Timestamp:  time.Now(),
 		Data:       event.Data,
+		Offset:     &event.Offset,
 	}
 
 	err := p.repos.GameSession.AddGameSessionUpdate(ctx, update)
-	if err != nil {
+	if err != nil && err != gamesessions.ErrUpdateAlreadyProcessed {
 		return err
+	} else {
+		log.Warn().Msgf("Handled already processed event for session: %d, type: %d, offset: %d",
+			session.ID, event.EventType, event.Offset,
+		)
 	}
 
-	err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameFailed)
-	if err != nil {
-		return err
+	// if not already processed event
+	if err == nil {
+		err = p.repos.GameSession.UpdateSessionState(ctx, session.ID, models.GameFailed)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = notifySubscibers(ctx, p, session)
@@ -262,12 +295,16 @@ func onGameMessage(ctx context.Context, p *EventProcessor, event *eventlistener.
 		UpdateType: models.GameMessageUpdate,
 		Timestamp:  time.Now(),
 		Data:       updateData,
+		Offset:     &event.Offset,
 	}
 
 	err = p.repos.GameSession.AddGameSessionUpdate(ctx, update)
-	if err != nil {
+	if err != nil && err != gamesessions.ErrUpdateAlreadyProcessed {
 		return err
 	}
+	log.Warn().Msgf("Handled already processed event for session: %d, type: %d, offset: %d",
+		session.ID, event.EventType, event.Offset,
+	)
 
 	err = notifySubscibers(ctx, p, session)
 	if err != nil {
