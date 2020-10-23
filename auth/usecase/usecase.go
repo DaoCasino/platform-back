@@ -95,6 +95,7 @@ func (a *AuthUseCase) ResolveUser(ctx context.Context, tmpToken string) (*models
 	return &models.User{
 		AccountName: response.TokenValidate.User.AccountName,
 		Email:       response.TokenValidate.User.Email,
+		AffiliateID: "",
 	}, nil
 }
 

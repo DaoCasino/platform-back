@@ -13,6 +13,7 @@ type GameSessionUpdateMsg struct {
 	UpdateType GameSessionUpdateType `json:"updateType"`
 	Timestamp  time.Time             `json:"timestamp"`
 	Data       json.RawMessage       `json:"data"`
+	Offset     *uint64               `json:"offset"`
 }
 
 func ToGameSessionUpdateMsg(u *GameSessionUpdate) *GameSessionUpdateMsg {
@@ -21,6 +22,7 @@ func ToGameSessionUpdateMsg(u *GameSessionUpdate) *GameSessionUpdateMsg {
 		UpdateType: u.UpdateType,
 		Timestamp:  u.Timestamp,
 		Data:       u.Data,
+		Offset:     u.Offset,
 	}
 }
 
@@ -29,6 +31,7 @@ type GameSessionUpdate struct {
 	UpdateType GameSessionUpdateType `json:"updateType"`
 	Timestamp  time.Time             `json:"timestamp"`
 	Data       json.RawMessage       `json:"data"`
+	Offset     *uint64               `json:"offset"`
 }
 
 const (

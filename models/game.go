@@ -1,7 +1,10 @@
 package models
 
+import "encoding/json"
+
 type GameMeta struct {
 	ManifestURL string `json:"manifestURL"`
+	Ext json.RawMessage `json:"ext"`
 }
 
 type Game struct {

@@ -124,7 +124,7 @@ func (a *GameSessionsUseCase) CleanExpiredSessions(
 				if _, err := a.bc.Api.PushTransaction(packedTrx); err != nil {
 					// Do not return error, because it can be caused by bug in contract
 					// So just log it and ignore
-					log.Warn().Msgf("EXP_CLEAN: transaction error: %s", err)
+					log.Warn().Msgf("EXP_CLEAN: transaction error, sessionID: %d, error: %s", session.ReqId, err.Error())
 				}
 			}
 		}
@@ -182,6 +182,20 @@ func (a *GameSessionsUseCase) NewSession(
 		}),
 	}
 
+	// if user has affiliate call "newgameaffl" action with affiliateID
+	if user.AffiliateID != "" {
+		newGameAction.Name = eos.ActN("newgameaffl")
+		newGameAction.ActionData = eos.NewActionData(struct {
+			SesId       uint64 `json:"ses_id"`
+			CasinoID    uint64 `json:"casino_id"`
+			AffiliateID string `json:"affiliate_id"`
+		}{
+			SesId:       sessionId,
+			CasinoID:    casino.Id,
+			AffiliateID: user.AffiliateID,
+		})
+	}
+
 	firstGameAction := &eos.Action{
 		Account: eos.AN(game.Contract),
 		Name:    eos.ActN("gameaction"),
@@ -222,6 +236,7 @@ func (a *GameSessionsUseCase) NewSession(
 		UpdateType: models.SessionCreatedUpdate,
 		Timestamp:  time.Now(),
 		Data:       nil,
+		Offset:     nil,
 	})
 	if err != nil {
 		return nil, err
@@ -258,6 +273,7 @@ func (a *GameSessionsUseCase) NewSession(
 				UpdateType: models.GameFailedUpdate,
 				Timestamp:  time.Now(),
 				Data:       failedUpdateData,
+				Offset:     nil,
 			})
 			if e != nil {
 				log.Error().Msgf("Error pushing session failed update: %s", err.Error())
