@@ -9,6 +9,7 @@ import (
 	"platform-backend/blockchain"
 	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
+	"strconv"
 	"time"
 )
 
@@ -253,6 +254,7 @@ func onGameFailed(ctx context.Context, p *EventProcessor, event *eventlistener.E
 
 	// if not already processed event
 	if err == nil {
+		p.failedSessionCounter.WithLabelValues(strconv.Itoa(int(session.State))).Add(1)
 		err = p.repos.GameSession.UpdateSessionStateBeforeFail(ctx, session.ID, session.State)
 		if err != nil {
 			return err
