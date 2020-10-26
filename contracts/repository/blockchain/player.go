@@ -26,8 +26,13 @@ func (r *CasinoBlockchainRepo) GetPlayerInfo(ctx context.Context, accountName st
 		return nil, err
 	}
 
+	bonusBalances, err := r.GetBonusBalances(casinos, accountName)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &models.PlayerInfo{}
-	contracts.FillPlayerInfoFromRaw(info, resp, casinos)
+	contracts.FillPlayerInfoFromRaw(info, resp, casinos, bonusBalances)
 
 	return info, nil
 }
