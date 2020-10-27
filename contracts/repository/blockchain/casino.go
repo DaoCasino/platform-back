@@ -144,7 +144,7 @@ func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accoun
 		}
 
 		bonusBalance := new(BonusBalance)
-		err = resp.JSONToStructs(&bonusBalance)
+		err = resp.JSONToStructs(bonusBalance)
 		if err != nil {
 			return nil, err
 		}

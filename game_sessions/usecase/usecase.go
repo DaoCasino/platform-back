@@ -173,7 +173,7 @@ func (a *GameSessionsUseCase) NewSession(
 
 	if realAsset.Amount > 0 {
 		// Add transfer deposit action
-		transferAction, err = a.getTransferAction(user.AccountName, game.Contract, casino.Contract, sessionId, asset)
+		transferAction, err = a.getTransferAction(user.AccountName, game.Contract, casino.Contract, sessionId, realAsset)
 		if err != nil {
 			return nil, err
 		}
@@ -375,6 +375,9 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 	}
 
 	playerInfo, err := a.contractsRepo.GetPlayerInfo(ctx, gs.Player)
+	if err != nil {
+		return err
+	}
 
 	asset, err := utils.ToBetAsset(deposit)
 	if err != nil {
@@ -390,7 +393,7 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 	var depositBonusAction *eos.Action
 
 	if realAsset.Amount > 0 {
-		transferAction, err = a.getTransferAction(gs.Player, game.Contract, casino.Contract, gs.ID, asset)
+		transferAction, err = a.getTransferAction(gs.Player, game.Contract, casino.Contract, gs.ID, realAsset)
 		if err != nil {
 			return err
 		}
@@ -439,7 +442,7 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 		return fmt.Errorf("filling tx opts: %s", err)
 	}
 
-	trxActions := make([]*eos.Action, 2, 3)
+	trxActions := make([]*eos.Action, 0, 3)
 	if transferAction != nil {
 		trxActions = append(trxActions, transferAction)
 	}
@@ -568,7 +571,7 @@ func (a *GameSessionsUseCase) getAssets(asset *eos.Asset, playerInfo *models.Pla
 		}
 	}
 
-	if playerInfo.Balance.Add(bonusBalance.Balance).Amount < asset.Amount {
+	if playerInfo.Balance.Amount+bonusBalance.Balance.Amount < asset.Amount {
 		return nil, nil, fmt.Errorf("not enough tokens")
 	}
 
