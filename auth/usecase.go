@@ -11,4 +11,5 @@ type UseCase interface {
 	SignIn(ctx context.Context, accessToken string) (*models.User, error)
 	Logout(ctx context.Context, accessToken string) error
 	RefreshToken(ctx context.Context, refreshToken string) (string, string, error) // returns: refreshToken, accessToken, error
+	OptOut(ctx context.Context, accessToken string) error
 }

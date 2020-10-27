@@ -22,6 +22,7 @@ const (
 	selectSessionCnt           = "SELECT count(*) FROM active_token_nonces WHERE account_name = $1 AND token_nonce = $2"
 	deleteOldSessions          = "DELETE FROM active_token_nonces WHERE created + $1 * INTERVAL '1 second' < current_timestamp"
 	invalidateSession          = "DELETE FROM active_token_nonces WHERE account_name = $1 AND token_nonce = $2"
+	deleteEmail                = "UPDATE users SET email = '' WHERE account_name = $1"
 )
 
 type User struct {
@@ -195,6 +196,17 @@ func (r *UserPostgresRepo) AddNewSession(ctx context.Context, accountName string
 	}
 
 	return user.TokenNonce, nil
+}
+
+func (r *UserPostgresRepo) DeleteEmail(ctx context.Context, accountName string) error {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, deleteEmail, accountName)
+	return err
 }
 
 func toModelUser(u *User, affiliateID string) *models.User {

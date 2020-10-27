@@ -240,6 +240,21 @@ func (a *AuthUseCase) Logout(ctx context.Context, accessToken string) error {
 	return a.userRepo.InvalidateSession(ctx, claims["account_name"].(string), int64(claims["nonce"].(float64)))
 }
 
+func (a *AuthUseCase) OptOut(ctx context.Context, accessToken string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	token, err := a.parseToken(accessToken)
+	if err != nil {
+		return err
+	}
+	if err := a.validateAccessToken(ctx, token); err != nil {
+		return err
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	return a.userRepo.DeleteEmail(ctx, claims["account_name"].(string))
+}
+
 func (a *AuthUseCase) validateToken(ctx context.Context, token *jwt.Token) error {
 	claims := token.Claims.(jwt.MapClaims)
 
