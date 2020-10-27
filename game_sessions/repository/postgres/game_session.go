@@ -50,7 +50,7 @@ type GameSession struct {
 	Deposit         *string `db:"deposit"`
 	LastUpdate      int64   `db:"last_update"`
 	PlayerWinAmount *string `db:"player_win_amount"`
-	StateBeforeFail uint64  `db:"state_before_fail"`
+	StateBeforeFail *uint64 `db:"state_before_fail"`
 }
 
 func (s *GameSession) Scan(row pgx.Row) error {
@@ -428,7 +428,6 @@ func toModelGameSession(gs *GameSession) (*models.GameSession, error) {
 		State:           models.GameSessionState(gs.State),
 		LastOffset:      gs.LastOffset,
 		LastUpdate:      gs.LastUpdate,
-		StateBeforeFail: models.GameSessionState(gs.StateBeforeFail),
 	}
 
 	if gs.Deposit == nil {
@@ -449,6 +448,13 @@ func toModelGameSession(gs *GameSession) (*models.GameSession, error) {
 			return nil, err
 		}
 		ses.PlayerWinAmount = winAmount
+	}
+
+	if gs.StateBeforeFail == nil {
+		ses.StateBeforeFail = nil
+	} else {
+		stateBeforeFail := models.GameSessionState(*gs.StateBeforeFail)
+		ses.StateBeforeFail = &stateBeforeFail
 	}
 
 	return ses, nil

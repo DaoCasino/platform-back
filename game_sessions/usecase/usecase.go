@@ -225,6 +225,7 @@ func (a *GameSessionsUseCase) NewSession(
 		Deposit:         asset,
 		LastUpdate:      time.Now().Unix(),
 		PlayerWinAmount: nil,
+		StateBeforeFail: nil,
 	}
 
 	if err := a.repo.AddGameSession(ctx, gameSession); err != nil {
