@@ -48,3 +48,9 @@ func (s *UserStorageMock) InvalidateOldSessions(ctx context.Context) error {
 
 	return args.Error(0)
 }
+
+func (s *UserStorageMock) DeleteEmail(ctx context.Context, accountName string) error {
+	args := s.Called(accountName)
+
+	return args.Error(0)
+}

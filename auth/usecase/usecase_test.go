@@ -160,3 +160,48 @@ func TestSignUpWithoutAffiliate(t *testing.T) {
 	_, _, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
 }
+
+func TestOptOut(t *testing.T) {
+	repo := new(mock.UserStorageMock)
+	sm := new(smMockRepo.MockRepository)
+
+	uc := NewAuthUseCase(
+		repo,
+		sm,
+		[]byte("secret"),
+		10,
+		10,
+		"",
+		0,
+		"",
+	)
+
+	var (
+		accountName = "user"
+		email       = "user@user.com"
+		affiliateID = ""
+
+		ctx = context.Background()
+
+		user = &models.User{
+			AccountName: accountName,
+			Email:       email,
+			AffiliateID: affiliateID,
+		}
+	)
+
+	tokenNonce := int64(0)
+	nextTokenNonce := int64(1)
+
+	// Sign Up (Get auth token)
+	repo.On("HasUser", user.AccountName).Return(false, nil)
+	repo.On("AddUser", user).Return(nil)
+	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
+	_, accessToken, err := uc.SignUp(ctx, user)
+	assert.NoError(t, err)
+
+	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
+	repo.On("DeleteEmail", user.AccountName).Return(nil)
+	err = uc.OptOut(ctx, accessToken)
+	assert.NoError(t, err)
+}
