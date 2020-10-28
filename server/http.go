@@ -96,14 +96,9 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := json.Marshal(JsonResponse{
+	response := JsonResponse{
 		"refreshToken": refreshToken,
 		"accessToken":  accessToken,
-	})
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		log.Debug().Msgf("Response marshal error: %s", err.Error())
-		return
 	}
 
 	respondOK(w, response)
@@ -150,14 +145,9 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := json.Marshal(JsonResponse{
+	response := JsonResponse{
 		"refreshToken": refreshToken,
 		"accessToken":  accessToken,
-	})
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-		log.Debug().Msgf("Response marshal error: %s", err.Error())
-		return
 	}
 
 	respondOK(w, response)
