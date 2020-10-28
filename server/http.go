@@ -168,20 +168,19 @@ func optOutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	var req OptOutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
 
 	err := app.useCases.Auth.OptOut(context.Background(), req.AccessToken)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("Opt-out error: %s", err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	respondOK(w, nil)
 }
 
 func pingHandler(w http.ResponseWriter, _ *http.Request) {
