@@ -135,7 +135,7 @@ func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accoun
 			Code:       casino.Contract,
 			Scope:      casino.Contract,
 			Table:      "bonusbalance",
-			LowerBound: accountName,
+			LowerBound: strconv.FormatUint(eos.MustStringToName(accountName), 10),
 			Limit:      1,
 			JSON:       true,
 		})
