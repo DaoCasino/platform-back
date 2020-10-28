@@ -100,13 +100,26 @@ func (a *AuthUseCase) ResolveUser(ctx context.Context, tmpToken string) (*models
 }
 
 func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User) (string, string, error) {
-	hasUser, err := a.userRepo.HasUser(context.Background(), user.AccountName)
+	hasUser, err := a.userRepo.HasUser(ctx, user.AccountName)
 	if err != nil {
-		log.Debug().Msgf("User existing check error, %s", err.Error())
+		log.Debug().Msgf("User existing check error: %s", err.Error())
 		return "", "", err
 	}
 	if !hasUser {
 		if err := a.userRepo.AddUser(ctx, user); err != nil {
+			log.Debug().Msgf("User add error: %s", err.Error())
+			return "", "", err
+		}
+	}
+
+	hasEmail, err := a.userRepo.HasEmail(ctx, user.AccountName)
+	if err != nil {
+		log.Debug().Msgf("User email existing check error: %s", err.Error())
+		return "", "", err
+	}
+	if !hasEmail {
+		if err := a.userRepo.AddEmail(ctx, user); err != nil {
+			log.Debug().Msgf("User email add error: %s", err.Error())
 			return "", "", err
 		}
 	}
@@ -238,6 +251,21 @@ func (a *AuthUseCase) Logout(ctx context.Context, accessToken string) error {
 	}
 	claims := token.Claims.(jwt.MapClaims)
 	return a.userRepo.InvalidateSession(ctx, claims["account_name"].(string), int64(claims["nonce"].(float64)))
+}
+
+func (a *AuthUseCase) OptOut(ctx context.Context, accessToken string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	token, err := a.parseToken(accessToken)
+	if err != nil {
+		return err
+	}
+	if err := a.validateAccessToken(ctx, token); err != nil {
+		return err
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	return a.userRepo.DeleteEmail(ctx, claims["account_name"].(string))
 }
 
 func (a *AuthUseCase) validateToken(ctx context.Context, token *jwt.Token) error {

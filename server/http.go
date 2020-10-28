@@ -124,6 +124,27 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(response)
 }
 
+func optOutHandler(app *App, w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New opt-out request")
+
+	var req OptOutRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("Http body parse error, %s", err.Error())
+		return
+	}
+
+	err := app.useCases.Auth.OptOut(context.Background(), req.AccessToken)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		log.Debug().Msgf("Opt-out error: %s", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+
 func pingHandler(w http.ResponseWriter, _ *http.Request) {
 	log.Debug().Msgf("New ping request")
 	w.WriteHeader(http.StatusOK)

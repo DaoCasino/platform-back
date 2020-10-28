@@ -48,3 +48,21 @@ func (s *UserStorageMock) InvalidateOldSessions(ctx context.Context) error {
 
 	return args.Error(0)
 }
+
+func (s *UserStorageMock) DeleteEmail(ctx context.Context, accountName string) error {
+	args := s.Called(accountName)
+
+	return args.Error(0)
+}
+
+func (s *UserStorageMock) HasEmail(ctx context.Context, accountName string) (bool, error) {
+	args := s.Called(accountName)
+
+	return args.Bool(0), args.Error(1)
+}
+
+func (s *UserStorageMock) AddEmail(ctx context.Context, user *models.User) error {
+	args := s.Called(user)
+
+	return args.Error(0)
+}
