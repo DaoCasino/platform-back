@@ -100,13 +100,26 @@ func (a *AuthUseCase) ResolveUser(ctx context.Context, tmpToken string) (*models
 }
 
 func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User) (string, string, error) {
-	hasUser, err := a.userRepo.HasUser(context.Background(), user.AccountName)
+	hasUser, err := a.userRepo.HasUser(ctx, user.AccountName)
 	if err != nil {
-		log.Debug().Msgf("User existing check error, %s", err.Error())
+		log.Debug().Msgf("User existing check error: %s", err.Error())
 		return "", "", err
 	}
 	if !hasUser {
 		if err := a.userRepo.AddUser(ctx, user); err != nil {
+			log.Debug().Msgf("User add error: %s", err.Error())
+			return "", "", err
+		}
+	}
+
+	hasEmail, err := a.userRepo.HasEmail(ctx, user.AccountName)
+	if err != nil {
+		log.Debug().Msgf("User email existing check error: %s", err.Error())
+		return "", "", err
+	}
+	if !hasEmail {
+		if err := a.userRepo.AddEmail(ctx, user); err != nil {
+			log.Debug().Msgf("User email add error: %s", err.Error())
 			return "", "", err
 		}
 	}

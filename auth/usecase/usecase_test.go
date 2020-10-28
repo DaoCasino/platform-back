@@ -45,7 +45,7 @@ func TestAuthFlow(t *testing.T) {
 
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
-	repo.On("CreateUser", user).Return(nil)
+	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("AddUser", user).Return(nil)
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
 	repo.On("InvalidateSession", user.AccountName).Return(nil)
@@ -97,8 +97,8 @@ func TestTokenRefresh(t *testing.T) {
 
 	// Sign Up (Get auth tokens)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
-	repo.On("CreateUser", user).Return(nil)
 	repo.On("AddUser", user).Return(nil)
+	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
 	repo.On("InvalidateSession", user.AccountName, tokenNonce).Return(nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
@@ -156,6 +156,7 @@ func TestSignUpWithoutAffiliate(t *testing.T) {
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("AddUser", user).Return(nil)
+	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
 	_, _, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
@@ -192,10 +193,12 @@ func TestOptOut(t *testing.T) {
 
 	tokenNonce := int64(0)
 	nextTokenNonce := int64(1)
+	nextNextTokenNonce := int64(2)
 
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("AddUser", user).Return(nil)
+	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
 	_, accessToken, err := uc.SignUp(ctx, user)
 	assert.NoError(t, err)
@@ -203,5 +206,12 @@ func TestOptOut(t *testing.T) {
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
 	repo.On("DeleteEmail", user.AccountName).Return(nil)
 	err = uc.OptOut(ctx, accessToken)
+	assert.NoError(t, err)
+
+	repo.On("HasUser", user.AccountName).Return(true, nil)
+	repo.On("HasEmail", user.AccountName).Return(false, nil)
+	repo.On("AddEmail", user).Return(nil)
+	repo.On("AddNewSession", user.AccountName).Return(nextNextTokenNonce, nil)
+	_, _, err = uc.SignUp(ctx, user)
 	assert.NoError(t, err)
 }

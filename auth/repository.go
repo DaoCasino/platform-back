@@ -14,4 +14,6 @@ type UserRepository interface {
 	AddNewSession(ctx context.Context, accountName string) (int64, error)
 	InvalidateOldSessions(ctx context.Context) error
 	DeleteEmail(ctx context.Context, accountName string) error
+	HasEmail(ctx context.Context, accountName string) (bool, error)
+	AddEmail(ctx context.Context, user *models.User) error
 }
