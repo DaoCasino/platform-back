@@ -161,7 +161,7 @@ func NewApp(config *config.Config) (*App, error) {
 		}},
 		smRepo:          smRepo,
 		uRepo:           uRepo,
-		eventProcessor:  eventprocessor.New(repos, bc, useCases),
+		eventProcessor:  eventprocessor.New(repos, bc, useCases, registerer),
 		useCases:        useCases,
 		wsApi:           api.NewWsApi(useCases, repos, registerer),
 		events:          events,

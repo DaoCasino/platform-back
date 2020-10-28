@@ -20,6 +20,7 @@ type Repository interface {
 	GetGlobalSessions(ctx context.Context, filter FilterType) ([]*models.GameSession, error)
 	GetSessionByBlockChainID(ctx context.Context, bcID uint64) (*models.GameSession, error)
 	UpdateSessionState(ctx context.Context, id uint64, state models.GameSessionState) error
+	UpdateSessionStateBeforeFail(ctx context.Context, id uint64, prevState models.GameSessionState) error
 	UpdateSessionOffset(ctx context.Context, id uint64, offset uint64) error
 	UpdateSessionPlayerWin(ctx context.Context, id uint64, playerWin string) error
 	UpdateSessionDeposit(ctx context.Context, id uint64, deposit string) error

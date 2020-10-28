@@ -3,6 +3,7 @@ package eventprocessor
 import (
 	"context"
 	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"platform-backend/blockchain"
 	"platform-backend/models"
@@ -32,20 +33,31 @@ var handlersMap = map[eventlistener.EventType]UpdateHandler{
 }
 
 type EventProcessor struct {
-	repos      *repositories.Repos
-	blockchain *blockchain.Blockchain
-	useCases   *usecases.UseCases
+	repos                *repositories.Repos
+	blockchain           *blockchain.Blockchain
+	useCases             *usecases.UseCases
+	failedSessionCounter *prometheus.CounterVec
 }
 
 func New(
 	repos *repositories.Repos,
 	blockchain *blockchain.Blockchain,
 	useCases *usecases.UseCases,
+	reg prometheus.Registerer,
 ) *EventProcessor {
+	failedSessionCounter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "failed_session",
+		}, []string{"prev_state"},
+	)
+
+	reg.MustRegister(failedSessionCounter)
+
 	return &EventProcessor{
-		repos:      repos,
-		blockchain: blockchain,
-		useCases:   useCases,
+		repos:                repos,
+		blockchain:           blockchain,
+		useCases:             useCases,
+		failedSessionCounter: failedSessionCounter,
 	}
 }
 
