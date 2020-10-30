@@ -121,7 +121,7 @@ func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondOK(w, nil)
+	respondOK(w, true)
 }
 
 func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -170,7 +170,7 @@ func optOutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondOK(w, nil)
+	respondOK(w, true)
 }
 
 func pingHandler(w http.ResponseWriter, _ *http.Request) {
