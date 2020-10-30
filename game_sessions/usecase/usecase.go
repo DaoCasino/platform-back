@@ -604,22 +604,6 @@ func (a *GameSessionsUseCase) getNewGameAction(
 				Permission: eos.PN("gameaction"),
 			}},
 			ActionData: eos.NewActionData(struct {
-				SesId    uint64          `json:"ses_id"`
-				CasinoID uint64          `json:"casino_id"`
-				From     eos.AccountName `json:"from"`
-				Asset    eos.Asset       `json:"asset"`
-			}{
-				SesId:    sessionId,
-				CasinoID: casinoId,
-				From:     eos.AN(user.AccountName),
-				Asset:    *bonusAsset,
-			}),
-		}
-
-		// if user has affiliate call "newgamebonaf" action with affiliateID
-		if user.AffiliateID != "" {
-			newGameAction.Name = eos.ActN("newgamebonaf")
-			newGameAction.ActionData = eos.NewActionData(struct {
 				SesId       uint64          `json:"ses_id"`
 				CasinoID    uint64          `json:"casino_id"`
 				From        eos.AccountName `json:"from"`
@@ -631,7 +615,7 @@ func (a *GameSessionsUseCase) getNewGameAction(
 				From:        eos.AN(user.AccountName),
 				Asset:       *bonusAsset,
 				AffiliateID: user.AffiliateID,
-			})
+			}),
 		}
 	} else {
 		//Add newgame call to the game to the transaction
