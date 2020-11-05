@@ -174,7 +174,7 @@ func (r *CachedListingRepo) GetCasinoGames(ctx context.Context, casinoName strin
 
 	casGames, ok := r.casinoGames[casinoName]
 	if !ok {
-		return  nil, contracts.CasinoNotFound
+		return nil, contracts.CasinoNotFound
 	}
 
 	// preallocate array with known capacity
@@ -236,8 +236,14 @@ func (r *CachedListingRepo) GetPlayerInfo(ctx context.Context, accountName strin
 		return nil, err
 	}
 
+	// fwd to orig repo
+	bonusBalances, err := r.origRepo.GetBonusBalances(casinos, accountName)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &models.PlayerInfo{}
-	contracts.FillPlayerInfoFromRaw(info, rawAccount, casinos)
+	contracts.FillPlayerInfoFromRaw(info, rawAccount, casinos, bonusBalances)
 
 	return info, nil
 }
@@ -245,6 +251,10 @@ func (r *CachedListingRepo) GetPlayerInfo(ctx context.Context, accountName strin
 // without cache, just fwd to original repo
 func (r *CachedListingRepo) GetRawAccount(accountName string) (*eos.AccountResp, error) {
 	return r.origRepo.GetRawAccount(accountName)
+}
+
+func (r *CachedListingRepo) GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error) {
+	return r.origRepo.GetBonusBalances(casinos, accountName)
 }
 
 // return sorted games map keys

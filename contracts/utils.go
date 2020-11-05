@@ -33,12 +33,11 @@ func FillPlayerInfoFromRaw(
 
 	destInfo.Balance = sourceRaw.CoreLiquidBalance
 
-	destInfo.BonusBalances = make([]*models.BonusBalance, 0)
+	destInfo.BonusBalances = bonusBalances
 	destInfo.LinkedCasinos = make([]*models.Casino, 0)
-	for i := range casinos {
-		if CasinoLinked(&sourceRaw.Permissions, casinos[i].Contract) {
-			destInfo.BonusBalances = append(destInfo.BonusBalances, bonusBalances[i])
-			destInfo.LinkedCasinos = append(destInfo.LinkedCasinos, casinos[i])
+	for _, casino := range casinos {
+		if CasinoLinked(&sourceRaw.Permissions, casino.Contract) {
+			destInfo.LinkedCasinos = append(destInfo.LinkedCasinos, casino)
 		}
 	}
 }
