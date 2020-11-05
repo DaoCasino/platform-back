@@ -237,7 +237,7 @@ func (r *CachedListingRepo) GetPlayerInfo(ctx context.Context, accountName strin
 	}
 
 	// fwd to orig repo
-	bonusBalances, err := r.origRepo.GetBonusBalances(casinos, accountName)
+	bonusBalances, err := r.GetBonusBalances(casinos, accountName)
 	if err != nil {
 		return nil, err
 	}
