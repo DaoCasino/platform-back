@@ -14,12 +14,7 @@ func CasinoLinked(permissions *[]eos.Permission, casinoName string) bool {
 	return false
 }
 
-func FillPlayerInfoFromRaw(
-	destInfo *models.PlayerInfo,
-	sourceRaw *eos.AccountResp,
-	casinos []*models.Casino,
-	bonusBalances []*models.BonusBalance,
-) {
+func FillPlayerInfoFromRaw(destInfo *models.PlayerInfo, sourceRaw *eos.AccountResp, casinos []*models.Casino) {
 	for _, perm := range sourceRaw.Permissions {
 		if perm.PermName == "owner" {
 			destInfo.OwnerPermission = perm.RequiredAuth
@@ -33,7 +28,6 @@ func FillPlayerInfoFromRaw(
 
 	destInfo.Balance = sourceRaw.CoreLiquidBalance
 
-	destInfo.BonusBalances = bonusBalances
 	destInfo.LinkedCasinos = make([]*models.Casino, 0)
 	for _, cas := range casinos {
 		if CasinoLinked(&sourceRaw.Permissions, cas.Contract) {
