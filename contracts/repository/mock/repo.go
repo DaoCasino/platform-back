@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/eoscanada/eos-go"
-	"github.com/stretchr/testify/mock"
 	"platform-backend/contracts"
 	"platform-backend/models"
 )
@@ -14,7 +13,6 @@ type MockedListingRepo struct {
 	games       map[uint64]*models.Game
 	casinos     map[uint64]*models.Casino
 	casinoGames map[string][]*models.CasinoGame
-	mock.Mock
 }
 
 func NewMockedListingRepo() *MockedListingRepo {
@@ -86,7 +84,7 @@ func (r *MockedListingRepo) GetPlayerInfo(ctx context.Context, accountName strin
 	}
 
 	info := &models.PlayerInfo{}
-	contracts.FillPlayerInfoFromRaw(info, rawAccount, casinos, nil)
+	contracts.FillPlayerInfoFromRaw(info, rawAccount, casinos)
 
 	return info, nil
 }
@@ -98,14 +96,6 @@ func (r *MockedListingRepo) GetRawAccount(accountName string) (*eos.AccountResp,
 	return nil, errors.New("account not found")
 }
 
-func (r *MockedListingRepo) GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error) {
-	valueCasinos := make([]models.Casino, 0)
-	for _, casino := range casinos {
-		valueCasinos = append(valueCasinos, *casino)
-	}
-	args := r.Called(valueCasinos, accountName)
-	return args.Get(0).([]*models.BonusBalance), args.Error(1)
-}
 
 func (r *MockedListingRepo) AddRawAccount(account *eos.AccountResp) {
 	r.rawAccounts[string(account.AccountName)] = account
