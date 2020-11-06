@@ -143,12 +143,16 @@ func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accoun
 			return nil, err
 		}
 
-		bonusBalance := new(BonusBalance)
+		bonusBalance := make([]*BonusBalance, 0, 1)
 		err = resp.JSONToStructs(bonusBalance)
 		if err != nil {
 			return nil, err
 		}
-		bonusBalances = append(bonusBalances, toModelBonusBalance(bonusBalance, casino.Id))
+
+		if len(bonusBalance) == 0 {
+			continue
+		}
+		bonusBalances = append(bonusBalances, toModelBonusBalance(bonusBalance[0], casino.Id))
 	}
 	return bonusBalances, nil
 }

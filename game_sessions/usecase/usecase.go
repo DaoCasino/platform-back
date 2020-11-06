@@ -552,22 +552,18 @@ func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transa
 }
 
 func (a *GameSessionsUseCase) getAssets(asset *eos.Asset, playerInfo *models.PlayerInfo, casinoId uint64) (*eos.Asset, *eos.Asset, error) {
-	var bonusBalance *models.BonusBalance
+	bonusBalance := &models.BonusBalance{
+		Balance: eos.Asset{
+			Amount: 0,
+			Symbol: asset.Symbol,
+		},
+		CasinoId: casinoId,
+	}
 
 	for _, bb := range playerInfo.BonusBalances {
 		if bb.CasinoId == casinoId {
 			bonusBalance = bb
 			break
-		}
-	}
-
-	if bonusBalance == nil {
-		bonusBalance = &models.BonusBalance{
-			Balance: eos.Asset{
-				Amount: 0,
-				Symbol: asset.Symbol,
-			},
-			CasinoId: casinoId,
 		}
 	}
 
