@@ -124,7 +124,8 @@ func (a *GameSessionsUseCase) CleanExpiredSessions(
 				if _, err := a.bc.Api.PushTransaction(packedTrx); err != nil {
 					// Do not return error, because it can be caused by bug in contract
 					// So just log it and ignore
-					log.Warn().Msgf("EXP_CLEAN: transaction error, sessionID: %d, error: %s", session.ReqId, err.Error())
+					log.Warn().Msgf("EXP_CLEAN: transaction error, "+
+						"game contract: %s, sessionID: %d, error: %s", game.Contract, session.ReqId, err.Error())
 				}
 			}
 		}
