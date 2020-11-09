@@ -14,6 +14,16 @@ func CasinoLinked(permissions *[]eos.Permission, casinoName string) bool {
 	return false
 }
 
+func GetLinkedCasinos(sourceRaw *eos.AccountResp, casinos []*models.Casino) []*models.Casino {
+	linkedCasinos := make([]*models.Casino, 0)
+	for _, cas := range casinos {
+		if CasinoLinked(&sourceRaw.Permissions, cas.Contract) {
+			linkedCasinos = append(linkedCasinos, cas)
+		}
+	}
+	return linkedCasinos
+}
+
 func FillPlayerInfoFromRaw(
 	destInfo *models.PlayerInfo,
 	sourceRaw *eos.AccountResp,
@@ -32,12 +42,6 @@ func FillPlayerInfoFromRaw(
 	}
 
 	destInfo.Balance = sourceRaw.CoreLiquidBalance
-
 	destInfo.BonusBalances = bonusBalances
-	destInfo.LinkedCasinos = make([]*models.Casino, 0)
-	for _, cas := range casinos {
-		if CasinoLinked(&sourceRaw.Permissions, cas.Contract) {
-			destInfo.LinkedCasinos = append(destInfo.LinkedCasinos, cas)
-		}
-	}
+	destInfo.LinkedCasinos = casinos
 }
