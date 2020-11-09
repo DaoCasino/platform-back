@@ -20,7 +20,7 @@ type PlayerInfoResponse struct {
 
 type BonusBalanceResponse struct {
 	Balance  eos.Asset `json:"balance"`
-	CasinoId string    `json:"casino_id"`
+	CasinoId string    `json:"casinoId"`
 }
 
 func toPlayerInfoResponse(p *models.PlayerInfo, u *models.User) *PlayerInfoResponse {
