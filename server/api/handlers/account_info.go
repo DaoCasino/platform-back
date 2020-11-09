@@ -9,18 +9,19 @@ import (
 )
 
 type PlayerInfoResponse struct {
-	AccountName      string                  `json:"accountName"`
-	Email            string                  `json:"email"`
-	Balance          eos.Asset               `json:"balance"`
-	BonusBalances    []*BonusBalanceResponse `json:"bonusBalance"`
-	ActivePermission eos.Authority           `json:"activePermission"`
-	OwnerPermission  eos.Authority           `json:"ownerPermission"`
-	LinkedCasinos    []*CasinoResponse       `json:"linkedCasinos"`
+	AccountName      string               `json:"accountName"`
+	Email            string               `json:"email"`
+	Balance          eos.Asset            `json:"balance"`
+	BonusBalances    BonusBalanceResponse `json:"bonusBalances"`
+	ActivePermission eos.Authority        `json:"activePermission"`
+	OwnerPermission  eos.Authority        `json:"ownerPermission"`
+	LinkedCasinos    []*CasinoResponse    `json:"linkedCasinos"`
 }
 
-type BonusBalanceResponse struct {
-	Balance  eos.Asset `json:"balance"`
-	CasinoId string    `json:"casinoId"`
+type BonusBalanceResponse map[string]BonusBalance
+
+type BonusBalance struct {
+	Balance eos.Asset `json:"balance"`
 }
 
 func toPlayerInfoResponse(p *models.PlayerInfo, u *models.User) *PlayerInfoResponse {
@@ -28,7 +29,7 @@ func toPlayerInfoResponse(p *models.PlayerInfo, u *models.User) *PlayerInfoRespo
 		AccountName:      u.AccountName,
 		Email:            u.Email,
 		Balance:          p.Balance,
-		BonusBalances:    make([]*BonusBalanceResponse, len(p.BonusBalances)),
+		BonusBalances:    toBonusBalanceResponse(p.BonusBalances),
 		ActivePermission: p.ActivePermission,
 		OwnerPermission:  p.OwnerPermission,
 		LinkedCasinos:    make([]*CasinoResponse, len(p.LinkedCasinos)),
@@ -36,18 +37,18 @@ func toPlayerInfoResponse(p *models.PlayerInfo, u *models.User) *PlayerInfoRespo
 	for i, casino := range p.LinkedCasinos {
 		ret.LinkedCasinos[i] = toCasinoResponse(casino)
 	}
-	for i, bonusBalance := range p.BonusBalances {
-		ret.BonusBalances[i] = toBonusBalanceResponse(bonusBalance)
-	}
 
 	return ret
 }
 
-func toBonusBalanceResponse(bb *models.BonusBalance) *BonusBalanceResponse {
-	return &BonusBalanceResponse{
-		Balance:  bb.Balance,
-		CasinoId: strconv.FormatUint(bb.CasinoId, 10),
+func toBonusBalanceResponse(bb []*models.BonusBalance) BonusBalanceResponse {
+	bbr := make(BonusBalanceResponse)
+
+	for _, b := range bb {
+		bbr[strconv.FormatUint(b.CasinoId, 10)] = BonusBalance{Balance: b.Balance}
 	}
+
+	return bbr
 }
 
 func ProcessAccountInfo(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
