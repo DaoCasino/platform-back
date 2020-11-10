@@ -129,7 +129,7 @@ func (r *CasinoBlockchainRepo) GetCasinoGames(ctx context.Context, casinoName st
 }
 
 func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error) {
-	bonusBalances := make([]*models.BonusBalance, len(casinos))
+	bonusBalances := make([]*models.BonusBalance, 0, 1)
 	for _, casino := range casinos {
 		resp, err := r.bc.Api.GetTableRows(eos.GetTableRowsRequest{
 			Code:       casino.Contract,
@@ -144,7 +144,7 @@ func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accoun
 		}
 
 		bonusBalance := make([]*BonusBalance, 0, 1)
-		err = resp.JSONToStructs(bonusBalance)
+		err = resp.JSONToStructs(&bonusBalance)
 		if err != nil {
 			return nil, err
 		}
