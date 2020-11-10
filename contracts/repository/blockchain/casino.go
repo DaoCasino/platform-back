@@ -30,6 +30,11 @@ type CasinoGame struct {
 	Params []GameParam `json:"params"`
 }
 
+type BonusBalance struct {
+	Player  string    `json:"player"`
+	Balance eos.Asset `json:"balance"`
+}
+
 type CasinoBlockchainRepo struct {
 	bc               *blockchain.Blockchain
 	platformContract string
@@ -123,6 +128,35 @@ func (r *CasinoBlockchainRepo) GetCasinoGames(ctx context.Context, casinoName st
 	return ret, nil
 }
 
+func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error) {
+	bonusBalances := make([]*models.BonusBalance, len(casinos))
+	for _, casino := range casinos {
+		resp, err := r.bc.Api.GetTableRows(eos.GetTableRowsRequest{
+			Code:       casino.Contract,
+			Scope:      casino.Contract,
+			Table:      "bonusbalance",
+			LowerBound: strconv.FormatUint(eos.MustStringToName(accountName), 10),
+			Limit:      1,
+			JSON:       true,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		bonusBalance := make([]*BonusBalance, 0, 1)
+		err = resp.JSONToStructs(bonusBalance)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(bonusBalance) == 0 {
+			continue
+		}
+		bonusBalances = append(bonusBalances, toModelBonusBalance(bonusBalance[0], casino.Id))
+	}
+	return bonusBalances, nil
+}
+
 func toModelCasino(c *Casino) *models.Casino {
 	meta := &models.CasinoMeta{}
 	err := json.Unmarshal(c.Meta, meta)
@@ -154,5 +188,12 @@ func toModelCasinoGame(game *CasinoGame) *models.CasinoGame {
 		Id:     uint64(game.Id),
 		Paused: !(game.Paused == 0),
 		Params: params,
+	}
+}
+
+func toModelBonusBalance(bonusBalance *BonusBalance, casinoId uint64) *models.BonusBalance {
+	return &models.BonusBalance{
+		Balance:  bonusBalance.Balance,
+		CasinoId: casinoId,
 	}
 }
