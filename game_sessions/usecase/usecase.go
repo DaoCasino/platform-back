@@ -605,13 +605,13 @@ func (a *GameSessionsUseCase) getNewGameAction(
 				SesId       uint64          `json:"ses_id"`
 				CasinoID    uint64          `json:"casino_id"`
 				From        eos.AccountName `json:"from"`
-				Asset       eos.Asset       `json:"asset"`
+				Quantity    eos.Asset       `json:"quantity"`
 				AffiliateID string          `json:"affiliate_id"`
 			}{
 				SesId:       sessionId,
 				CasinoID:    casinoId,
 				From:        eos.AN(user.AccountName),
-				Asset:       *bonusAsset,
+				Quantity:    *bonusAsset,
 				AffiliateID: user.AffiliateID,
 			}),
 		}
