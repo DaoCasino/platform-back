@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
+	"github.com/DaoCasino/platform-action-monitor-client"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,6 +26,8 @@ import (
 	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
 	gameSessionUC "platform-backend/game_sessions/usecase"
 	"platform-backend/logger"
+	referralsRepo "platform-backend/referrals/repository/postgres"
+	referralsUC "platform-backend/referrals/usecase"
 	"platform-backend/repositories"
 	"platform-backend/server/api"
 	"platform-backend/server/session_manager"
@@ -114,6 +116,7 @@ func NewApp(config *config.Config) (*App, error) {
 	gsRepo := gameSessionPgRepo.NewGameSessionsPostgresRepo(db.DbPool)
 	smRepo := smLocalRepo.NewLocalRepository(registerer)
 	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
+	refsRepo := referralsRepo.NewReferralPostgresRepo(db.DbPool)
 
 	repos := repositories.NewRepositories(
 		contractRepo,
@@ -121,6 +124,7 @@ func NewApp(config *config.Config) (*App, error) {
 	)
 
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
+	refsUC := referralsUC.NewReferralsUseCase(refsRepo)
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
@@ -147,6 +151,7 @@ func NewApp(config *config.Config) (*App, error) {
 			config.Signidice.Key,
 		),
 		subsUC,
+		refsUC,
 	)
 
 	events := make(chan *eventlistener.EventMessage)
