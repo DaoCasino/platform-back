@@ -264,7 +264,7 @@ func startSessionsCleaner(a *App, ctx context.Context) error {
 		return nil
 	}
 	if err := clean(); err != nil {
-		return err
+		log.Error().Msgf("Sessions clean error: %s", err.Error())
 	}
 
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
@@ -272,7 +272,7 @@ func startSessionsCleaner(a *App, ctx context.Context) error {
 		select {
 		case <-ticker.C:
 			if err := clean(); err != nil {
-				return err
+				log.Error().Msgf("Sessions clean error: %s", err.Error())
 			}
 		case <-ctx.Done():
 			ticker.Stop()
