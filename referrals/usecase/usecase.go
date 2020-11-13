@@ -17,13 +17,13 @@ func NewReferralsUseCase(repo referrals.Repository) *ReferralsUseCase {
 }
 
 func (r *ReferralsUseCase) GetOrCreateReferralID(ctx context.Context, accountName string) (string, error) {
-	hasRefID, err := r.repo.HasReferralID(ctx, accountName)
+	refID, err := r.repo.GetReferralID(ctx, accountName)
 	if err != nil {
-		log.Debug().Msgf("Referral ID exist check error: %s", err.Error())
+		log.Debug().Msgf("Referral ID get error: %s", err.Error())
 		return "", err
 	}
 
-	if !hasRefID {
+	if refID == "" {
 		refID, err := referrals.GenerateRandomString(ReferralIDLen)
 		if err != nil {
 			log.Debug().Msgf("Referral ID generate error: %s", err.Error())
@@ -39,12 +39,6 @@ func (r *ReferralsUseCase) GetOrCreateReferralID(ctx context.Context, accountNam
 		}
 
 		return refID, nil
-	}
-
-	refID, err := r.repo.GetReferralID(ctx, accountName)
-	if err != nil {
-		log.Debug().Msgf("Referral ID get error: %s", err.Error())
-		return "", err
 	}
 
 	return refID, nil

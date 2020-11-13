@@ -17,14 +17,13 @@ func TestGetOrCreateReferralID(t *testing.T) {
 		ctx         = context.Background()
 	)
 
-	repo.On("HasReferralID", accountName).Return(true, nil)
 	repo.On("GetReferralID", accountName).Return(mockRefID, nil)
 
 	refID, err := refUseCase.GetOrCreateReferralID(ctx, accountName)
 	assert.NoError(t, err)
 	assert.Equal(t, mockRefID, refID)
 
-	repo.On("HasReferralID", accountName).Return(false, nil)
+	repo.On("GetReferralID", accountName).Return("", nil)
 	repo.On("AddReferralID", accountName, mock2.MatchedBy(func(refID string) bool {
 		return true
 	})).Return(nil)

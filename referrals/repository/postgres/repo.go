@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -19,22 +20,6 @@ func NewReferralPostgresRepo(dbPool *pgxpool.Pool) *ReferralPostgresRepo {
 	return &ReferralPostgresRepo{dbPool: dbPool}
 }
 
-func (r *ReferralPostgresRepo) HasReferralID(ctx context.Context, accountName string) (bool, error) {
-	conn, err := r.dbPool.Acquire(ctx)
-	if err != nil {
-		return false, err
-	}
-	defer conn.Release()
-
-	var cnt uint
-	err = conn.QueryRow(ctx, selectRefCntByAccNameStmt, accountName).Scan(&cnt)
-	if err != nil {
-		return false, err
-	}
-
-	return cnt > 0, nil
-}
-
 func (r *ReferralPostgresRepo) GetReferralID(ctx context.Context, accountName string) (string, error) {
 	conn, err := r.dbPool.Acquire(ctx)
 	if err != nil {
@@ -46,6 +31,9 @@ func (r *ReferralPostgresRepo) GetReferralID(ctx context.Context, accountName st
 
 	err = conn.QueryRow(ctx, selectRefByAccNameStmt, accountName).Scan(&refID)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return "", nil
+		}
 		return "", err
 	}
 

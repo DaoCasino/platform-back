@@ -9,12 +9,6 @@ type ReferralRepoMock struct {
 	mock.Mock
 }
 
-func (r *ReferralRepoMock) HasReferralID(ctx context.Context, accountName string) (bool, error) {
-	args := r.Called(accountName)
-
-	return args.Bool(0), args.Error(1)
-}
-
 func (r *ReferralRepoMock) GetReferralID(ctx context.Context, accountName string) (string, error) {
 	args := r.Called(accountName)
 
