@@ -7,9 +7,8 @@ import (
 )
 
 var (
-	selectRefCntByAccNameStmt = "SELECT count(*) FROM referrals WHERE account_name = $1"
-	selectRefByAccNameStmt    = "SELECT referral_id FROM referrals WHERE account_name = $1"
-	insertRefStmt             = "INSERT into referrals VALUES ($1, $2)"
+	selectRefByAccNameStmt = "SELECT referral_id FROM referrals WHERE account_name = $1"
+	insertRefStmt          = "INSERT into referrals VALUES ($1, $2)"
 )
 
 type ReferralPostgresRepo struct {
