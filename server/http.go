@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"platform-backend/auth"
 	"platform-backend/models"
+
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -83,16 +84,16 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 		user, err = app.useCases.Auth.ResolveUser(context.Background(), req.TmpToken)
 		if err != nil {
-			respondWithError(w, http.StatusBadRequest, err.Error())
-			log.Debug().Msgf("Token validate error: %s", err.Error())
+			respondWithError(w, http.StatusUnauthorized, err.Error())
+			log.Warn().Msgf("Token validate error: %s", err.Error())
 			return
 		}
 		user.AffiliateID = req.AffiliateID
 	}
 	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
-		log.Debug().Msgf("SignUp error: %s", err.Error())
+		respondWithError(w, http.StatusUnauthorized, err.Error())
+		log.Warn().Msgf("SignUp error: %s", err.Error())
 		return
 	}
 
