@@ -137,8 +137,8 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(context.Background(), req.RefreshToken)
 	if err != nil {
-		log.Debug().Msgf("RefreshToken error: %s", err.Error())
-		if errors.Is(err, auth.ErrExpiredToken) {
+		log.Warn().Msgf("RefreshToken error: %s", err.Error())
+		if errors.Is(err, auth.ErrExpiredToken) || errors.Is(err, auth.ErrExpiredTokenNonce) {
 			respondWithError(w, TokenExpired, err.Error())
 			return
 		}
