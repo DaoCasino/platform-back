@@ -16,6 +16,7 @@ type PlayerInfoResponse struct {
 	ActivePermission eos.Authority        `json:"activePermission"`
 	OwnerPermission  eos.Authority        `json:"ownerPermission"`
 	LinkedCasinos    []*CasinoResponse    `json:"linkedCasinos"`
+	ReferralID       string               `json:"referralId"`
 }
 
 type BonusBalanceResponse map[string]BonusBalance
@@ -24,7 +25,7 @@ type BonusBalance struct {
 	Balance eos.Asset `json:"balance"`
 }
 
-func toPlayerInfoResponse(p *models.PlayerInfo, u *models.User) *PlayerInfoResponse {
+func toPlayerInfoResponse(p *models.PlayerInfo, u *models.User, refID string) *PlayerInfoResponse {
 	ret := &PlayerInfoResponse{
 		AccountName:      u.AccountName,
 		Email:            u.Email,
@@ -33,6 +34,7 @@ func toPlayerInfoResponse(p *models.PlayerInfo, u *models.User) *PlayerInfoRespo
 		ActivePermission: p.ActivePermission,
 		OwnerPermission:  p.OwnerPermission,
 		LinkedCasinos:    make([]*CasinoResponse, len(p.LinkedCasinos)),
+		ReferralID:       refID,
 	}
 	for i, casino := range p.LinkedCasinos {
 		ret.LinkedCasinos[i] = toCasinoResponse(casino)
@@ -58,5 +60,11 @@ func ProcessAccountInfo(context context.Context, req *ws_interface.ApiRequest) (
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	return toPlayerInfoResponse(player, req.User), nil
+	refID, err := req.UseCases.Referrals.GetOrCreateReferralID(context, req.User.AccountName)
+
+	if err != nil {
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+	}
+
+	return toPlayerInfoResponse(player, req.User, refID), nil
 }
