@@ -70,7 +70,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	)
 	if app.developmentMode {
 		user = &models.User{
-			AccountName: "daonmm2yzvhn",
+			AccountName: "testuserever",
 			Email:       "test@user.ever",
 			AffiliateID: "afff",
 		}
