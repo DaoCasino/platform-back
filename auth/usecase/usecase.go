@@ -114,10 +114,11 @@ func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User, casinoName 
 			return "", "", err
 		}
 
-		if err := a.contractUC.SendNewPlayerToCasino(ctx, user.AccountName, casinoName); err != nil {
-			log.Debug().Msgf("Send new player to casino error: %s", err.Error())
-			return "", "", err
-		}
+		go func() {
+			if err := a.contractUC.SendNewPlayerToCasino(ctx, user.AccountName, casinoName); err != nil {
+				log.Debug().Msgf("Send new player to casino error: %s", err.Error())
+			}
+		}()
 	}
 
 	hasEmail, err := a.userRepo.HasEmail(ctx, user.AccountName)
