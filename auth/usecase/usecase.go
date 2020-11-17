@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/sha3"
 	"platform-backend/auth"
+	"platform-backend/contracts"
 	"platform-backend/models"
 	"platform-backend/server/session_manager"
 	"strconv"
@@ -19,6 +20,7 @@ import (
 type AuthUseCase struct {
 	userRepo        auth.UserRepository
 	smRepo          session_manager.Repository
+	contractUC      contracts.UseCase
 	jwtSecret       []byte
 	refreshTokenTTL int64
 	accessTokenTTL  int64
@@ -28,12 +30,13 @@ type AuthUseCase struct {
 	walletClientSecret string
 }
 
-func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository,
+func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository, contractUC contracts.UseCase,
 	jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64,
 	walletUrl string, walletClientId int64, walletClientSecret string) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:        userRepo,
 		smRepo:          smRepo,
+		contractUC:      contractUC,
 		jwtSecret:       jwtSecret,
 		accessTokenTTL:  accessTokenTTL,
 		refreshTokenTTL: refreshTokenTTL,
@@ -99,7 +102,7 @@ func (a *AuthUseCase) ResolveUser(ctx context.Context, tmpToken string) (*models
 	}, nil
 }
 
-func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User) (string, string, error) {
+func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User, casinoName string) (string, string, error) {
 	hasUser, err := a.userRepo.HasUser(ctx, user.AccountName)
 	if err != nil {
 		log.Debug().Msgf("User existing check error: %s", err.Error())
@@ -110,6 +113,12 @@ func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User) (string, st
 			log.Debug().Msgf("User add error: %s", err.Error())
 			return "", "", err
 		}
+
+		go func() {
+			if err := a.contractUC.SendBonusToNewPlayer(ctx, user.AccountName, casinoName); err != nil {
+				log.Warn().Msgf("Send new player to casino error: %s", err.Error())
+			}
+		}()
 	}
 
 	hasEmail, err := a.userRepo.HasEmail(ctx, user.AccountName)

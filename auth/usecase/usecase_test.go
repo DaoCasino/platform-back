@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"platform-backend/auth/repository/mock"
+	"platform-backend/contracts/usecase"
 	"platform-backend/models"
 	smMockRepo "platform-backend/server/session_manager/repository/mock"
 	"testing"
@@ -13,10 +14,12 @@ import (
 func TestAuthFlow(t *testing.T) {
 	repo := new(mock.UserStorageMock)
 	sm := new(smMockRepo.MockRepository)
+	contractUC := new(usecase.ContractsUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
+		contractUC,
 		[]byte("secret"),
 		10,
 		10,
@@ -30,6 +33,7 @@ func TestAuthFlow(t *testing.T) {
 		email       = "user@user.com"
 		suid, _     = uuid.NewRandom()
 		affiliateID = "affiliate_1"
+		casinoName  = "casinoxxxx"
 
 		ctx = context.Background()
 
@@ -45,12 +49,13 @@ func TestAuthFlow(t *testing.T) {
 
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
-	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("AddUser", user).Return(nil)
+	contractUC.On("SendBonusToNewPlayer", user.AccountName, casinoName).Return(nil)
+	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
 	repo.On("InvalidateSession", user.AccountName).Return(nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
-	_, accessToken, err := uc.SignUp(ctx, user)
+	_, accessToken, err := uc.SignUp(ctx, user, casinoName)
 	assert.NoError(t, err)
 
 	// Auth with access token
@@ -65,10 +70,12 @@ func TestAuthFlow(t *testing.T) {
 func TestTokenRefresh(t *testing.T) {
 	repo := new(mock.UserStorageMock)
 	sm := new(smMockRepo.MockRepository)
+	contractUC := new(usecase.ContractsUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
+		contractUC,
 		[]byte("secret"),
 		10,
 		10,
@@ -82,6 +89,7 @@ func TestTokenRefresh(t *testing.T) {
 		email       = "user@user.com"
 		suid, _     = uuid.NewRandom()
 		affiliateID = "affiliate_1"
+		casinoName  = "casinoxxxx"
 
 		ctx = context.Background()
 
@@ -98,11 +106,12 @@ func TestTokenRefresh(t *testing.T) {
 	// Sign Up (Get auth tokens)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("AddUser", user).Return(nil)
+	contractUC.On("SendBonusToNewPlayer", user.AccountName, casinoName).Return(nil)
 	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
 	repo.On("InvalidateSession", user.AccountName, tokenNonce).Return(nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
-	refreshToken, _, err := uc.SignUp(ctx, user)
+	refreshToken, _, err := uc.SignUp(ctx, user, casinoName)
 	assert.NoError(t, err)
 
 	// Refresh tokens with refresh token
@@ -125,10 +134,12 @@ func TestTokenRefresh(t *testing.T) {
 func TestSignUpWithoutAffiliate(t *testing.T) {
 	repo := new(mock.UserStorageMock)
 	sm := new(smMockRepo.MockRepository)
+	contractUC := new(usecase.ContractsUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
+		contractUC,
 		[]byte("secret"),
 		10,
 		10,
@@ -141,6 +152,7 @@ func TestSignUpWithoutAffiliate(t *testing.T) {
 		accountName = "user"
 		email       = "user@user.com"
 		affiliateID = ""
+		casinoName  = "casinoxxx"
 
 		ctx = context.Background()
 
@@ -156,19 +168,22 @@ func TestSignUpWithoutAffiliate(t *testing.T) {
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("AddUser", user).Return(nil)
+	contractUC.On("SendBonusToNewPlayer", user.AccountName, casinoName).Return(nil)
 	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
-	_, _, err := uc.SignUp(ctx, user)
+	_, _, err := uc.SignUp(ctx, user, casinoName)
 	assert.NoError(t, err)
 }
 
 func TestOptOut(t *testing.T) {
 	repo := new(mock.UserStorageMock)
 	sm := new(smMockRepo.MockRepository)
+	contractUC := new(usecase.ContractsUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
+		contractUC,
 		[]byte("secret"),
 		10,
 		10,
@@ -181,6 +196,7 @@ func TestOptOut(t *testing.T) {
 		accountName = "user"
 		email       = "user@user.com"
 		affiliateID = ""
+		casinoName  = "casinoxxx"
 
 		ctx = context.Background()
 
@@ -198,9 +214,10 @@ func TestOptOut(t *testing.T) {
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("AddUser", user).Return(nil)
+	contractUC.On("SendBonusToNewPlayer", user.AccountName, casinoName).Return(nil)
 	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
-	_, accessToken, err := uc.SignUp(ctx, user)
+	_, accessToken, err := uc.SignUp(ctx, user, casinoName)
 	assert.NoError(t, err)
 
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
@@ -212,6 +229,6 @@ func TestOptOut(t *testing.T) {
 	repo.On("HasEmail", user.AccountName).Return(false, nil)
 	repo.On("AddEmail", user).Return(nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextNextTokenNonce, nil)
-	_, _, err = uc.SignUp(ctx, user)
+	_, _, err = uc.SignUp(ctx, user, casinoName)
 	assert.NoError(t, err)
 }

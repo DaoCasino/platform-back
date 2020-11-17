@@ -64,13 +64,17 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 }
 
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	var user *models.User
+	var (
+		user       *models.User
+		casinoName string
+	)
 	if app.developmentMode {
 		user = &models.User{
 			AccountName: "testuserever",
 			Email:       "test@user.ever",
 			AffiliateID: "afff",
 		}
+		casinoName = "casino"
 	} else {
 		var req AuthRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
@@ -89,8 +93,9 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		user.AffiliateID = req.AffiliateID
+		casinoName = req.CasinoName
 	}
-	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user)
+	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user, casinoName)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, err.Error())
 		log.Warn().Msgf("SignUp error: %s", err.Error())

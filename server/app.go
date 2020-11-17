@@ -21,6 +21,7 @@ import (
 	"platform-backend/contracts"
 	contractsBcRepo "platform-backend/contracts/repository/blockchain"
 	contractsCachedRepo "platform-backend/contracts/repository/cached"
+	contractsUC "platform-backend/contracts/usecase"
 	"platform-backend/db"
 	"platform-backend/eventprocessor"
 	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
@@ -52,6 +53,7 @@ type LogoutRequest struct {
 
 type AuthRequest struct {
 	TmpToken    string `json:"tmpToken"`
+	CasinoName  string `json:"casinoName"`
 	AffiliateID string `json:"affiliateID"`
 }
 
@@ -124,12 +126,14 @@ func NewApp(config *config.Config) (*App, error) {
 	)
 
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
+	contractUC := contractsUC.NewContractsUseCase(bc)
 	refsUC := referralsUC.NewReferralsUseCase(refsRepo)
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			uRepo,
 			smRepo,
+			contractUC,
 			[]byte(config.Auth.JwtSecret),
 			config.Auth.AccessTokenTTL,
 			config.Auth.RefreshTokenTTL,
