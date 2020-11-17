@@ -93,6 +93,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		user.AffiliateID = req.AffiliateID
+		casinoName = req.CasinoName
 	}
 	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user, casinoName)
 	if err != nil {
