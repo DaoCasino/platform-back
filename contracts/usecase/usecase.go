@@ -17,7 +17,7 @@ func NewContractsUseCase(bc *blockchain.Blockchain) *ContractsUseCase {
 	return &ContractsUseCase{bc: bc}
 }
 
-func (c *ContractsUseCase) SendNewPlayerToCasino(ctx context.Context, accountName string, casinoName string) error {
+func (c *ContractsUseCase) SendBonusToNewPlayer(ctx context.Context, accountName string, casinoName string) error {
 	if casinoName == "" {
 		return errors.New("casino name is not defined")
 	}

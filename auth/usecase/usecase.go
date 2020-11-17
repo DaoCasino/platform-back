@@ -115,8 +115,8 @@ func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User, casinoName 
 		}
 
 		go func() {
-			if err := a.contractUC.SendNewPlayerToCasino(ctx, user.AccountName, casinoName); err != nil {
-				log.Debug().Msgf("Send new player to casino error: %s", err.Error())
+			if err := a.contractUC.SendBonusToNewPlayer(ctx, user.AccountName, casinoName); err != nil {
+				log.Warn().Msgf("Send new player to casino error: %s", err.Error())
 			}
 		}()
 	}
