@@ -336,7 +336,7 @@ func (a *AuthUseCase) parseToken(tokenString string) (*jwt.Token, error) {
 	})
 
 	if err != nil {
-		log.Debug().Msgf("Token parse error: %s", err.Error())
+		log.Debug().Msgf("Token parse error: %s, token: %s", err.Error(), tokenString)
 		return nil, auth.ErrCannotParseToken
 	}
 
