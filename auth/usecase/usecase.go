@@ -4,17 +4,18 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
-	"github.com/machinebox/graphql"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/crypto/sha3"
 	"platform-backend/auth"
 	"platform-backend/contracts"
 	"platform-backend/models"
 	"platform-backend/server/session_manager"
 	"strconv"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
+	"github.com/machinebox/graphql"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/crypto/sha3"
 )
 
 type AuthUseCase struct {
@@ -326,7 +327,8 @@ func (a *AuthUseCase) validateTokenType(token *jwt.Token, reqType string) error 
 }
 
 func (a *AuthUseCase) parseToken(tokenString string) (*jwt.Token, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	parser := &jwt.Parser{SkipClaimsValidation: true}
+	token, err := parser.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("invalid sign method")
 		}
