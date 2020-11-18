@@ -3,12 +3,13 @@ package blockchain
 import (
 	"context"
 	"encoding/json"
-	"github.com/eoscanada/eos-go"
-	"github.com/rs/zerolog/log"
 	"platform-backend/blockchain"
 	"platform-backend/contracts"
 	"platform-backend/models"
 	"strconv"
+
+	"github.com/eoscanada/eos-go"
+	"github.com/rs/zerolog/log"
 )
 
 type Casino struct {
@@ -131,11 +132,13 @@ func (r *CasinoBlockchainRepo) GetCasinoGames(ctx context.Context, casinoName st
 func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error) {
 	bonusBalances := make([]*models.BonusBalance, 0, 1)
 	for _, casino := range casinos {
+		primaryKey := strconv.FormatUint(eos.MustStringToName(accountName), 10)
 		resp, err := r.bc.Api.GetTableRows(eos.GetTableRowsRequest{
 			Code:       casino.Contract,
 			Scope:      casino.Contract,
 			Table:      "bonusbalance",
-			LowerBound: strconv.FormatUint(eos.MustStringToName(accountName), 10),
+			LowerBound: primaryKey,
+			UpperBound: primaryKey,
 			Limit:      1,
 			JSON:       true,
 		})
