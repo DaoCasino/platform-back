@@ -145,9 +145,9 @@ func (a *AuthUseCase) SignIn(ctx context.Context, accessToken string) (*models.U
 	if err != nil {
 		return nil, err
 	}
-	if err := a.validateAccessToken(ctx, token); err != nil {
-		return nil, err
-	}
+	//if err := a.validateAccessToken(ctx, token); err != nil {
+	//	return nil, err
+	//}
 
 	user, err := a.userRepo.GetUser(ctx, token.Claims.(jwt.MapClaims)["account_name"].(string))
 	if err != nil {
