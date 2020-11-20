@@ -41,7 +41,7 @@ func toPlayerInfoResponse(
 		OwnerPermission:  p.OwnerPermission,
 		LinkedCasinos:    make([]*CasinoResponse, len(p.LinkedCasinos)),
 		ReferralID:       refID,
-		ReferralRevenue:  refStats.DepositSum,
+		ReferralRevenue:  refStats.ProfitSum,
 	}
 	for i, casino := range p.LinkedCasinos {
 		ret.LinkedCasinos[i] = toCasinoResponse(casino)
