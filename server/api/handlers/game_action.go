@@ -31,6 +31,10 @@ func ProcessGameActionRequest(context context.Context, req *ws_interface.ApiRequ
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
+	if session.State == models.GameFailed {
+		return nil, ws_interface.NewHandlerError(ws_interface.SessionFailedOrClosed, errors.New("attempt to action on closed or failed session"))
+	}
+
 	if session.State != models.RequestedGameAction {
 		return nil, ws_interface.NewHandlerError(ws_interface.SessionInvalidStateError, errors.New("attempt to action while invalid state"))
 	}
