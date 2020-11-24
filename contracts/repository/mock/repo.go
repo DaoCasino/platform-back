@@ -54,6 +54,12 @@ func (r *MockedListingRepo) GetCasinoGames(ctx context.Context, casinoName strin
 	return nil, contracts.CasinoNotFound
 }
 
+func (r *MockedListingRepo) GetCasinoGamesState(ctx context.Context, casinoName string) ([]*models.GameState, error) {
+	args := r.Called(casinoName)
+
+	return args.Get(0).([]*models.GameState), args.Error(1)
+}
+
 func (r *MockedListingRepo) AllGames(ctx context.Context) ([]*models.Game, error) {
 	// preallocate array with known capacity
 	ret := make([]*models.Game, 0, len(r.games))

@@ -10,6 +10,7 @@ type Repository interface {
 	GetCasino(ctx context.Context, casinoId uint64) (*models.Casino, error)
 	AllCasinos(ctx context.Context) ([]*models.Casino, error)
 	GetCasinoGames(ctx context.Context, casinoName string) ([]*models.CasinoGame, error)
+	GetCasinoGamesState(ctx context.Context, casinoName string) ([]*models.GameState, error)
 
 	GetGame(ctx context.Context, gameId uint64) (*models.Game, error)
 	AllGames(ctx context.Context) ([]*models.Game, error)

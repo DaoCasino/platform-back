@@ -30,6 +30,7 @@ import (
 	referralsRepo "platform-backend/referrals/repository/postgres"
 	referralsUC "platform-backend/referrals/usecase"
 	"platform-backend/repositories"
+	rewardsUC "platform-backend/reward/usecase"
 	"platform-backend/server/api"
 	"platform-backend/server/session_manager"
 	smLocalRepo "platform-backend/server/session_manager/repository/localstorage"
@@ -128,6 +129,12 @@ func NewApp(config *config.Config) (*App, error) {
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
 	contractUC := contractsUC.NewContractsUseCase(bc)
 	refsUC := referralsUC.NewReferralsUseCase(refsRepo)
+	rewardUC := rewardsUC.NewRewardUseCase(
+		contractRepo,
+		bc,
+		config.Signidice.AccountName,
+		config.Reward.RewardDelay,
+	)
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
@@ -156,6 +163,7 @@ func NewApp(config *config.Config) (*App, error) {
 		),
 		subsUC,
 		refsUC,
+		rewardUC,
 	)
 
 	events := make(chan *eventlistener.EventMessage)
@@ -387,6 +395,37 @@ func startAmc(a *App, ctx context.Context) error {
 	}
 }
 
+func startGameDevRewarder(a *App, ctx context.Context) error {
+	reward := func() error {
+		defer func() {
+			log.Info().Msg("Game developers rewarder is ended sending rewards")
+		}()
+		log.Info().Msg("Game developers rewarder is sending rewards")
+		return a.useCases.Reward.RewardGameDevs(ctx)
+	}
+
+	log.Info().Msg("Game developers rewarder is started")
+
+	if err := reward(); err != nil {
+		log.Warn().Msgf("Game developers reward error: %s", err.Error())
+	}
+
+	ticker := time.NewTicker(time.Duration(a.config.Reward.Interval) * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			if err := reward(); err != nil {
+				log.Warn().Msgf("Game developers reward error: %s", err.Error())
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			log.Info().Msg("Game developers rewarder is stopped")
+			return nil
+		}
+	}
+
+}
+
 // Should log errors by itself
 func (a *App) Run() error {
 	runCtx, cancelRun := context.WithCancel(context.Background())
@@ -407,6 +446,10 @@ func (a *App) Run() error {
 	errGroup.Go(func() error {
 		defer cancelRun()
 		return startAuthSessionsCleaner(a, runCtx)
+	})
+	errGroup.Go(func() error {
+		defer cancelRun()
+		return startGameDevRewarder(a, runCtx)
 	})
 
 	errGroup.Go(func() error {

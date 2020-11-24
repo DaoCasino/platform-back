@@ -129,6 +129,28 @@ func (r *CasinoBlockchainRepo) GetCasinoGames(ctx context.Context, casinoName st
 	return ret, nil
 }
 
+func (r *CasinoBlockchainRepo) GetCasinoGamesState(ctx context.Context, casinoName string) ([]*models.GameState, error) {
+	resp, err := r.bc.Api.GetTableRows(eos.GetTableRowsRequest{
+		Code:  casinoName,
+		Scope: casinoName,
+		Table: "gamestate",
+		Limit: 100,
+		JSON:  true,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	var states []*models.GameState
+	err = resp.JSONToStructs(&states)
+	if err != nil {
+		return nil, err
+	}
+
+	return states, nil
+}
+
 func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error) {
 	bonusBalances := make([]*models.BonusBalance, 0, 1)
 	for _, casino := range casinos {

@@ -43,5 +43,9 @@
     "walletUrl": "url",
     "walletClientID": 0,
     "walletClientSecret": "secret"
+  },
+  "reward": {
+    "interval": 3600,
+    "rewardDelay": 2592000
   }
 }

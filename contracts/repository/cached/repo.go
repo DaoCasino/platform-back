@@ -187,6 +187,11 @@ func (r *CachedListingRepo) GetCasinoGames(ctx context.Context, casinoName strin
 	return ret, nil
 }
 
+// without cache, just fwd to original repo
+func (r *CachedListingRepo) GetCasinoGamesState(ctx context.Context, casinoName string) ([]*models.GameState, error) {
+	return r.origRepo.GetCasinoGamesState(ctx, casinoName)
+}
+
 func (r *CachedListingRepo) AllGames(ctx context.Context) ([]*models.Game, error) {
 	defer func() {
 		// try to update cache on demand

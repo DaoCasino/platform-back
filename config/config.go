@@ -29,8 +29,8 @@ type BlockchainConfig struct {
 		GameAction string `json:"gameaction"`
 		SigniDice  string `json:"signidice"`
 	} `json:"permissions"`
-	DisableSponsor  bool `json:"disableSponsor"`
-	TrxPushAttempts int  `default:"5" json:"trxPushAttempts"`
+	DisableSponsor  bool  `json:"disableSponsor"`
+	TrxPushAttempts int   `default:"5" json:"trxPushAttempts"`
 	ListingCacheTTL int64 `json:"listingCacheTTL"`
 }
 
@@ -58,6 +58,11 @@ type SignidiceConfig struct {
 	Key         string `json:"key"`
 }
 
+type RewardConfig struct {
+	Interval    int `default:"3600" json:"interval"`
+	RewardDelay int `default:"2592000" json:"rewardDelay"`
+}
+
 type Config struct {
 	Db              DbConfig         `json:"db"`
 	Amc             AmcConfig        `json:"amc"`
@@ -65,6 +70,7 @@ type Config struct {
 	Blockchain      BlockchainConfig `json:"blockchain"`
 	Auth            AuthConfig       `json:"auth"`
 	Signidice       SignidiceConfig  `json:"signidice"`
+	Reward          RewardConfig     `json:"reward"`
 	LogLevel        string           `json:"loglevel"`
 	Port            string           `json:"port"`
 }
