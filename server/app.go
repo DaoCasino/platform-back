@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	affiliateStatsRepo "platform-backend/affiliatestats/repository/http"
 	"platform-backend/auth"
 	authPgRepo "platform-backend/auth/repository/postgres"
 	authUC "platform-backend/auth/usecase"
@@ -119,10 +120,12 @@ func NewApp(config *config.Config) (*App, error) {
 	smRepo := smLocalRepo.NewLocalRepository(registerer)
 	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
 	refsRepo := referralsRepo.NewReferralPostgresRepo(db.DbPool)
+	affStatsRepo := affiliateStatsRepo.NewAffiliateStatsRepo(config.AffiliateStats.Url)
 
 	repos := repositories.NewRepositories(
 		contractRepo,
 		gsRepo,
+		affStatsRepo,
 	)
 
 	subsUC := subscriptionUc.NewSubscriptionUseCase()

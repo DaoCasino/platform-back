@@ -43,5 +43,8 @@
     "walletUrl": "url",
     "walletClientID": 0,
     "walletClientSecret": "secret"
+  },
+  "affiliateStats": {
+    "url": "localhost:8899"
   }
 }
