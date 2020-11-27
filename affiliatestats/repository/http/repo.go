@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"platform-backend/models"
 	"time"
@@ -35,20 +36,24 @@ func (r *AffiliateStatsRepo) GetStats(
 		To:          to,
 	})
 	if err != nil {
+		log.Debug().Msgf("affiliate get stats error: %s", err.Error())
 		return nil, fmt.Errorf("request body marshal error %w", err)
 	}
 
 	resp, err := http.Post(r.affiliateStatsURL+statsPath, "application/json", bytes.NewReader(reqBody))
 	if err != nil {
+		log.Debug().Msgf("affiliate get stats request error: %s", err.Error())
 		return nil, fmt.Errorf("affiliate-stats get stats request error: %w", err)
 	}
 
 	if resp.StatusCode != 200 {
+		log.Debug().Msgf("affiliate get respond with error: %s" + resp.Status)
 		return nil, fmt.Errorf("affiliate-stats respond with error: %s" + resp.Status)
 	}
 
 	var stats *models.ReferralStats
 	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
+		log.Debug().Msgf("affiliate get stats response parsing error: %s", err.Error())
 		return nil, fmt.Errorf("affiliate-stats get stats response parsing error: %w", err)
 	}
 
