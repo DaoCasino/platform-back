@@ -105,7 +105,7 @@ func NewApp(config *config.Config) (*App, error) {
 	}
 
 	var contractRepo contracts.Repository
-	contractRepo = contractsBcRepo.NewCasinoBlockchainRepo(bc, config.Blockchain.Contracts.Platform)
+	contractRepo = contractsBcRepo.NewCasinoBlockchainRepo(bc, config.Blockchain.Contracts.Platform, config.ActiveFeatures.Bonus)
 
 	// use cached contract repo if cache enabled
 	if config.Blockchain.ListingCacheTTL > 0 {
@@ -120,7 +120,7 @@ func NewApp(config *config.Config) (*App, error) {
 	smRepo := smLocalRepo.NewLocalRepository(registerer)
 	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
 	refsRepo := referralsRepo.NewReferralPostgresRepo(db.DbPool)
-	affStatsRepo := affiliateStatsRepo.NewAffiliateStatsRepo(config.AffiliateStats.Url)
+	affStatsRepo := affiliateStatsRepo.NewAffiliateStatsRepo(config.AffiliateStats.Url, config.ActiveFeatures.Referrals)
 
 	repos := repositories.NewRepositories(
 		contractRepo,
@@ -129,8 +129,8 @@ func NewApp(config *config.Config) (*App, error) {
 	)
 
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
-	contractUC := contractsUC.NewContractsUseCase(bc)
-	refsUC := referralsUC.NewReferralsUseCase(refsRepo)
+	contractUC := contractsUC.NewContractsUseCase(bc, config.ActiveFeatures.Bonus)
+	refsUC := referralsUC.NewReferralsUseCase(refsRepo, config.ActiveFeatures.Referrals)
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
@@ -333,6 +333,13 @@ func startAuthSessionsCleaner(a *App, ctx context.Context) error {
 func startHttpServer(a *App, ctx context.Context) error {
 	srv := &http.Server{Addr: ":" + a.config.Port, Handler: a.httpHandler}
 	log.Info().Msgf("Server is starting on %s port", a.config.Port)
+
+	if !a.config.ActiveFeatures.Bonus {
+		log.Info().Msg("Bonus feature is disabled")
+	}
+	if !a.config.ActiveFeatures.Referrals {
+		log.Info().Msg("Referrals feature is disabled")
+	}
 
 	go func() {
 		<-ctx.Done()

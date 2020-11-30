@@ -12,15 +12,15 @@ import (
 var refStatsFromTime = time.Time{}.Add(time.Second)
 
 type PlayerInfoResponse struct {
-	AccountName      string               `json:"accountName"`
-	Email            string               `json:"email"`
-	Balance          eos.Asset            `json:"balance"`
-	BonusBalances    BonusBalanceResponse `json:"bonusBalances"`
-	ActivePermission eos.Authority        `json:"activePermission"`
-	OwnerPermission  eos.Authority        `json:"ownerPermission"`
-	LinkedCasinos    []*CasinoResponse    `json:"linkedCasinos"`
-	ReferralID       string               `json:"referralId"`
-	ReferralRevenue  float64              `json:"referralRevenue"`
+	AccountName      string                `json:"accountName"`
+	Email            string                `json:"email"`
+	Balance          eos.Asset             `json:"balance"`
+	BonusBalances    *BonusBalanceResponse `json:"bonusBalances,omitempty"`
+	ActivePermission eos.Authority         `json:"activePermission"`
+	OwnerPermission  eos.Authority         `json:"ownerPermission"`
+	LinkedCasinos    []*CasinoResponse     `json:"linkedCasinos"`
+	ReferralID       *string               `json:"referralId,omitempty"`
+	ReferralRevenue  *float64              `json:"referralRevenue,omitempty"`
 }
 
 type BonusBalanceResponse map[string]BonusBalance
@@ -40,8 +40,12 @@ func toPlayerInfoResponse(
 		ActivePermission: p.ActivePermission,
 		OwnerPermission:  p.OwnerPermission,
 		LinkedCasinos:    make([]*CasinoResponse, len(p.LinkedCasinos)),
-		ReferralID:       refID,
-		ReferralRevenue:  refStats.ProfitSum,
+	}
+	if refStats != nil {
+		ret.ReferralRevenue = &refStats.ProfitSum
+	}
+	if refID != "" {
+		ret.ReferralID = &refID
 	}
 	for i, casino := range p.LinkedCasinos {
 		ret.LinkedCasinos[i] = toCasinoResponse(casino)
@@ -50,14 +54,17 @@ func toPlayerInfoResponse(
 	return ret
 }
 
-func toBonusBalanceResponse(bb []*models.BonusBalance) BonusBalanceResponse {
-	bbr := make(BonusBalanceResponse)
+func toBonusBalanceResponse(bb []*models.BonusBalance) *BonusBalanceResponse {
+	if bb == nil {
+		return nil
+	}
 
+	bbr := make(BonusBalanceResponse)
 	for _, b := range bb {
 		bbr[strconv.FormatUint(b.CasinoId, 10)] = BonusBalance{Balance: b.Balance}
 	}
 
-	return bbr
+	return &bbr
 }
 
 func ProcessAccountInfo(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {

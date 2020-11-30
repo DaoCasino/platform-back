@@ -15,6 +15,7 @@ const statsPath = "/stats"
 
 type AffiliateStatsRepo struct {
 	affiliateStatsURL string
+	active            bool
 }
 
 type GetStatsRequest struct {
@@ -23,13 +24,17 @@ type GetStatsRequest struct {
 	To          time.Time `json:"to"`
 }
 
-func NewAffiliateStatsRepo(affiliateStatsURL string) *AffiliateStatsRepo {
-	return &AffiliateStatsRepo{affiliateStatsURL: affiliateStatsURL}
+func NewAffiliateStatsRepo(affiliateStatsURL string, active bool) *AffiliateStatsRepo {
+	return &AffiliateStatsRepo{affiliateStatsURL: affiliateStatsURL, active: active}
 }
 
 func (r *AffiliateStatsRepo) GetStats(
 	ctx context.Context, affiliateID string, from time.Time, to time.Time,
 ) (*models.ReferralStats, error) {
+	if !r.active {
+		return nil, nil
+	}
+
 	reqBody, err := json.Marshal(GetStatsRequest{
 		AffiliateID: affiliateID,
 		From:        from,

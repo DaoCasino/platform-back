@@ -39,12 +39,18 @@ type BonusBalance struct {
 type CasinoBlockchainRepo struct {
 	bc               *blockchain.Blockchain
 	platformContract string
+	bonusActive      bool
 }
 
-func NewCasinoBlockchainRepo(blockchain *blockchain.Blockchain, platformContract string) *CasinoBlockchainRepo {
+func NewCasinoBlockchainRepo(
+	blockchain *blockchain.Blockchain,
+	platformContract string,
+	bonusActive bool,
+) *CasinoBlockchainRepo {
 	return &CasinoBlockchainRepo{
 		bc:               blockchain,
 		platformContract: platformContract,
+		bonusActive:      bonusActive,
 	}
 }
 
@@ -130,6 +136,10 @@ func (r *CasinoBlockchainRepo) GetCasinoGames(ctx context.Context, casinoName st
 }
 
 func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error) {
+	if !r.bonusActive {
+		return nil, nil
+	}
+
 	bonusBalances := make([]*models.BonusBalance, 0, 1)
 	for _, casino := range casinos {
 		primaryKey := strconv.FormatUint(eos.MustStringToName(accountName), 10)

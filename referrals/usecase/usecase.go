@@ -9,14 +9,19 @@ import (
 const ReferralIDLen = 13
 
 type ReferralsUseCase struct {
-	repo referrals.Repository
+	repo   referrals.Repository
+	active bool
 }
 
-func NewReferralsUseCase(repo referrals.Repository) *ReferralsUseCase {
-	return &ReferralsUseCase{repo: repo}
+func NewReferralsUseCase(repo referrals.Repository, active bool) *ReferralsUseCase {
+	return &ReferralsUseCase{repo: repo, active: active}
 }
 
 func (r *ReferralsUseCase) GetOrCreateReferralID(ctx context.Context, accountName string) (string, error) {
+	if !r.active {
+		return "", nil
+	}
+
 	refID, err := r.repo.GetReferralID(ctx, accountName)
 	if err != nil {
 		log.Debug().Msgf("Referral ID get error: %s", err.Error())

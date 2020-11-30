@@ -62,6 +62,11 @@ type AffiliateStatsConfig struct {
 	Url string `json:"url"`
 }
 
+type ActiveFeaturesConfig struct {
+	Bonus     bool `default:"true" json:"bonus"`
+	Referrals bool `default:"true" json:"referrals"`
+}
+
 type Config struct {
 	Db              DbConfig             `json:"db"`
 	Amc             AmcConfig            `json:"amc"`
@@ -70,6 +75,7 @@ type Config struct {
 	Auth            AuthConfig           `json:"auth"`
 	Signidice       SignidiceConfig      `json:"signidice"`
 	AffiliateStats  AffiliateStatsConfig `json:"affiliateStats"`
+	ActiveFeatures  ActiveFeaturesConfig `json:"activeFeatures"`
 	LogLevel        string               `json:"loglevel"`
 	Port            string               `json:"port"`
 }

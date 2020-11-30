@@ -46,5 +46,9 @@
   },
   "affiliateStats": {
     "url": "localhost:8899"
+  },
+  "activeFeatures": {
+    "bonus": true,
+    "referrals": false
   }
 }
