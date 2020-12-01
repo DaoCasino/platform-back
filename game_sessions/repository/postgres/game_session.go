@@ -28,29 +28,32 @@ const (
 	selectAllGameSessionsStmt        = "SELECT * FROM game_sessions"
 	selectFirstGameActionStmt        = "SELECT * FROM first_game_actions WHERE ses_id = $1"
 	updateSessionStateStmt           = "UPDATE game_sessions SET state = $2, last_update = $3 WHERE id = $1"
-	updateSessionDepositStmt         = "UPDATE game_sessions SET deposit = $2 WHERE id = $1"
-	updateSessionPlayerWinStmt       = "UPDATE game_sessions SET player_win_amount = $2 WHERE id = $1"
+	updateSessionDepositStmt         = "UPDATE game_sessions SET deposit = $2, symbol = $3, deposit_value = $4 WHERE id = $1"
+	updateSessionPlayerWinStmt       = "UPDATE game_sessions SET player_win_amount = $2, player_win_value = $3 WHERE id = $1"
 	updateSessionOffsetStmt          = "UPDATE game_sessions SET last_offset = $2 WHERE id = $1"
 	updateSessionStateBeforeFailStmt = "UPDATE game_sessions SET state_before_fail = $2 WHERE id = $1"
 	selectGameSessionCntByIdStmt     = "SELECT count(*) FROM game_sessions WHERE id = $1"
-	insertGameSessionStmt            = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
+	insertGameSessionStmt            = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"
 	insertFirstGameActionStmt        = "INSERT INTO first_game_actions VALUES ($1, $2, $3)"
 	deleteGameSessionByIdStmt        = "DELETE FROM game_sessions WHERE id = $1"
 	deleteFirstGameActionStmt        = "DELETE FROM first_game_actions WHERE ses_id = $1"
 )
 
 type GameSession struct {
-	ID              uint64  `db:"id"`
-	Player          string  `db:"player"`
-	GameID          uint64  `db:"game_id"`
-	CasinoID        uint64  `db:"casino_id"`
-	BlockchainSesID uint64  `db:"blockchain_ses_id"`
-	State           uint16  `db:"state"`
-	LastOffset      uint64  `db:"last_offset"`
-	Deposit         *string `db:"deposit"`
-	LastUpdate      int64   `db:"last_update"`
-	PlayerWinAmount *string `db:"player_win_amount"`
-	StateBeforeFail *uint64 `db:"state_before_fail"`
+	ID              uint64   `db:"id"`
+	Player          string   `db:"player"`
+	GameID          uint64   `db:"game_id"`
+	CasinoID        uint64   `db:"casino_id"`
+	BlockchainSesID uint64   `db:"blockchain_ses_id"`
+	State           uint16   `db:"state"`
+	LastOffset      uint64   `db:"last_offset"`
+	Deposit         *string  `db:"deposit"`
+	LastUpdate      int64    `db:"last_update"`
+	PlayerWinAmount *string  `db:"player_win_amount"`
+	StateBeforeFail *uint64  `db:"state_before_fail"`
+	Symbol          string   `db:"symbol"`
+	DepositValue    *float64 `db:"deposit_value"`
+	PlayerWinValue  *float64 `db:"player_win_value"`
 }
 
 func (s *GameSession) Scan(row pgx.Row) error {
@@ -66,6 +69,9 @@ func (s *GameSession) Scan(row pgx.Row) error {
 		&s.LastUpdate,
 		&s.PlayerWinAmount,
 		&s.StateBeforeFail,
+		&s.Symbol,
+		&s.DepositValue,
+		&s.PlayerWinValue,
 	)
 }
 
@@ -248,25 +254,25 @@ func (r *GameSessionsPostgresRepo) UpdateSessionOffset(ctx context.Context, id u
 	return err
 }
 
-func (r *GameSessionsPostgresRepo) UpdateSessionDeposit(ctx context.Context, id uint64, deposit string) error {
+func (r *GameSessionsPostgresRepo) UpdateSessionDeposit(ctx context.Context, id uint64, deposit string, symbol string, value float64) error {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(ctx, updateSessionDepositStmt, id, deposit)
+	_, err = conn.Exec(ctx, updateSessionDepositStmt, id, deposit, symbol, value)
 	return err
 }
 
-func (r *GameSessionsPostgresRepo) UpdateSessionPlayerWin(ctx context.Context, id uint64, playerWin string) error {
+func (r *GameSessionsPostgresRepo) UpdateSessionPlayerWin(ctx context.Context, id uint64, playerWin string, value float64) error {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(ctx, updateSessionPlayerWinStmt, id, playerWin)
+	_, err = conn.Exec(ctx, updateSessionPlayerWinStmt, id, playerWin, value)
 	return err
 }
 
@@ -299,6 +305,8 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 	}
 	defer conn.Release()
 
+	depositValue, symbol := utils.ExtractAssetValueAndSymbol(ses.Deposit)
+
 	_, err = conn.Exec(ctx, insertGameSessionStmt,
 		ses.ID,
 		ses.Player,
@@ -309,8 +317,11 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 		ses.LastOffset,
 		ses.Deposit.String(),
 		ses.LastUpdate,
-		nil,
-		nil,
+		nil, // player_win_amount
+		nil, // state_before_fail
+		symbol,
+		depositValue,
+		nil, // player_win_value
 	)
 	if err != nil {
 		return err
@@ -430,24 +441,16 @@ func toModelGameSession(gs *GameSession) (*models.GameSession, error) {
 		LastUpdate:      gs.LastUpdate,
 	}
 
-	if gs.Deposit == nil {
+	if gs.DepositValue == nil {
 		ses.Deposit = nil
 	} else {
-		deposit, err := utils.ToBetAsset(*gs.Deposit)
-		if err != nil {
-			return nil, err
-		}
-		ses.Deposit = deposit
+		ses.Deposit = utils.ToAsset(gs.DepositValue, gs.Symbol)
 	}
 
-	if gs.PlayerWinAmount == nil {
+	if gs.PlayerWinValue == nil {
 		ses.PlayerWinAmount = nil
 	} else {
-		winAmount, err := utils.ToBetAsset(*gs.PlayerWinAmount)
-		if err != nil {
-			return nil, err
-		}
-		ses.PlayerWinAmount = winAmount
+		ses.PlayerWinAmount = utils.ToAsset(gs.PlayerWinValue, gs.Symbol)
 	}
 
 	if gs.StateBeforeFail == nil {

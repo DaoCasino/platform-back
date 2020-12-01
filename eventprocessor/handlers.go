@@ -9,6 +9,7 @@ import (
 	"platform-backend/blockchain"
 	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
+	"platform-backend/utils"
 	"strconv"
 	"time"
 )
@@ -213,7 +214,8 @@ func onGameFinished(ctx context.Context, p *EventProcessor, event *eventlistener
 
 	// if not already processed event
 	if err == nil {
-		err = p.repos.GameSession.UpdateSessionPlayerWin(ctx, session.ID, eventData.PlayerWin.String())
+		playerWinValue, _ := utils.ExtractAssetValueAndSymbol(&eventData.PlayerWin)
+		err = p.repos.GameSession.UpdateSessionPlayerWin(ctx, session.ID, eventData.PlayerWin.String(), playerWinValue)
 		if err != nil {
 			return err
 		}
