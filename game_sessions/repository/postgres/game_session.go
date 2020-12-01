@@ -441,17 +441,8 @@ func toModelGameSession(gs *GameSession) (*models.GameSession, error) {
 		LastUpdate:      gs.LastUpdate,
 	}
 
-	if gs.DepositValue == nil {
-		ses.Deposit = nil
-	} else {
-		ses.Deposit = utils.ToAsset(gs.DepositValue, gs.Symbol)
-	}
-
-	if gs.PlayerWinValue == nil {
-		ses.PlayerWinAmount = nil
-	} else {
-		ses.PlayerWinAmount = utils.ToAsset(gs.PlayerWinValue, gs.Symbol)
-	}
+	ses.Deposit = utils.ToAsset(gs.DepositValue, gs.Symbol)
+	ses.PlayerWinAmount = utils.ToAsset(gs.PlayerWinValue, gs.Symbol)
 
 	if gs.StateBeforeFail == nil {
 		ses.StateBeforeFail = nil

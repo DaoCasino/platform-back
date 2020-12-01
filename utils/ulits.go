@@ -17,6 +17,9 @@ func ToBetAsset(deposit string) (*eos.Asset, error) {
 }
 
 func ToAsset(value *float64, symbol string) *eos.Asset {
+	if value == nil {
+		return nil
+	}
 	return &eos.Asset{
 		Amount: eos.Int64(*value * 10000),
 		Symbol: eos.Symbol{
