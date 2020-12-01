@@ -11,7 +11,7 @@ import (
 func TestGetOrCreateReferralID(t *testing.T) {
 	var (
 		repo        = new(mock.ReferralRepoMock)
-		refUseCase  = NewReferralsUseCase(repo)
+		refUseCase  = NewReferralsUseCase(repo, true)
 		accountName = "somename"
 		mockRefID   = "REFblablablablax"
 		ctx         = context.Background()
@@ -31,4 +31,9 @@ func TestGetOrCreateReferralID(t *testing.T) {
 	refID, err = refUseCase.GetOrCreateReferralID(ctx, accountName)
 	assert.NoError(t, err)
 	assert.Regexp(t, "REF[0-9a-zA-Z]{13}", refID)
+
+	refUseCase = NewReferralsUseCase(repo, false)
+	refID, err = refUseCase.GetOrCreateReferralID(ctx, accountName)
+	assert.NoError(t, err)
+	assert.Equal(t, "", refID)
 }

@@ -10,14 +10,19 @@ import (
 )
 
 type ContractsUseCase struct {
-	bc *blockchain.Blockchain
+	bc          *blockchain.Blockchain
+	bonusActive bool
 }
 
-func NewContractsUseCase(bc *blockchain.Blockchain) *ContractsUseCase {
-	return &ContractsUseCase{bc: bc}
+func NewContractsUseCase(bc *blockchain.Blockchain, bonusActive bool) *ContractsUseCase {
+	return &ContractsUseCase{bc: bc, bonusActive: bonusActive}
 }
 
 func (c *ContractsUseCase) SendBonusToNewPlayer(ctx context.Context, accountName string, casinoName string) error {
+	if !c.bonusActive {
+		return nil
+	}
+
 	if casinoName == "" {
 		return errors.New("casino name is not defined")
 	}
