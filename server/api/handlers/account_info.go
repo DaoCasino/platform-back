@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"github.com/eoscanada/eos-go"
+	"math"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
 	"strconv"
@@ -21,12 +22,18 @@ type PlayerInfoResponse struct {
 	LinkedCasinos    []*CasinoResponse     `json:"linkedCasinos"`
 	ReferralID       *string               `json:"referralId,omitempty"`
 	ReferralRevenue  *float64              `json:"referralRevenue,omitempty"`
+	Referral         *ReferralResponse     `json:"referral,omitempty"`
 }
 
 type BonusBalanceResponse map[string]BonusBalance
 
 type BonusBalance struct {
 	Balance eos.Asset `json:"balance"`
+}
+
+type ReferralResponse struct {
+	ID      string  `json:"id"`
+	Revenue float64 `json:"revenue"`
 }
 
 func toPlayerInfoResponse(
@@ -41,11 +48,14 @@ func toPlayerInfoResponse(
 		OwnerPermission:  p.OwnerPermission,
 		LinkedCasinos:    make([]*CasinoResponse, len(p.LinkedCasinos)),
 	}
-	if refStats != nil {
-		ret.ReferralRevenue = &refStats.ProfitSum
-	}
 	if refID != "" {
 		ret.ReferralID = &refID
+		ret.Referral = &ReferralResponse{ID: refID}
+	}
+	if refStats != nil {
+		refStats.ProfitSum = math.Max(0, refStats.ProfitSum)
+		ret.ReferralRevenue = &refStats.ProfitSum
+		ret.Referral.Revenue = refStats.ProfitSum
 	}
 	for i, casino := range p.LinkedCasinos {
 		ret.LinkedCasinos[i] = toCasinoResponse(casino)
