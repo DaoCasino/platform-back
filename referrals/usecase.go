@@ -1,7 +1,10 @@
 package referrals
 
-import "context"
+import (
+	"context"
+	"platform-backend/models"
+)
 
 type UseCase interface {
-	GetOrCreateReferralID(ctx context.Context, accountName string) (string, error)
+	GetOrCreateReferral(ctx context.Context, accountName string) (*models.Referral, error)
 }

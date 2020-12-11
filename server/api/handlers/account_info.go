@@ -32,12 +32,14 @@ type BonusBalance struct {
 }
 
 type ReferralResponse struct {
-	ID      string  `json:"id"`
-	Revenue float64 `json:"revenue"`
+	ID            string               `json:"id"`
+	Revenue       float64              `json:"revenue"`
+	TotalReferred int                  `json:"totalReferred"`
+	RevenueToken  map[string]eos.Asset `json:"revenueToken"`
 }
 
 func toPlayerInfoResponse(
-	p *models.PlayerInfo, u *models.User, refID string, refStats *models.ReferralStats,
+	p *models.PlayerInfo, u *models.User, ref *models.Referral, refStats *models.ReferralStats,
 ) *PlayerInfoResponse {
 	ret := &PlayerInfoResponse{
 		AccountName:      u.AccountName,
@@ -48,14 +50,21 @@ func toPlayerInfoResponse(
 		OwnerPermission:  p.OwnerPermission,
 		LinkedCasinos:    make([]*CasinoResponse, len(p.LinkedCasinos)),
 	}
-	if refID != "" {
-		ret.ReferralID = &refID
-		ret.Referral = &ReferralResponse{ID: refID}
+	if ref != nil {
+		ret.ReferralID = &ref.ID
+		ret.Referral = &ReferralResponse{ID: ref.ID, TotalReferred: ref.TotalReferred}
 	}
 	if refStats != nil {
+		ret.Referral.RevenueToken = make(map[string]eos.Asset)
 		refStats.ProfitSum = math.Max(0, refStats.ProfitSum)
 		ret.ReferralRevenue = &refStats.ProfitSum
 		ret.Referral.Revenue = refStats.ProfitSum
+		for key := range refStats.Data {
+			ret.Referral.RevenueToken[key] = eos.Asset{
+				Amount: eos.Int64(math.Max(0, float64(refStats.Data[key].ProfitSumAsset.Amount))),
+				Symbol: refStats.Data[key].ProfitSumAsset.Symbol,
+			}
+		}
 	}
 	for i, casino := range p.LinkedCasinos {
 		ret.LinkedCasinos[i] = toCasinoResponse(casino)
@@ -83,15 +92,18 @@ func ProcessAccountInfo(context context.Context, req *ws_interface.ApiRequest) (
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	refID, err := req.UseCases.Referrals.GetOrCreateReferralID(context, req.User.AccountName)
+	ref, err := req.UseCases.Referrals.GetOrCreateReferral(context, req.User.AccountName)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	refStats, err := req.Repos.AffiliateStats.GetStats(context, refID, refStatsFromTime, time.Now())
-	if err != nil {
-		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+	var refStats *models.ReferralStats
+	if ref != nil {
+		refStats, err = req.Repos.AffiliateStats.GetStats(context, ref.ID, refStatsFromTime, time.Now())
+		if err != nil {
+			return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+		}
 	}
 
-	return toPlayerInfoResponse(player, req.User, refID, refStats), nil
+	return toPlayerInfoResponse(player, req.User, ref, refStats), nil
 }

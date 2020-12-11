@@ -20,3 +20,9 @@ func (r *ReferralRepoMock) AddReferralID(ctx context.Context, accountName string
 
 	return args.Error(0)
 }
+
+func (r *ReferralRepoMock) GetTotalReferred(ctx context.Context, referralID string) (int, error) {
+	args := r.Called(referralID)
+
+	return args.Int(0), args.Error(1)
+}
