@@ -16,21 +16,15 @@ func ToBetAsset(deposit string) (*eos.Asset, error) {
 	return &quantity, nil
 }
 
-func ToAsset(value *float64, symbol string) *eos.Asset {
+func ToAsset(value *int64, symbol string) *eos.Asset {
 	if value == nil {
 		return nil
 	}
-	return &eos.Asset{
-		Amount: eos.Int64(*value * 10000),
-		Symbol: eos.Symbol{
-			Precision: 4,
-			Symbol:    symbol,
-		},
-	}
+	return &eos.Asset{Amount: eos.Int64(*value), Symbol: eos.MustStringToSymbol(symbol)}
 }
 
-func ExtractAssetValueAndSymbol(asset *eos.Asset) (float64, string) {
-	value := float64(asset.Amount) / 10000
-	symbol := asset.Symbol.MustSymbolCode().String()
+func ExtractAssetValueAndSymbol(asset *eos.Asset) (int64, string) {
+	value := int64(asset.Amount)
+	symbol := asset.Symbol.String()
 	return value, symbol
 }

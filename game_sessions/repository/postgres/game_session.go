@@ -40,20 +40,20 @@ const (
 )
 
 type GameSession struct {
-	ID              uint64   `db:"id"`
-	Player          string   `db:"player"`
-	GameID          uint64   `db:"game_id"`
-	CasinoID        uint64   `db:"casino_id"`
-	BlockchainSesID uint64   `db:"blockchain_ses_id"`
-	State           uint16   `db:"state"`
-	LastOffset      uint64   `db:"last_offset"`
-	Deposit         *string  `db:"deposit"`
-	LastUpdate      int64    `db:"last_update"`
-	PlayerWinAmount *string  `db:"player_win_amount"`
-	StateBeforeFail *uint64  `db:"state_before_fail"`
-	Symbol          string   `db:"symbol"`
-	DepositValue    *float64 `db:"deposit_value"`
-	PlayerWinValue  *float64 `db:"player_win_value"`
+	ID              uint64  `db:"id"`
+	Player          string  `db:"player"`
+	GameID          uint64  `db:"game_id"`
+	CasinoID        uint64  `db:"casino_id"`
+	BlockchainSesID uint64  `db:"blockchain_ses_id"`
+	State           uint16  `db:"state"`
+	LastOffset      uint64  `db:"last_offset"`
+	Deposit         *string `db:"deposit"`
+	LastUpdate      int64   `db:"last_update"`
+	PlayerWinAmount *string `db:"player_win_amount"`
+	StateBeforeFail *uint64 `db:"state_before_fail"`
+	Symbol          string  `db:"symbol"`
+	DepositValue    *int64  `db:"deposit_value"`
+	PlayerWinValue  *int64  `db:"player_win_value"`
 }
 
 func (s *GameSession) Scan(row pgx.Row) error {
@@ -254,7 +254,7 @@ func (r *GameSessionsPostgresRepo) UpdateSessionOffset(ctx context.Context, id u
 	return err
 }
 
-func (r *GameSessionsPostgresRepo) UpdateSessionDeposit(ctx context.Context, id uint64, deposit string, symbol string, value float64) error {
+func (r *GameSessionsPostgresRepo) UpdateSessionDeposit(ctx context.Context, id uint64, deposit string, symbol string, value int64) error {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
 		return err
@@ -265,7 +265,7 @@ func (r *GameSessionsPostgresRepo) UpdateSessionDeposit(ctx context.Context, id 
 	return err
 }
 
-func (r *GameSessionsPostgresRepo) UpdateSessionPlayerWin(ctx context.Context, id uint64, playerWin string, value float64) error {
+func (r *GameSessionsPostgresRepo) UpdateSessionPlayerWin(ctx context.Context, id uint64, playerWin string, value int64) error {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
 		return err

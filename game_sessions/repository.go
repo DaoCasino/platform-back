@@ -22,8 +22,8 @@ type Repository interface {
 	UpdateSessionState(ctx context.Context, id uint64, state models.GameSessionState) error
 	UpdateSessionStateBeforeFail(ctx context.Context, id uint64, prevState models.GameSessionState) error
 	UpdateSessionOffset(ctx context.Context, id uint64, offset uint64) error
-	UpdateSessionPlayerWin(ctx context.Context, id uint64, playerWin string, value float64) error
-	UpdateSessionDeposit(ctx context.Context, id uint64, deposit string, symbol string, value float64) error
+	UpdateSessionPlayerWin(ctx context.Context, id uint64, playerWin string, value int64) error
+	UpdateSessionDeposit(ctx context.Context, id uint64, deposit string, symbol string, value int64) error
 	AddGameSession(ctx context.Context, ses *models.GameSession) error
 	GetUserGameSessions(ctx context.Context, accountName string) ([]*models.GameSession, error)
 	GetAllGameSessions(ctx context.Context) ([]*models.GameSession, error)
