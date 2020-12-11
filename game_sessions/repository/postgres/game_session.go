@@ -10,6 +10,7 @@ import (
 	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 	"platform-backend/utils"
+	"strings"
 	"time"
 )
 
@@ -28,12 +29,12 @@ const (
 	selectAllGameSessionsStmt        = "SELECT * FROM game_sessions"
 	selectFirstGameActionStmt        = "SELECT * FROM first_game_actions WHERE ses_id = $1"
 	updateSessionStateStmt           = "UPDATE game_sessions SET state = $2, last_update = $3 WHERE id = $1"
-	updateSessionDepositStmt         = "UPDATE game_sessions SET deposit = $2, symbol = $3, deposit_value = $4 WHERE id = $1"
+	updateSessionDepositStmt         = "UPDATE game_sessions SET deposit = $2, symbol = $3, deposit_value = $4, token = $5 WHERE id = $1"
 	updateSessionPlayerWinStmt       = "UPDATE game_sessions SET player_win_amount = $2, player_win_value = $3 WHERE id = $1"
 	updateSessionOffsetStmt          = "UPDATE game_sessions SET last_offset = $2 WHERE id = $1"
 	updateSessionStateBeforeFailStmt = "UPDATE game_sessions SET state_before_fail = $2 WHERE id = $1"
 	selectGameSessionCntByIdStmt     = "SELECT count(*) FROM game_sessions WHERE id = $1"
-	insertGameSessionStmt            = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"
+	insertGameSessionStmt            = "INSERT INTO game_sessions VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"
 	insertFirstGameActionStmt        = "INSERT INTO first_game_actions VALUES ($1, $2, $3)"
 	deleteGameSessionByIdStmt        = "DELETE FROM game_sessions WHERE id = $1"
 	deleteFirstGameActionStmt        = "DELETE FROM first_game_actions WHERE ses_id = $1"
@@ -54,6 +55,7 @@ type GameSession struct {
 	Symbol          string  `db:"symbol"`
 	DepositValue    *int64  `db:"deposit_value"`
 	PlayerWinValue  *int64  `db:"player_win_value"`
+	Token           string  `db:"token"`
 }
 
 func (s *GameSession) Scan(row pgx.Row) error {
@@ -72,6 +74,7 @@ func (s *GameSession) Scan(row pgx.Row) error {
 		&s.Symbol,
 		&s.DepositValue,
 		&s.PlayerWinValue,
+		&s.Token,
 	)
 }
 
@@ -261,7 +264,9 @@ func (r *GameSessionsPostgresRepo) UpdateSessionDeposit(ctx context.Context, id 
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(ctx, updateSessionDepositStmt, id, deposit, symbol, value)
+	token := strings.Split(symbol, ",")[1]
+
+	_, err = conn.Exec(ctx, updateSessionDepositStmt, id, deposit, symbol, value, token)
 	return err
 }
 
@@ -306,6 +311,7 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 	defer conn.Release()
 
 	depositValue, symbol := utils.ExtractAssetValueAndSymbol(ses.Deposit)
+	token := strings.Split(symbol, ",")[1]
 
 	_, err = conn.Exec(ctx, insertGameSessionStmt,
 		ses.ID,
@@ -322,6 +328,7 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 		symbol,
 		depositValue,
 		nil, // player_win_value
+		token,
 	)
 	if err != nil {
 		return err
