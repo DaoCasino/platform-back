@@ -12,7 +12,7 @@ import (
 const (
 	selectUserCntByAccNameStmt = "SELECT count(*) FROM users WHERE account_name = $1"
 	selectUserByAccNameStmt    = "SELECT * FROM users WHERE account_name = $1"
-	selectAffIDByNameStmt      = "SELECT affiliate_id FROM affiliates WHERE account_name = $1"
+	selectAffIDByAccNameStmt   = "SELECT affiliate_id FROM affiliates WHERE account_name = $1"
 	insertUserStmt             = "INSERT INTO users VALUES ($1, $2)"
 	insertAffiliateStmt        = "INSERT INTO affiliates VALUES ($1, $2)"
 	updateUserTokenNonce       = "UPDATE users SET token_nonce = token_nonce + 1 WHERE account_name = $1"
@@ -22,6 +22,9 @@ const (
 	selectSessionCnt           = "SELECT count(*) FROM active_token_nonces WHERE account_name = $1 AND token_nonce = $2"
 	deleteOldSessions          = "DELETE FROM active_token_nonces WHERE created + $1 * INTERVAL '1 second' < current_timestamp"
 	invalidateSession          = "DELETE FROM active_token_nonces WHERE account_name = $1 AND token_nonce = $2"
+	deleteEmail                = "UPDATE users SET email = '' WHERE account_name = $1"
+	selectEmailByAccNameStmt   = "SELECT email from users WHERE account_name = $1"
+	updateEmailStmt            = "UPDATE users SET email = $2 WHERE account_name = $1"
 )
 
 type User struct {
@@ -78,7 +81,7 @@ func (r *UserPostgresRepo) GetUser(ctx context.Context, accountName string) (*mo
 	}
 
 	var affiliateID string
-	err = conn.QueryRow(ctx, selectAffIDByNameStmt, accountName).Scan(&affiliateID)
+	err = conn.QueryRow(ctx, selectAffIDByAccNameStmt, accountName).Scan(&affiliateID)
 	if err != nil && err != pgx.ErrNoRows {
 		return nil, err
 	}
@@ -195,6 +198,44 @@ func (r *UserPostgresRepo) AddNewSession(ctx context.Context, accountName string
 	}
 
 	return user.TokenNonce, nil
+}
+
+func (r *UserPostgresRepo) DeleteEmail(ctx context.Context, accountName string) error {
+	conn, err := db.DbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, deleteEmail, accountName)
+	return err
+}
+
+func (r *UserPostgresRepo) HasEmail(ctx context.Context, accountName string) (bool, error) {
+	conn, err := r.dbPool.Acquire(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer conn.Release()
+
+	var email string
+	err = conn.QueryRow(ctx, selectEmailByAccNameStmt, accountName).Scan(&email)
+	if err != nil {
+		return false, err
+	}
+
+	return email != "", nil
+}
+
+func (r *UserPostgresRepo) AddEmail(ctx context.Context, user *models.User) error {
+	conn, err := r.dbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, updateEmailStmt, user.AccountName, user.Email)
+	return err
 }
 
 func toModelUser(u *User, affiliateID string) *models.User {
