@@ -4,21 +4,24 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"platform-backend/auth"
+	"platform-backend/contracts"
+	"platform-backend/models"
+	"platform-backend/server/session_manager"
+	"strconv"
+	"time"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/machinebox/graphql"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/sha3"
-	"platform-backend/auth"
-	"platform-backend/models"
-	"platform-backend/server/session_manager"
-	"strconv"
-	"time"
 )
 
 type AuthUseCase struct {
 	userRepo        auth.UserRepository
 	smRepo          session_manager.Repository
+	contractUC      contracts.UseCase
 	jwtSecret       []byte
 	refreshTokenTTL int64
 	accessTokenTTL  int64
@@ -28,12 +31,13 @@ type AuthUseCase struct {
 	walletClientSecret string
 }
 
-func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository,
+func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository, contractUC contracts.UseCase,
 	jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64,
 	walletUrl string, walletClientId int64, walletClientSecret string) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:        userRepo,
 		smRepo:          smRepo,
+		contractUC:      contractUC,
 		jwtSecret:       jwtSecret,
 		accessTokenTTL:  accessTokenTTL,
 		refreshTokenTTL: refreshTokenTTL,
@@ -99,14 +103,33 @@ func (a *AuthUseCase) ResolveUser(ctx context.Context, tmpToken string) (*models
 	}, nil
 }
 
-func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User) (string, string, error) {
-	hasUser, err := a.userRepo.HasUser(context.Background(), user.AccountName)
+func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User, casinoName string) (string, string, error) {
+	hasUser, err := a.userRepo.HasUser(ctx, user.AccountName)
 	if err != nil {
-		log.Debug().Msgf("User existing check error, %s", err.Error())
+		log.Debug().Msgf("User existing check error: %s", err.Error())
 		return "", "", err
 	}
 	if !hasUser {
 		if err := a.userRepo.AddUser(ctx, user); err != nil {
+			log.Debug().Msgf("User add error: %s", err.Error())
+			return "", "", err
+		}
+
+		go func() {
+			if err := a.contractUC.SendBonusToNewPlayer(ctx, user.AccountName, casinoName); err != nil {
+				log.Warn().Msgf("Send new player to casino error: %s", err.Error())
+			}
+		}()
+	}
+
+	hasEmail, err := a.userRepo.HasEmail(ctx, user.AccountName)
+	if err != nil {
+		log.Debug().Msgf("User email existing check error: %s", err.Error())
+		return "", "", err
+	}
+	if !hasEmail {
+		if err := a.userRepo.AddEmail(ctx, user); err != nil {
+			log.Debug().Msgf("User email add error: %s", err.Error())
 			return "", "", err
 		}
 	}
@@ -240,6 +263,21 @@ func (a *AuthUseCase) Logout(ctx context.Context, accessToken string) error {
 	return a.userRepo.InvalidateSession(ctx, claims["account_name"].(string), int64(claims["nonce"].(float64)))
 }
 
+func (a *AuthUseCase) OptOut(ctx context.Context, accessToken string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	token, err := a.parseToken(accessToken)
+	if err != nil {
+		return err
+	}
+	if err := a.validateAccessToken(ctx, token); err != nil {
+		return err
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	return a.userRepo.DeleteEmail(ctx, claims["account_name"].(string))
+}
+
 func (a *AuthUseCase) validateToken(ctx context.Context, token *jwt.Token) error {
 	claims := token.Claims.(jwt.MapClaims)
 
@@ -289,7 +327,8 @@ func (a *AuthUseCase) validateTokenType(token *jwt.Token, reqType string) error 
 }
 
 func (a *AuthUseCase) parseToken(tokenString string) (*jwt.Token, error) {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	parser := &jwt.Parser{SkipClaimsValidation: true}
+	token, err := parser.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("invalid sign method")
 		}
@@ -297,7 +336,7 @@ func (a *AuthUseCase) parseToken(tokenString string) (*jwt.Token, error) {
 	})
 
 	if err != nil {
-		log.Debug().Msgf("Token parse error: %s", err.Error())
+		log.Debug().Msgf("Token parse error: %s, token: %s", err.Error(), tokenString)
 		return nil, auth.ErrCannotParseToken
 	}
 

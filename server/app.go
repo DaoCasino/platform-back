@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
+	"github.com/DaoCasino/platform-action-monitor-client"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus"
@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	affiliateStatsRepo "platform-backend/affiliatestats/repository/http"
 	"platform-backend/auth"
 	authPgRepo "platform-backend/auth/repository/postgres"
 	authUC "platform-backend/auth/usecase"
@@ -21,11 +22,14 @@ import (
 	"platform-backend/contracts"
 	contractsBcRepo "platform-backend/contracts/repository/blockchain"
 	contractsCachedRepo "platform-backend/contracts/repository/cached"
+	contractsUC "platform-backend/contracts/usecase"
 	"platform-backend/db"
 	"platform-backend/eventprocessor"
 	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
 	gameSessionUC "platform-backend/game_sessions/usecase"
 	"platform-backend/logger"
+	referralsRepo "platform-backend/referrals/repository/postgres"
+	referralsUC "platform-backend/referrals/usecase"
 	"platform-backend/repositories"
 	"platform-backend/server/api"
 	"platform-backend/server/session_manager"
@@ -50,7 +54,12 @@ type LogoutRequest struct {
 
 type AuthRequest struct {
 	TmpToken    string `json:"tmpToken"`
+	CasinoName  string `json:"casinoName"`
 	AffiliateID string `json:"affiliateID"`
+}
+
+type OptOutRequest struct {
+	AccessToken string `json:"accessToken"`
 }
 
 type App struct {
@@ -96,7 +105,7 @@ func NewApp(config *config.Config) (*App, error) {
 	}
 
 	var contractRepo contracts.Repository
-	contractRepo = contractsBcRepo.NewCasinoBlockchainRepo(bc, config.Blockchain.Contracts.Platform)
+	contractRepo = contractsBcRepo.NewCasinoBlockchainRepo(bc, config.Blockchain.Contracts.Platform, config.ActiveFeatures.Bonus)
 
 	// use cached contract repo if cache enabled
 	if config.Blockchain.ListingCacheTTL > 0 {
@@ -110,18 +119,24 @@ func NewApp(config *config.Config) (*App, error) {
 	gsRepo := gameSessionPgRepo.NewGameSessionsPostgresRepo(db.DbPool)
 	smRepo := smLocalRepo.NewLocalRepository(registerer)
 	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
+	refsRepo := referralsRepo.NewReferralPostgresRepo(db.DbPool)
+	affStatsRepo := affiliateStatsRepo.NewAffiliateStatsRepo(config.AffiliateStats.Url, config.ActiveFeatures.Referrals)
 
 	repos := repositories.NewRepositories(
 		contractRepo,
 		gsRepo,
+		affStatsRepo,
 	)
 
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
+	contractUC := contractsUC.NewContractsUseCase(bc, config.ActiveFeatures.Bonus)
+	refsUC := referralsUC.NewReferralsUseCase(refsRepo, config.ActiveFeatures.Referrals)
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			uRepo,
 			smRepo,
+			contractUC,
 			[]byte(config.Auth.JwtSecret),
 			config.Auth.AccessTokenTTL,
 			config.Auth.RefreshTokenTTL,
@@ -143,6 +158,7 @@ func NewApp(config *config.Config) (*App, error) {
 			config.Signidice.Key,
 		),
 		subsUC,
+		refsUC,
 	)
 
 	events := make(chan *eventlistener.EventMessage)
@@ -157,7 +173,7 @@ func NewApp(config *config.Config) (*App, error) {
 		}},
 		smRepo:          smRepo,
 		uRepo:           uRepo,
-		eventProcessor:  eventprocessor.New(repos, bc, useCases),
+		eventProcessor:  eventprocessor.New(repos, bc, useCases, registerer),
 		useCases:        useCases,
 		wsApi:           api.NewWsApi(useCases, repos, registerer),
 		events:          events,
@@ -178,6 +194,10 @@ func NewApp(config *config.Config) (*App, error) {
 
 	logoutHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logoutHandler(app, w, r)
+	})
+
+	optOutHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		optOutHandler(app, w, r)
 	})
 
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
@@ -218,6 +238,7 @@ func NewApp(config *config.Config) (*App, error) {
 	handleFunc("auth", authHandler)
 	handleFunc("logout", logoutHandler)
 	handleFunc("refresh_token", refreshTokensHandler)
+	handleFunc("optout", optOutHandler)
 	handleFunc("ping", pingHandler)
 	handleFunc("who", whoHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(
@@ -255,7 +276,7 @@ func startSessionsCleaner(a *App, ctx context.Context) error {
 		return nil
 	}
 	if err := clean(); err != nil {
-		return err
+		log.Error().Msgf("Sessions clean error: %s", err.Error())
 	}
 
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
@@ -263,7 +284,7 @@ func startSessionsCleaner(a *App, ctx context.Context) error {
 		select {
 		case <-ticker.C:
 			if err := clean(); err != nil {
-				return err
+				log.Error().Msgf("Sessions clean error: %s", err.Error())
 			}
 		case <-ctx.Done():
 			ticker.Stop()
@@ -312,6 +333,13 @@ func startAuthSessionsCleaner(a *App, ctx context.Context) error {
 func startHttpServer(a *App, ctx context.Context) error {
 	srv := &http.Server{Addr: ":" + a.config.Port, Handler: a.httpHandler}
 	log.Info().Msgf("Server is starting on %s port", a.config.Port)
+
+	if !a.config.ActiveFeatures.Bonus {
+		log.Info().Msg("Bonus feature is disabled")
+	}
+	if !a.config.ActiveFeatures.Referrals {
+		log.Info().Msg("Referrals feature is disabled")
+	}
 
 	go func() {
 		<-ctx.Done()

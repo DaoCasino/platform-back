@@ -1,0 +1,1 @@
+ALTER TABLE game_sessions ADD COLUMN state_before_fail smallint;

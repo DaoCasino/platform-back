@@ -1,0 +1,1 @@
+ALTER TABLE game_sessions DROP COLUMN state_before_fail;

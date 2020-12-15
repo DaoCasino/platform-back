@@ -15,14 +15,15 @@ const (
 )
 
 type GameSession struct {
-	ID              uint64           `json:"id"`
-	Player          string           `json:"player"`
-	CasinoID        uint64           `json:"casinoId"`
-	GameID          uint64           `json:"gameId"`
-	BlockchainSesID uint64           `json:"blockchainSesId"`
-	State           GameSessionState `json:"state"`
-	LastOffset      uint64           `json:"lastOffset"`
-	Deposit         *eos.Asset       `json:"deposit"`
-	LastUpdate      int64            `json:"lastUpdate"`
-	PlayerWinAmount *eos.Asset       `json:"playerWinAmount"`
+	ID              uint64            `json:"id"`
+	Player          string            `json:"player"`
+	CasinoID        uint64            `json:"casinoId"`
+	GameID          uint64            `json:"gameId"`
+	BlockchainSesID uint64            `json:"blockchainSesId"`
+	State           GameSessionState  `json:"state"`
+	LastOffset      uint64            `json:"lastOffset"`
+	Deposit         *eos.Asset        `json:"deposit"`
+	LastUpdate      int64             `json:"lastUpdate"`
+	PlayerWinAmount *eos.Asset        `json:"playerWinAmount"`
+	StateBeforeFail *GameSessionState `json:"stateBeforeFail"`
 }

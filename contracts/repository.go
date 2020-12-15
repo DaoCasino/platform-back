@@ -16,4 +16,6 @@ type Repository interface {
 
 	GetPlayerInfo(ctx context.Context, accountName string) (*models.PlayerInfo, error)
 	GetRawAccount(accountName string) (*eos.AccountResp, error)
+
+	GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error)
 }
