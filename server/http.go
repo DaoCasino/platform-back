@@ -3,10 +3,27 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"github.com/rs/zerolog/log"
+	"errors"
 	"net/http"
+	"platform-backend/auth"
 	"platform-backend/models"
+
+	"github.com/rs/zerolog/log"
 )
+
+const (
+	TokenExpired = 401
+)
+
+type HTTPResponse struct {
+	Response interface{} `json:"response"`
+	Error    *HTTPError  `json:"error"`
+}
+
+type HTTPError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
 
 func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New connect request")
@@ -22,19 +39,47 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	app.smRepo.AddSession(context.Background(), c, app.wsApi)
 }
 
+func respondOK(w http.ResponseWriter, response interface{}) {
+	respondWithJSON(w, http.StatusOK, HTTPResponse{
+		Response: response,
+		Error:    nil,
+	})
+}
+
+func respondWithError(w http.ResponseWriter, code int, message string) {
+	respondWithJSON(w, code, HTTPResponse{
+		Response: nil,
+		Error:    &HTTPError{Code: code, Message: message},
+	})
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	response, _ := json.Marshal(payload)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_, err := w.Write(response)
+	if err != nil {
+		log.Warn().Msg("Failed to respond to client")
+	}
+}
+
 func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
-	var user *models.User
+	var (
+		user       *models.User
+		casinoName string
+	)
 	if app.developmentMode {
 		user = &models.User{
 			AccountName: "testuserever",
 			Email:       "test@user.ever",
 			AffiliateID: "afff",
 		}
+		casinoName = "casino"
 	} else {
 		var req AuthRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, err.Error())
 			log.Debug().Msgf("Http body parse error, %s", err.Error())
 			return
 		}
@@ -43,32 +88,26 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 		user, err = app.useCases.Auth.ResolveUser(context.Background(), req.TmpToken)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			log.Debug().Msgf("Token validate error: %s", err.Error())
+			respondWithError(w, http.StatusUnauthorized, err.Error())
+			log.Warn().Msgf("Token validate error: %s", err.Error())
 			return
 		}
 		user.AffiliateID = req.AffiliateID
+		casinoName = req.CasinoName
 	}
-	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user)
+	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user, casinoName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Debug().Msgf("SignUp error: %s", err.Error())
+		respondWithError(w, http.StatusUnauthorized, err.Error())
+		log.Warn().Msgf("SignUp error: %s", err.Error())
 		return
 	}
 
-	response, err := json.Marshal(JsonResponse{
+	response := JsonResponse{
 		"refreshToken": refreshToken,
 		"accessToken":  accessToken,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Debug().Msgf("Response marshal error: %s", err.Error())
-		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	respondOK(w, response)
 }
 
 func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -76,20 +115,19 @@ func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	var req LogoutRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
 
 	err := app.useCases.Auth.Logout(context.Background(), req.AccessToken)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("RefreshToken error: %s", err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	respondOK(w, true)
 }
 
 func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
@@ -97,31 +135,48 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	var req RefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
 
 	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(context.Background(), req.RefreshToken)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Debug().Msgf("RefreshToken error: %s", err.Error())
+		log.Warn().Msgf("RefreshToken error: %s", err.Error())
+		if errors.Is(err, auth.ErrExpiredToken) || errors.Is(err, auth.ErrExpiredTokenNonce) {
+			respondWithError(w, TokenExpired, err.Error())
+			return
+		}
+		respondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	response, err := json.Marshal(JsonResponse{
+	response := JsonResponse{
 		"refreshToken": refreshToken,
 		"accessToken":  accessToken,
-	})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Debug().Msgf("Response marshal error: %s", err.Error())
+	}
+
+	respondOK(w, response)
+}
+
+func optOutHandler(app *App, w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New opt-out request")
+
+	var req OptOutRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(response)
+	err := app.useCases.Auth.OptOut(context.Background(), req.AccessToken)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		log.Debug().Msgf("Opt-out error: %s", err.Error())
+		return
+	}
+
+	respondOK(w, true)
 }
 
 func pingHandler(w http.ResponseWriter, _ *http.Request) {

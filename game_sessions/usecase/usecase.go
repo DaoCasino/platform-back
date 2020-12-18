@@ -124,7 +124,8 @@ func (a *GameSessionsUseCase) CleanExpiredSessions(
 				if _, err := a.bc.Api.PushTransaction(packedTrx); err != nil {
 					// Do not return error, because it can be caused by bug in contract
 					// So just log it and ignore
-					log.Warn().Msgf("EXP_CLEAN: transaction error, sessionID: %d, error: %s", session.ReqId, err.Error())
+					log.Warn().Msgf("EXP_CLEAN: transaction error, "+
+						"game contract: %s, sessionID: %d, error: %s", game.Contract, session.ReqId, err.Error())
 				}
 			}
 		}
@@ -146,6 +147,11 @@ func (a *GameSessionsUseCase) NewSession(
 		return nil, gamesessions.ErrCasinoUrlNotDefined
 	}
 
+	playerInfo, err := a.contractsRepo.GetPlayerInfo(ctx, user.AccountName)
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO fix after front lib fix
 	sessionId := uint64(rand.Uint32())
 
@@ -159,42 +165,22 @@ func (a *GameSessionsUseCase) NewSession(
 		return nil, err
 	}
 
-	// Add transfer deposit action
-	transferAction, err := a.getTransferAction(user.AccountName, game.Contract, casino.Contract, sessionId, asset)
+	realAsset, bonusAsset, err := a.getAssets(asset, playerInfo, casino.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	//Add newgame call to the game to the transaction
-	newGameAction := &eos.Action{
-		Account: eos.AN(game.Contract),
-		Name:    eos.ActN("newgame"),
-		Authorization: []eos.PermissionLevel{{
-			Actor:      eos.AN(a.platformContract),
-			Permission: eos.PN("gameaction"),
-		}},
-		ActionData: eos.NewActionData(struct {
-			SesId    uint64 `json:"ses_id"`
-			CasinoID uint64 `json:"casino_id"`
-		}{
-			SesId:    sessionId,
-			CasinoID: casino.Id,
-		}),
+	var transferAction *eos.Action
+
+	if realAsset.Amount > 0 {
+		// Add transfer deposit action
+		transferAction, err = a.getTransferAction(user.AccountName, game.Contract, casino.Contract, sessionId, realAsset)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// if user has affiliate call "newgameaffl" action with affiliateID
-	if user.AffiliateID != "" {
-		newGameAction.Name = eos.ActN("newgameaffl")
-		newGameAction.ActionData = eos.NewActionData(struct {
-			SesId       uint64 `json:"ses_id"`
-			CasinoID    uint64 `json:"casino_id"`
-			AffiliateID string `json:"affiliate_id"`
-		}{
-			SesId:       sessionId,
-			CasinoID:    casino.Id,
-			AffiliateID: user.AffiliateID,
-		})
-	}
+	newGameAction := a.getNewGameAction(bonusAsset, game.Contract, user, sessionId, casino.Id)
 
 	firstGameAction := &eos.Action{
 		Account: eos.AN(game.Contract),
@@ -225,6 +211,7 @@ func (a *GameSessionsUseCase) NewSession(
 		Deposit:         asset,
 		LastUpdate:      time.Now().Unix(),
 		PlayerWinAmount: nil,
+		StateBeforeFail: nil,
 	}
 
 	if err := a.repo.AddGameSession(ctx, gameSession); err != nil {
@@ -247,7 +234,12 @@ func (a *GameSessionsUseCase) NewSession(
 	// no need to wait response, because that can cause race between action monitor event and casino response
 	// sometimes action monitor event about created session handles earlier than casino response
 	go func() {
-		trx := eos.NewTransaction([]*eos.Action{transferAction, newGameAction, firstGameAction}, txOpts)
+		var trx *eos.Transaction
+		if transferAction == nil {
+			trx = eos.NewTransaction([]*eos.Action{newGameAction, firstGameAction}, txOpts)
+		} else {
+			trx = eos.NewTransaction([]*eos.Action{transferAction, newGameAction, firstGameAction}, txOpts)
+		}
 		trxID, err := a.trxByCasino(casino, trx)
 		if err != nil {
 			log.Info().Msgf("Error while newgame trx, sessionID: %d, error: %s", sessionId, err.Error())
@@ -384,14 +376,49 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 		return err
 	}
 
+	playerInfo, err := a.contractsRepo.GetPlayerInfo(ctx, gs.Player)
+	if err != nil {
+		return err
+	}
+
 	asset, err := utils.ToBetAsset(deposit)
 	if err != nil {
 		return err
 	}
 
-	transferAction, err := a.getTransferAction(gs.Player, game.Contract, casino.Contract, gs.ID, asset)
+	realAsset, bonusAsset, err := a.getAssets(asset, playerInfo, casino.Id)
 	if err != nil {
 		return err
+	}
+
+	var transferAction *eos.Action
+	var depositBonusAction *eos.Action
+
+	if realAsset.Amount > 0 {
+		transferAction, err = a.getTransferAction(gs.Player, game.Contract, casino.Contract, gs.ID, realAsset)
+		if err != nil {
+			return err
+		}
+	}
+
+	if bonusAsset.Amount > 0 {
+		depositBonusAction = &eos.Action{
+			Account: eos.AN(game.Contract),
+			Name:    eos.ActN("depositbon"),
+			Authorization: []eos.PermissionLevel{{
+				Actor:      eos.AN(a.platformContract),
+				Permission: eos.PN("gameaction"),
+			}},
+			ActionData: eos.NewActionData(struct {
+				SessionId uint64          `json:"ses_id"`
+				From      eos.AccountName `json:"from"`
+				Quantity  eos.Asset       `json:"quantity"`
+			}{
+				SessionId: gs.BlockchainSesID,
+				From:      eos.AN(gs.Player),
+				Quantity:  *bonusAsset,
+			}),
+		}
 	}
 
 	gameAction := &eos.Action{
@@ -417,7 +444,16 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 		return fmt.Errorf("filling tx opts: %s", err)
 	}
 
-	trx := eos.NewTransaction([]*eos.Action{transferAction, gameAction}, txOpts)
+	trxActions := make([]*eos.Action, 0, 3)
+	if transferAction != nil {
+		trxActions = append(trxActions, transferAction)
+	}
+	if depositBonusAction != nil {
+		trxActions = append(trxActions, depositBonusAction)
+	}
+	trxActions = append(trxActions, gameAction)
+
+	trx := eos.NewTransaction(trxActions, txOpts)
 	trxID, err := a.trxByCasino(casino, trx)
 	if err != nil {
 		return err
@@ -515,4 +551,102 @@ func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transa
 	}
 
 	return trxID, nil
+}
+
+func (a *GameSessionsUseCase) getAssets(asset *eos.Asset, playerInfo *models.PlayerInfo, casinoId uint64) (*eos.Asset, *eos.Asset, error) {
+	bonusBalance := &models.BonusBalance{
+		Balance: eos.Asset{
+			Amount: 0,
+			Symbol: asset.Symbol,
+		},
+		CasinoId: casinoId,
+	}
+
+	for _, bb := range playerInfo.BonusBalances {
+		if bb.CasinoId == casinoId {
+			bonusBalance = bb
+			break
+		}
+	}
+
+	if playerInfo.Balance.Amount+bonusBalance.Balance.Amount < asset.Amount {
+		return nil, nil, fmt.Errorf("not enough tokens")
+	}
+
+	realAsset := &eos.Asset{Amount: 0, Symbol: asset.Symbol}
+	bonusAsset := &eos.Asset{Amount: 0, Symbol: asset.Symbol}
+
+	if playerInfo.Balance.Amount < asset.Amount {
+		bonusAsset.Amount = asset.Amount - playerInfo.Balance.Amount
+		realAsset.Amount = playerInfo.Balance.Amount
+	} else {
+		realAsset = asset
+	}
+
+	return realAsset, bonusAsset, nil
+}
+
+func (a *GameSessionsUseCase) getNewGameAction(
+	bonusAsset *eos.Asset, account string,
+	user *models.User, sessionId uint64, casinoId uint64,
+) *eos.Action {
+	var newGameAction *eos.Action
+
+	if bonusAsset.Amount > 0 {
+		//Add newgamebon call to the game to the transaction
+		newGameAction = &eos.Action{
+			Account: eos.AN(account),
+			Name:    eos.ActN("newgamebon"),
+			Authorization: []eos.PermissionLevel{{
+				Actor:      eos.AN(a.platformContract),
+				Permission: eos.PN("gameaction"),
+			}},
+			ActionData: eos.NewActionData(struct {
+				SesId       uint64          `json:"ses_id"`
+				CasinoID    uint64          `json:"casino_id"`
+				From        eos.AccountName `json:"from"`
+				Quantity    eos.Asset       `json:"quantity"`
+				AffiliateID string          `json:"affiliate_id"`
+			}{
+				SesId:       sessionId,
+				CasinoID:    casinoId,
+				From:        eos.AN(user.AccountName),
+				Quantity:    *bonusAsset,
+				AffiliateID: user.AffiliateID,
+			}),
+		}
+	} else {
+		//Add newgame call to the game to the transaction
+		newGameAction = &eos.Action{
+			Account: eos.AN(account),
+			Name:    eos.ActN("newgame"),
+			Authorization: []eos.PermissionLevel{{
+				Actor:      eos.AN(a.platformContract),
+				Permission: eos.PN("gameaction"),
+			}},
+			ActionData: eos.NewActionData(struct {
+				SesId    uint64 `json:"ses_id"`
+				CasinoID uint64 `json:"casino_id"`
+			}{
+				SesId:    sessionId,
+				CasinoID: casinoId,
+			}),
+		}
+
+		// if user has affiliate call "newgameaffl" action with affiliateID
+		if user.AffiliateID != "" {
+			newGameAction.Name = eos.ActN("newgameaffl")
+			newGameAction.ActionData = eos.NewActionData(struct {
+				SesId       uint64 `json:"ses_id"`
+				CasinoID    uint64 `json:"casino_id"`
+				AffiliateID string `json:"affiliate_id"`
+			}{
+				SesId:       sessionId,
+				CasinoID:    casinoId,
+				AffiliateID: user.AffiliateID,
+			})
+		}
+	}
+
+	return newGameAction
 }

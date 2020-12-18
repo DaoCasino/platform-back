@@ -29,8 +29,8 @@ type BlockchainConfig struct {
 		GameAction string `json:"gameaction"`
 		SigniDice  string `json:"signidice"`
 	} `json:"permissions"`
-	DisableSponsor  bool `json:"disableSponsor"`
-	TrxPushAttempts int  `default:"5" json:"trxPushAttempts"`
+	DisableSponsor  bool  `json:"disableSponsor"`
+	TrxPushAttempts int   `default:"5" json:"trxPushAttempts"`
 	ListingCacheTTL int64 `json:"listingCacheTTL"`
 }
 
@@ -58,15 +58,26 @@ type SignidiceConfig struct {
 	Key         string `json:"key"`
 }
 
+type AffiliateStatsConfig struct {
+	Url string `json:"url"`
+}
+
+type ActiveFeaturesConfig struct {
+	Bonus     bool `default:"true" json:"bonus"`
+	Referrals bool `default:"true" json:"referrals"`
+}
+
 type Config struct {
-	Db              DbConfig         `json:"db"`
-	Amc             AmcConfig        `json:"amc"`
-	SessionsCleaner SessionsCleaner  `json:"sessionsCleaner"`
-	Blockchain      BlockchainConfig `json:"blockchain"`
-	Auth            AuthConfig       `json:"auth"`
-	Signidice       SignidiceConfig  `json:"signidice"`
-	LogLevel        string           `json:"loglevel"`
-	Port            string           `json:"port"`
+	Db              DbConfig             `json:"db"`
+	Amc             AmcConfig            `json:"amc"`
+	SessionsCleaner SessionsCleaner      `json:"sessionsCleaner"`
+	Blockchain      BlockchainConfig     `json:"blockchain"`
+	Auth            AuthConfig           `json:"auth"`
+	Signidice       SignidiceConfig      `json:"signidice"`
+	AffiliateStats  AffiliateStatsConfig `json:"affiliateStats"`
+	ActiveFeatures  ActiveFeaturesConfig `json:"activeFeatures"`
+	LogLevel        string               `json:"loglevel"`
+	Port            string               `json:"port"`
 }
 
 func Read(fileName string) (*Config, error) {

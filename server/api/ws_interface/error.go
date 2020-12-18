@@ -40,6 +40,7 @@ const (
 	CasinoPaused          WsErrorCode = 4010
 
 	SessionInvalidStateError WsErrorCode = 4100
+	SessionFailedOrFinished  WsErrorCode = 4200
 
 	InternalError WsErrorCode = 5000
 )
@@ -72,6 +73,8 @@ func GetErrorMsg(code WsErrorCode) string {
 
 	case SessionInvalidStateError:
 		return "action while session invalid state"
+	case SessionFailedOrFinished:
+		return "session failed or finished"
 	case InternalError:
 		return "internal server error"
 	default:
