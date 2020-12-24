@@ -7,10 +7,9 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"platform-backend/db"
-	gamesessions "platform-backend/game_sessions"
+	"platform-backend/game_sessions"
 	"platform-backend/models"
 	"platform-backend/utils"
-	"strings"
 	"time"
 )
 
@@ -29,7 +28,7 @@ const (
 	selectAllGameSessionsStmt        = "SELECT * FROM game_sessions"
 	selectFirstGameActionStmt        = "SELECT * FROM first_game_actions WHERE ses_id = $1"
 	updateSessionStateStmt           = "UPDATE game_sessions SET state = $2, last_update = $3 WHERE id = $1"
-	updateSessionDepositStmt         = "UPDATE game_sessions SET deposit = $2, symbol = $3, deposit_value = $4, token = $5 WHERE id = $1"
+	updateSessionDepositStmt         = "UPDATE game_sessions SET deposit = $2, deposit_value = $3, token = $4, token_prec = $5 WHERE id = $1"
 	updateSessionPlayerWinStmt       = "UPDATE game_sessions SET player_win_amount = $2, player_win_value = $3 WHERE id = $1"
 	updateSessionOffsetStmt          = "UPDATE game_sessions SET last_offset = $2 WHERE id = $1"
 	updateSessionStateBeforeFailStmt = "UPDATE game_sessions SET state_before_fail = $2 WHERE id = $1"
@@ -52,10 +51,10 @@ type GameSession struct {
 	LastUpdate      int64   `db:"last_update"`
 	PlayerWinAmount *string `db:"player_win_amount"`
 	StateBeforeFail *uint64 `db:"state_before_fail"`
-	Symbol          string  `db:"symbol"`
 	DepositValue    *int64  `db:"deposit_value"`
 	PlayerWinValue  *int64  `db:"player_win_value"`
 	Token           string  `db:"token"`
+	Precision       int     `db:"token_prec"`
 }
 
 func (s *GameSession) Scan(row pgx.Row) error {
@@ -71,10 +70,10 @@ func (s *GameSession) Scan(row pgx.Row) error {
 		&s.LastUpdate,
 		&s.PlayerWinAmount,
 		&s.StateBeforeFail,
-		&s.Symbol,
 		&s.DepositValue,
 		&s.PlayerWinValue,
 		&s.Token,
+		&s.Precision,
 	)
 }
 
@@ -257,16 +256,14 @@ func (r *GameSessionsPostgresRepo) UpdateSessionOffset(ctx context.Context, id u
 	return err
 }
 
-func (r *GameSessionsPostgresRepo) UpdateSessionDeposit(ctx context.Context, id uint64, deposit string, symbol string, value int64) error {
+func (r *GameSessionsPostgresRepo) UpdateSessionDeposit(ctx context.Context, id uint64, deposit string, value int64, token string, precision int) error {
 	conn, err := db.DbPool.Acquire(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Release()
 
-	token := strings.Split(symbol, ",")[1]
-
-	_, err = conn.Exec(ctx, updateSessionDepositStmt, id, deposit, symbol, value, token)
+	_, err = conn.Exec(ctx, updateSessionDepositStmt, id, deposit, value, token, precision)
 	return err
 }
 
@@ -310,8 +307,7 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 	}
 	defer conn.Release()
 
-	depositValue, symbol := utils.ExtractAssetValueAndSymbol(ses.Deposit)
-	token := strings.Split(symbol, ",")[1]
+	depositValue, token, precision := utils.ExtractAssetValueAndSymbol(ses.Deposit)
 
 	_, err = conn.Exec(ctx, insertGameSessionStmt,
 		ses.ID,
@@ -325,10 +321,10 @@ func (r *GameSessionsPostgresRepo) AddGameSession(ctx context.Context, ses *mode
 		ses.LastUpdate,
 		nil, // player_win_amount
 		nil, // state_before_fail
-		symbol,
 		depositValue,
 		nil, // player_win_value
 		token,
+		precision,
 	)
 	if err != nil {
 		return err
@@ -448,8 +444,8 @@ func toModelGameSession(gs *GameSession) (*models.GameSession, error) {
 		LastUpdate:      gs.LastUpdate,
 	}
 
-	ses.Deposit = utils.ToAsset(gs.DepositValue, gs.Symbol)
-	ses.PlayerWinAmount = utils.ToAsset(gs.PlayerWinValue, gs.Symbol)
+	ses.Deposit = utils.ToAsset(gs.DepositValue, gs.Token, gs.Precision)
+	ses.PlayerWinAmount = utils.ToAsset(gs.PlayerWinValue, gs.Token, gs.Precision)
 
 	if gs.StateBeforeFail == nil {
 		ses.StateBeforeFail = nil

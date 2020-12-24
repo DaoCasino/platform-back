@@ -467,8 +467,8 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 		return err
 	}
 	totalDeposit := gs.Deposit.Add(*asset)
-	depositValue, symbol := utils.ExtractAssetValueAndSymbol(&totalDeposit)
-	err = a.repo.UpdateSessionDeposit(ctx, sessionId, totalDeposit.String(), symbol, depositValue)
+	depositValue, tkn, precision := utils.ExtractAssetValueAndSymbol(&totalDeposit)
+	err = a.repo.UpdateSessionDeposit(ctx, sessionId, totalDeposit.String(), depositValue, tkn, precision)
 	if err != nil {
 		log.Error().Msgf("Failed to update session deposit, "+
 			"sesID: %d, trxID: %s, reason: %s", sessionId, trxID.String(), err.Error())

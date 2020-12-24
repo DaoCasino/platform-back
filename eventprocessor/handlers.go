@@ -214,7 +214,7 @@ func onGameFinished(ctx context.Context, p *EventProcessor, event *eventlistener
 
 	// if not already processed event
 	if err == nil {
-		playerWinValue, _ := utils.ExtractAssetValueAndSymbol(&eventData.PlayerWin)
+		playerWinValue, _, _ := utils.ExtractAssetValueAndSymbol(&eventData.PlayerWin)
 		err = p.repos.GameSession.UpdateSessionPlayerWin(ctx, session.ID, eventData.PlayerWin.String(), playerWinValue)
 		if err != nil {
 			return err
