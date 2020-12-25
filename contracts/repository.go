@@ -2,8 +2,9 @@ package contracts
 
 import (
 	"context"
-	"github.com/eoscanada/eos-go"
 	"platform-backend/models"
+
+	"github.com/eoscanada/eos-go"
 )
 
 type Repository interface {
@@ -18,4 +19,5 @@ type Repository interface {
 	GetRawAccount(accountName string) (*eos.AccountResp, error)
 
 	GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error)
+	GetCustomTokenBalances(casinoName string, accountName string) (map[string]eos.Asset, error)
 }

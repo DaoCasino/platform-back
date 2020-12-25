@@ -3,10 +3,11 @@ package mock
 import (
 	"context"
 	"errors"
-	"github.com/eoscanada/eos-go"
-	"github.com/stretchr/testify/mock"
 	"platform-backend/contracts"
 	"platform-backend/models"
+
+	"github.com/eoscanada/eos-go"
+	"github.com/stretchr/testify/mock"
 )
 
 type MockedListingRepo struct {
@@ -86,7 +87,8 @@ func (r *MockedListingRepo) GetPlayerInfo(ctx context.Context, accountName strin
 	}
 
 	info := &models.PlayerInfo{}
-	contracts.FillPlayerInfoFromRaw(info, rawAccount, casinos, nil)
+
+	contracts.FillPlayerInfoFromRaw(info, rawAccount, casinos, nil, nil)
 
 	return info, nil
 }
@@ -105,6 +107,12 @@ func (r *MockedListingRepo) GetBonusBalances(casinos []*models.Casino, accountNa
 	}
 	args := r.Called(valueCasinos, accountName)
 	return args.Get(0).([]*models.BonusBalance), args.Error(1)
+}
+
+func (r *MockedListingRepo) GetCustomTokenBalances(casinoAccount string,
+	playerAccount string) (map[string]eos.Asset, error) {
+	args := r.Called(casinoAccount, playerAccount)
+	return args.Get(0).(map[string]eos.Asset), args.Error(1)
 }
 
 func (r *MockedListingRepo) AddRawAccount(account *eos.AccountResp) {
