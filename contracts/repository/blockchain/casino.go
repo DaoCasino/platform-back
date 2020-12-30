@@ -195,11 +195,6 @@ func (r *CasinoBlockchainRepo) getTokenContractBalances(tokenContract eos.Accoun
 	return balances, nil
 }
 
-type TokenContract struct {
-	TokenName string          `json:"token_name"`
-	Contract  eos.AccountName `json:"contract"`
-}
-
 func (r *CasinoBlockchainRepo) getTokenToContract() (map[string]eos.AccountName, error) {
 	// TODO cache the response
 	resp, err := r.bc.Api.GetTableRows(eos.GetTableRowsRequest{
@@ -211,7 +206,10 @@ func (r *CasinoBlockchainRepo) getTokenToContract() (map[string]eos.AccountName,
 	if err != nil {
 		return nil, err
 	}
-	var jsonTokenContract []TokenContract
+	var jsonTokenContract []struct {
+		TokenName string          `json:"token_name"`
+		Contract  eos.AccountName `json:"contract"`
+	}
 	if err := resp.JSONToStructs(&jsonTokenContract); err != nil {
 		return nil, err
 	}
