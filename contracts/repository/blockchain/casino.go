@@ -3,7 +3,6 @@ package blockchain
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"platform-backend/blockchain"
 	"platform-backend/contracts"
 	"platform-backend/models"
@@ -255,13 +254,12 @@ func (r *CasinoBlockchainRepo) GetCustomTokenBalances(casinoName string,
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(tokenToContract)
 	for platformToken, tokenContract := range tokenToContract {
 		if _, found := casinoSupportedTokens[platformToken]; !found {
 			continue
 		}
 		if _, skip := seen[tokenContract]; skip {
-			// different tokens can be deployed on the same contract account
+			// different tokens can map to the same contract account
 			continue
 		}
 		seen[tokenContract] = true
