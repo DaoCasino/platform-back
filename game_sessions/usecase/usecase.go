@@ -165,14 +165,9 @@ func (a *GameSessionsUseCase) NewSession(
 		return nil, err
 	}
 
-	realAsset := asset
-	bonusAsset := &eos.Asset{Amount: 0, Symbol: asset.Symbol}
-
-	if asset.Symbol.Symbol == contracts.CoreSymbol {
-		realAsset, bonusAsset, err = a.getAssets(asset, playerInfo, casino.Id)
-		if err != nil {
-			return nil, err
-		}
+	realAsset, bonusAsset, err := a.getAssets(asset, playerInfo, casino.Id)
+	if err != nil {
+		return nil, err
 	}
 
 	var transferAction *eos.Action
@@ -559,30 +554,37 @@ func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transa
 }
 
 func (a *GameSessionsUseCase) getAssets(asset *eos.Asset, playerInfo *models.PlayerInfo,
-	casinoId uint64) (*eos.Asset, *eos.Asset, error) {
+	casinoID uint64) (*eos.Asset, *eos.Asset, error) {
 	bonusBalance := &models.BonusBalance{
 		Balance: eos.Asset{
 			Amount: 0,
 			Symbol: asset.Symbol,
 		},
-		CasinoId: casinoId,
+		CasinoId: casinoID,
 	}
 
-	for _, bb := range playerInfo.BonusBalances {
-		if bb.CasinoId == casinoId {
-			bonusBalance = bb
-			break
+	assetType := asset.Symbol.Symbol
+	playerBalance, ok := playerInfo.CustomTokenBalances[assetType]
+	if !ok {
+		return nil, nil, fmt.Errorf("invalid custom token")
+	}
+	if assetType == contracts.CoreSymbol {
+		for _, bb := range playerInfo.BonusBalances {
+			if bb.CasinoId == casinoID {
+				bonusBalance = bb
+				break
+			}
 		}
 	}
 
-	if playerInfo.Balance.Amount+bonusBalance.Balance.Amount < asset.Amount {
+	if playerBalance.Amount+bonusBalance.Balance.Amount < asset.Amount {
 		return nil, nil, fmt.Errorf("not enough tokens")
 	}
 
 	realAsset := &eos.Asset{Amount: 0, Symbol: asset.Symbol}
 	bonusAsset := &eos.Asset{Amount: 0, Symbol: asset.Symbol}
 
-	if playerInfo.Balance.Amount < asset.Amount {
+	if playerBalance.Amount < asset.Amount {
 		bonusAsset.Amount = asset.Amount - playerInfo.Balance.Amount
 		realAsset.Amount = playerInfo.Balance.Amount
 	} else {
