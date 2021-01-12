@@ -6,7 +6,6 @@ import (
 	"platform-backend/contracts/repository/cached"
 	"platform-backend/contracts/repository/mock"
 	"platform-backend/models"
-	"platform-backend/utils"
 	"testing"
 	"time"
 
@@ -55,7 +54,7 @@ func getInitialData() (eos.AccountResp, models.Game, models.Casino,
 		}},
 	}}
 	testBonusBalance := []*models.BonusBalance{{
-		Balance:  eos.Asset{Amount: 10000, Symbol: eos.Symbol{Precision: 4, Symbol: utils.DAOBetAssetSymbol}},
+		Balance:  eos.Asset{Amount: 10000, Symbol: eos.Symbol{Precision: 4, Symbol: contracts.CoreSymbol}},
 		CasinoId: 0,
 	}}
 

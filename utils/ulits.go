@@ -9,7 +9,7 @@ const (
 )
 
 func ToBetAsset(deposit string) (*eos.Asset, error) {
-	quantity, err := eos.NewFixedSymbolAssetFromString(eos.Symbol{Precision: 4, Symbol: DAOBetAssetSymbol}, deposit)
+	quantity, err := eos.NewAssetFromString(deposit)
 	if err != nil {
 		return nil, err
 	}

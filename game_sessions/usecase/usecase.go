@@ -165,9 +165,14 @@ func (a *GameSessionsUseCase) NewSession(
 		return nil, err
 	}
 
-	realAsset, bonusAsset, err := a.getAssets(asset, playerInfo, casino.Id)
-	if err != nil {
-		return nil, err
+	realAsset := asset
+	bonusAsset := &eos.Asset{Amount: 0, Symbol: asset.Symbol}
+
+	if asset.Symbol.Symbol == contracts.CoreSymbol {
+		realAsset, bonusAsset, err = a.getAssets(asset, playerInfo, casino.Id)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var transferAction *eos.Action
@@ -553,7 +558,8 @@ func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transa
 	return trxID, nil
 }
 
-func (a *GameSessionsUseCase) getAssets(asset *eos.Asset, playerInfo *models.PlayerInfo, casinoId uint64) (*eos.Asset, *eos.Asset, error) {
+func (a *GameSessionsUseCase) getAssets(asset *eos.Asset, playerInfo *models.PlayerInfo,
+	casinoId uint64) (*eos.Asset, *eos.Asset, error) {
 	bonusBalance := &models.BonusBalance{
 		Balance: eos.Asset{
 			Amount: 0,

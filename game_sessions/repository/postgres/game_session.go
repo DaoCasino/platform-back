@@ -3,14 +3,15 @@ package postgres
 import (
 	"context"
 	"errors"
-	"github.com/eoscanada/eos-go"
-	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v4"
 	"platform-backend/db"
 	gamesessions "platform-backend/game_sessions"
 	"platform-backend/models"
 	"platform-backend/utils"
 	"time"
+
+	"github.com/eoscanada/eos-go"
+	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v4"
 )
 
 const GlobalCnt = 30
