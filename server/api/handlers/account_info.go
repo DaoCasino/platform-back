@@ -2,27 +2,29 @@ package handlers
 
 import (
 	"context"
-	"github.com/eoscanada/eos-go"
 	"math"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
 	"strconv"
 	"time"
+
+	"github.com/eoscanada/eos-go"
 )
 
 var refStatsFromTime = time.Time{}.Add(time.Second)
 
 type PlayerInfoResponse struct {
-	AccountName      string                `json:"accountName"`
-	Email            string                `json:"email"`
-	Balance          eos.Asset             `json:"balance"`
-	BonusBalances    *BonusBalanceResponse `json:"bonusBalances,omitempty"`
-	ActivePermission eos.Authority         `json:"activePermission"`
-	OwnerPermission  eos.Authority         `json:"ownerPermission"`
-	LinkedCasinos    []*CasinoResponse     `json:"linkedCasinos"`
-	ReferralID       *string               `json:"referralId,omitempty"`
-	ReferralRevenue  *float64              `json:"referralRevenue,omitempty"`
-	Referral         *ReferralResponse     `json:"referral,omitempty"`
+	AccountName         string                `json:"accountName"`
+	Email               string                `json:"email"`
+	Balance             eos.Asset             `json:"balance"`
+	BonusBalances       *BonusBalanceResponse `json:"bonusBalances,omitempty"`
+	CustomTokenBalances map[string]eos.Asset  `json:"customTokenBalances"`
+	ActivePermission    eos.Authority         `json:"activePermission"`
+	OwnerPermission     eos.Authority         `json:"ownerPermission"`
+	LinkedCasinos       []*CasinoResponse     `json:"linkedCasinos"`
+	ReferralID          *string               `json:"referralId,omitempty"`
+	ReferralRevenue     *float64              `json:"referralRevenue,omitempty"`
+	Referral            *ReferralResponse     `json:"referral,omitempty"`
 }
 
 type BonusBalanceResponse map[string]BonusBalance
@@ -40,13 +42,14 @@ func toPlayerInfoResponse(
 	p *models.PlayerInfo, u *models.User, refID string, refStats *models.ReferralStats,
 ) *PlayerInfoResponse {
 	ret := &PlayerInfoResponse{
-		AccountName:      u.AccountName,
-		Email:            u.Email,
-		Balance:          p.Balance,
-		BonusBalances:    toBonusBalanceResponse(p.BonusBalances),
-		ActivePermission: p.ActivePermission,
-		OwnerPermission:  p.OwnerPermission,
-		LinkedCasinos:    make([]*CasinoResponse, len(p.LinkedCasinos)),
+		AccountName:         u.AccountName,
+		Email:               u.Email,
+		Balance:             p.Balance,
+		BonusBalances:       toBonusBalanceResponse(p.BonusBalances),
+		CustomTokenBalances: p.CustomTokenBalances,
+		ActivePermission:    p.ActivePermission,
+		OwnerPermission:     p.OwnerPermission,
+		LinkedCasinos:       make([]*CasinoResponse, len(p.LinkedCasinos)),
 	}
 	if refID != "" {
 		ret.ReferralID = &refID
@@ -77,7 +80,8 @@ func toBonusBalanceResponse(bb []*models.BonusBalance) *BonusBalanceResponse {
 	return &bbr
 }
 
-func ProcessAccountInfo(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
+func ProcessAccountInfo(
+	context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
 	player, err := req.Repos.Contracts.GetPlayerInfo(context, req.User.AccountName)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)

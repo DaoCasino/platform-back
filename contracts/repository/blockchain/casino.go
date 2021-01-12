@@ -135,7 +135,8 @@ func (r *CasinoBlockchainRepo) GetCasinoGames(ctx context.Context, casinoName st
 	return ret, nil
 }
 
-func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error) {
+func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino,
+	accountName string) ([]*models.BonusBalance, error) {
 	if !r.bonusActive {
 		return nil, nil
 	}
@@ -168,6 +169,110 @@ func (r *CasinoBlockchainRepo) GetBonusBalances(casinos []*models.Casino, accoun
 		bonusBalances = append(bonusBalances, toModelBonusBalance(bonusBalance[0], casino.Id))
 	}
 	return bonusBalances, nil
+}
+
+func (r *CasinoBlockchainRepo) getTokenContractBalances(tokenContract eos.AccountName,
+	playerAccount eos.AccountName) ([]eos.Asset, error) {
+	resp, err := r.bc.Api.GetTableRows(eos.GetTableRowsRequest{
+		Code:  string(tokenContract),
+		Scope: string(playerAccount),
+		Table: "accounts",
+		JSON:  true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	var jsonBalances []struct {
+		Balance eos.Asset `json:"balance"`
+	}
+	if err := resp.JSONToStructs(&jsonBalances); err != nil {
+		return nil, err
+	}
+	balances := make([]eos.Asset, len(jsonBalances))
+	for i, b := range jsonBalances {
+		balances[i] = b.Balance
+	}
+	return balances, nil
+}
+
+func (r *CasinoBlockchainRepo) getTokenToContract() (map[string]eos.AccountName, error) {
+	// TODO cache the response
+	resp, err := r.bc.Api.GetTableRows(eos.GetTableRowsRequest{
+		Code:  r.platformContract,
+		Scope: r.platformContract,
+		Table: "token",
+		JSON:  true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	var jsonTokenContract []struct {
+		TokenName string          `json:"token_name"`
+		Contract  eos.AccountName `json:"contract"`
+	}
+	if err := resp.JSONToStructs(&jsonTokenContract); err != nil {
+		return nil, err
+	}
+	tokenContracts := make(map[string]eos.AccountName)
+	for _, tc := range jsonTokenContract {
+		tokenContracts[tc.TokenName] = tc.Contract
+	}
+	return tokenContracts, nil
+}
+
+func (r *CasinoBlockchainRepo) GetCustomTokenBalances(casinoName string,
+	accountName string) (map[string]eos.Asset, error) {
+	resp, err := r.bc.Api.GetTableRows(eos.GetTableRowsRequest{
+		Code:  casinoName,
+		Scope: casinoName,
+		Table: "token",
+		Limit: 1000,
+		JSON:  true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	var jsonCasinoSupportedTokens []struct {
+		Name   string `json:"token_name"`
+		Paused int    `json:"paused"`
+	}
+	err = resp.JSONToStructs(&jsonCasinoSupportedTokens)
+	if err != nil {
+		return nil, err
+	}
+	casinoSupportedTokens := make(map[string]bool)
+	for _, token := range jsonCasinoSupportedTokens {
+		if token.Name != contracts.CoreSymbol {
+			casinoSupportedTokens[token.Name] = true
+		}
+	}
+	playerBalances := make(map[string]eos.Asset)
+	seen := make(map[eos.AccountName]bool)
+	tokenToContract, err := r.getTokenToContract()
+	if err != nil {
+		return nil, err
+	}
+	for platformToken, tokenContract := range tokenToContract {
+		if _, found := casinoSupportedTokens[platformToken]; !found {
+			continue
+		}
+		if _, skip := seen[tokenContract]; skip {
+			// different tokens can map to the same contract account
+			continue
+		}
+		seen[tokenContract] = true
+		balances, err := r.getTokenContractBalances(tokenContract, eos.AN(accountName))
+		if err != nil {
+			return nil, err
+		}
+		for _, b := range balances {
+			token := b.Symbol.Symbol
+			if _, supported := casinoSupportedTokens[token]; supported {
+				playerBalances[token] = b
+			}
+		}
+	}
+	return playerBalances, nil
 }
 
 func toModelCasino(c *Casino) *models.Casino {
@@ -204,9 +309,9 @@ func toModelCasinoGame(game *CasinoGame) *models.CasinoGame {
 	}
 }
 
-func toModelBonusBalance(bonusBalance *BonusBalance, casinoId uint64) *models.BonusBalance {
+func toModelBonusBalance(bonusBalance *BonusBalance, casinoID uint64) *models.BonusBalance {
 	return &models.BonusBalance{
 		Balance:  bonusBalance.Balance,
-		CasinoId: casinoId,
+		CasinoId: casinoID,
 	}
 }

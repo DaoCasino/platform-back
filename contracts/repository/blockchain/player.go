@@ -2,9 +2,11 @@ package blockchain
 
 import (
 	"context"
-	"github.com/eoscanada/eos-go"
+	"fmt"
 	"platform-backend/contracts"
 	"platform-backend/models"
+
+	"github.com/eoscanada/eos-go"
 )
 
 func (r *CasinoBlockchainRepo) GetRawAccount(accountName string) (*eos.AccountResp, error) {
@@ -33,8 +35,16 @@ func (r *CasinoBlockchainRepo) GetPlayerInfo(ctx context.Context, accountName st
 		return nil, err
 	}
 
+	if len(casinos) != 1 {
+		return nil, fmt.Errorf("custom token doesn't support multiple casinos")
+	}
+	customTokenBalances, err := r.GetCustomTokenBalances(casinos[0].Contract, accountName)
+	if err != nil {
+		return nil, err
+	}
 	info := &models.PlayerInfo{}
-	contracts.FillPlayerInfoFromRaw(info, resp, casinos, bonusBalances)
+	contracts.FillPlayerInfoFromRaw(info, resp, casinos, bonusBalances,
+		customTokenBalances)
 
 	return info, nil
 }

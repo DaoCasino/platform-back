@@ -2,14 +2,15 @@ package cached
 
 import (
 	"context"
-	"github.com/eoscanada/eos-go"
-	"github.com/rs/zerolog/log"
-	"go.uber.org/atomic"
 	"platform-backend/contracts"
 	"platform-backend/models"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/eoscanada/eos-go"
+	"github.com/rs/zerolog/log"
+	"go.uber.org/atomic"
 )
 
 type CachedListingRepo struct {
@@ -242,8 +243,13 @@ func (r *CachedListingRepo) GetPlayerInfo(ctx context.Context, accountName strin
 		return nil, err
 	}
 
+	customTokenBalances, err := r.GetCustomTokenBalances(casinos[0].Contract, accountName)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &models.PlayerInfo{}
-	contracts.FillPlayerInfoFromRaw(info, rawAccount, casinos, bonusBalances)
+	contracts.FillPlayerInfoFromRaw(info, rawAccount, casinos, bonusBalances, customTokenBalances)
 
 	return info, nil
 }
@@ -255,6 +261,10 @@ func (r *CachedListingRepo) GetRawAccount(accountName string) (*eos.AccountResp,
 
 func (r *CachedListingRepo) GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error) {
 	return r.origRepo.GetBonusBalances(casinos, accountName)
+}
+
+func (r *CachedListingRepo) GetCustomTokenBalances(casino string, accountName string) (map[string]eos.Asset, error) {
+	return r.origRepo.GetCustomTokenBalances(casino, accountName)
 }
 
 // return sorted games map keys

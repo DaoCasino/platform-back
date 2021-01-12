@@ -2,18 +2,19 @@ package repository
 
 import (
 	"context"
-	"github.com/eoscanada/eos-go"
-	"github.com/stretchr/testify/assert"
 	"platform-backend/contracts"
 	"platform-backend/contracts/repository/cached"
 	"platform-backend/contracts/repository/mock"
 	"platform-backend/models"
-	"platform-backend/utils"
 	"testing"
 	"time"
+
+	"github.com/eoscanada/eos-go"
+	"github.com/stretchr/testify/assert"
 )
 
-func getInitialData() (eos.AccountResp, models.Game, models.Casino, []*models.CasinoGame, []*models.BonusBalance) {
+func getInitialData() (eos.AccountResp, models.Game, models.Casino,
+	[]*models.CasinoGame, []*models.BonusBalance, map[string]eos.Asset) {
 	testRawAccount := eos.AccountResp{
 		AccountName: "testuser",
 		CoreLiquidBalance: eos.Asset{
@@ -53,18 +54,26 @@ func getInitialData() (eos.AccountResp, models.Game, models.Casino, []*models.Ca
 		}},
 	}}
 	testBonusBalance := []*models.BonusBalance{{
-		Balance:  eos.Asset{Amount: 10000, Symbol: eos.Symbol{Precision: 4, Symbol: utils.DAOBetAssetSymbol}},
+		Balance:  eos.Asset{Amount: 10000, Symbol: eos.Symbol{Precision: 4, Symbol: contracts.CoreSymbol}},
 		CasinoId: 0,
 	}}
 
-	return testRawAccount, testGame, testCasino, testCasinoGames, testBonusBalance
+	eth, _ := eos.NewAssetFromString("4.0000 ETH")
+	btc, _ := eos.NewAssetFromString("0.42 BTC")
+
+	testCustomTokenBalances := map[string]eos.Asset{
+		"ETH": eth,
+		"BTC": btc,
+	}
+	return testRawAccount, testGame, testCasino, testCasinoGames, testBonusBalance, testCustomTokenBalances
 }
 
 func TestCacheInitialization(t *testing.T) {
 	cacheTTL := int64(1)
 	mockRepo := mock.NewMockedListingRepo()
 
-	testRawAccount, testGame, testCasino, testCasinoGames, testBonusBalances := getInitialData()
+	testRawAccount, testGame, testCasino, testCasinoGames,
+		testBonusBalances, testCustomTokenBalances := getInitialData()
 
 	mockRepo.AddRawAccount(&testRawAccount)
 	mockRepo.AddGame(&testGame)
@@ -74,7 +83,12 @@ func TestCacheInitialization(t *testing.T) {
 	cachedMockRepo, err := cached.NewCachedListingRepo(mockRepo, cacheTTL)
 	assert.NoError(t, err)
 
-	mockRepo.On("GetBonusBalances", []models.Casino{testCasino}, string(testRawAccount.AccountName)).Return(testBonusBalances, nil)
+	mockRepo.
+		On("GetBonusBalances", []models.Casino{testCasino}, string(testRawAccount.AccountName)).
+		Return(testBonusBalances, nil)
+	mockRepo.
+		On("GetCustomTokenBalances", testCasino.Contract, string(testRawAccount.AccountName)).
+		Return(testCustomTokenBalances, nil)
 
 	playerInfo, err := cachedMockRepo.GetPlayerInfo(context.Background(), string(testRawAccount.AccountName))
 	assert.NoError(t, err)
@@ -99,7 +113,7 @@ func TestCacheAddNewItem(t *testing.T) {
 	cacheTTL := int64(1)
 	mockRepo := mock.NewMockedListingRepo()
 
-	testRawAccount, testGame, testCasino, testCasinoGames, _ := getInitialData()
+	testRawAccount, testGame, testCasino, testCasinoGames, _, _ := getInitialData()
 
 	mockRepo.AddRawAccount(&testRawAccount)
 	mockRepo.AddGame(&testGame)
@@ -137,7 +151,7 @@ func TestCacheRemoveItem(t *testing.T) {
 	cacheTTL := int64(1)
 	mockRepo := mock.NewMockedListingRepo()
 
-	testRawAccount, testGame, testCasino, testCasinoGames, _ := getInitialData()
+	testRawAccount, testGame, testCasino, testCasinoGames, _, _ := getInitialData()
 
 	mockRepo.AddRawAccount(&testRawAccount)
 	mockRepo.AddGame(&testGame)
@@ -176,7 +190,7 @@ func TestCacheUpdateItem(t *testing.T) {
 	cacheTTL := int64(1)
 	mockRepo := mock.NewMockedListingRepo()
 
-	testRawAccount, testGame, testCasino, testCasinoGames, _ := getInitialData()
+	testRawAccount, testGame, testCasino, testCasinoGames, _, _ := getInitialData()
 
 	mockRepo.AddRawAccount(&testRawAccount)
 	mockRepo.AddGame(&testGame)
@@ -212,7 +226,7 @@ func TestSortedGames(t *testing.T) {
 	cacheTTL := int64(1)
 	mockRepo := mock.NewMockedListingRepo()
 
-	testRawAccount, testGame, testCasino, testCasinoGames, _ := getInitialData()
+	testRawAccount, testGame, testCasino, testCasinoGames, _, _ := getInitialData()
 
 	mockRepo.AddRawAccount(&testRawAccount)
 	mockRepo.AddGame(&testGame)
@@ -242,7 +256,7 @@ func TestSortedCasinos(t *testing.T) {
 	cacheTTL := int64(1)
 	mockRepo := mock.NewMockedListingRepo()
 
-	testRawAccount, testGame, testCasino, testCasinoGames, _ := getInitialData()
+	testRawAccount, testGame, testCasino, testCasinoGames, _, _ := getInitialData()
 
 	mockRepo.AddRawAccount(&testRawAccount)
 	mockRepo.AddGame(&testGame)
