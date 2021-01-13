@@ -482,6 +482,42 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 	return nil
 }
 
+func (a *GameSessionsUseCase) getTokenContract(asset *eos.Asset) (*eos.AccountName, error) {
+	symbolCode := asset.Symbol.MustSymbolCode().String()
+	tokenPK, err := eos.ExtendedStringToName(symbolCode)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := a.bc.Api.GetTableRows(eos.GetTableRowsRequest{
+		Code:       a.platformContract,
+		Scope:      a.platformContract,
+		Table:      "token",
+		LowerBound: strconv.FormatUint(tokenPK, 10),
+		UpperBound: strconv.FormatUint(tokenPK, 10),
+		Limit:      1,
+		JSON:       true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var tokens []struct {
+		TokenName string          `json:"token_name"`
+		Contract  eos.AccountName `json:"contract"`
+	}
+	err = resp.JSONToStructs(&tokens)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(tokens) != 1 {
+		return nil, fmt.Errorf("platform tokens %s must be length 1", symbolCode)
+	}
+
+	return &tokens[0].Contract, nil
+}
+
 func (a *GameSessionsUseCase) getTransferAction(
 	playerName string,
 	gameName string,
@@ -494,10 +530,24 @@ func (a *GameSessionsUseCase) getTransferAction(
 
 	memo := strconv.FormatUint(sessionID, 10) // IMPORTANT!
 
+	tokenContract, err := a.getTokenContract(amount)
+	if err != nil {
+		return nil, err
+	}
+
 	// Add transfer deposit action
-	transferAction := token.NewTransfer(from, to, *amount, memo)
-	transferAction.Authorization = []eos.PermissionLevel{
-		{Actor: from, Permission: eos.PN(casinoName)},
+	transferAction := &eos.Action{
+		Account: *tokenContract,
+		Name:    eos.ActN("transfer"),
+		Authorization: []eos.PermissionLevel{
+			{Actor: from, Permission: eos.PN(casinoName)},
+		},
+		ActionData: eos.NewActionData(token.Transfer{
+			From:     from,
+			To:       to,
+			Quantity: *amount,
+			Memo:     memo,
+		}),
 	}
 
 	return transferAction, nil
