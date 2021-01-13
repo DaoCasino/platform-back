@@ -564,10 +564,16 @@ func (a *GameSessionsUseCase) getAssets(asset *eos.Asset, playerInfo *models.Pla
 	}
 
 	assetType := asset.Symbol.Symbol
-	playerBalance, ok := playerInfo.CustomTokenBalances[assetType]
-	if !ok {
-		return nil, nil, fmt.Errorf("invalid custom token")
+	playerBalance := playerInfo.Balance
+
+	if assetType != contracts.CoreSymbol {
+		var ok bool
+		playerBalance, ok = playerInfo.CustomTokenBalances[assetType]
+		if !ok {
+			return nil, nil, fmt.Errorf("invalid custom token")
+		}
 	}
+
 	if assetType == contracts.CoreSymbol {
 		for _, bb := range playerInfo.BonusBalances {
 			if bb.CasinoId == casinoID {
