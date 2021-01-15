@@ -4,36 +4,40 @@ import (
 	"context"
 	"github.com/stretchr/testify/assert"
 	mock2 "github.com/stretchr/testify/mock"
+	"platform-backend/models"
 	"platform-backend/referrals/repository/mock"
 	"testing"
 )
 
-func TestGetOrCreateReferralID(t *testing.T) {
+func TestGetOrCreateReferral(t *testing.T) {
 	var (
-		repo        = new(mock.ReferralRepoMock)
-		refUseCase  = NewReferralsUseCase(repo, true)
-		accountName = "somename"
-		mockRefID   = "REFblablablablax"
-		ctx         = context.Background()
+		repo              = new(mock.ReferralRepoMock)
+		refUseCase        = NewReferralsUseCase(repo, true)
+		accountName       = "somename"
+		mockRefID         = "REFblablablablax"
+		mockTotalReferred = 2
+		expectedRef       = &models.Referral{ID: mockRefID, TotalReferred: mockTotalReferred}
+		ctx               = context.Background()
 	)
 
 	repo.On("GetReferralID", accountName).Return(mockRefID, nil)
+	repo.On("GetTotalReferred", mockRefID).Return(mockTotalReferred, nil)
 
-	refID, err := refUseCase.GetOrCreateReferralID(ctx, accountName)
+	ref, err := refUseCase.GetOrCreateReferral(ctx, accountName)
 	assert.NoError(t, err)
-	assert.Equal(t, mockRefID, refID)
+	assert.Equal(t, expectedRef, ref)
 
 	repo.On("GetReferralID", accountName).Return("", nil)
 	repo.On("AddReferralID", accountName, mock2.MatchedBy(func(refID string) bool {
 		return true
 	})).Return(nil)
 
-	refID, err = refUseCase.GetOrCreateReferralID(ctx, accountName)
+	ref, err = refUseCase.GetOrCreateReferral(ctx, accountName)
 	assert.NoError(t, err)
-	assert.Regexp(t, "REF[0-9a-zA-Z]{13}", refID)
+	assert.Regexp(t, "REF[0-9a-zA-Z]{13}", ref.ID)
 
 	refUseCase = NewReferralsUseCase(repo, false)
-	refID, err = refUseCase.GetOrCreateReferralID(ctx, accountName)
+	ref, err = refUseCase.GetOrCreateReferral(ctx, accountName)
 	assert.NoError(t, err)
-	assert.Equal(t, "", refID)
+	assert.Nil(t, ref)
 }
