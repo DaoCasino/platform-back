@@ -3,29 +3,31 @@ package usecase
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
+	mock2 "platform-backend/affiliatestats/repository/mock"
 	"platform-backend/cashback/repository/mock"
 	"testing"
 )
 
 func TestCalculateCashback(t *testing.T) {
 	var (
-		mockRepo      = new(mock.CashbackRepoMock)
-		cashbackRatio = 0.1
-		ethToBetRate  = 0.000001
-		active        = true
-		userGGRs      = map[string]float64{
+		mockCashbackRepo = new(mock.CashbackRepoMock)
+		mockAffStatsRepo = new(mock2.AffiliateStatsRepoMock)
+		cashbackRatio    = 0.1
+		ethToBetRate     = 0.000001
+		userGGRs         = map[string]float64{
 			"BET": 1234567,
 		}
 		accountName           = "daosomeuser"
-		cashbackUC            = NewCashbackUseCase(mockRepo, cashbackRatio, ethToBetRate, active)
+		cashbackUC            = NewCashbackUseCase(mockCashbackRepo, mockAffStatsRepo, cashbackRatio, ethToBetRate, true)
 		ctx                   = context.Background()
 		expectedCashbackValue = 0.1184567
 		expectedCashback      = &expectedCashbackValue
 	)
 
-	mockRepo.On("GetPaidCashback", accountName).Return(0.005, nil)
+	mockCashbackRepo.On("GetPaidCashback", accountName).Return(0.005, nil)
+	mockAffStatsRepo.On("GetUserGGR", accountName).Return(userGGRs, nil)
 
-	cashback, err := cashbackUC.CalculateCashback(ctx, accountName, userGGRs)
+	cashback, err := cashbackUC.CalculateCashback(ctx, accountName)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedCashback, cashback)
 }

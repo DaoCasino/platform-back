@@ -115,11 +115,7 @@ func ProcessAccountInfo(
 		}
 	}
 
-	userGGR, err := req.Repos.AffiliateStats.GetUserGGR(context, req.User.AccountName)
-	if err != nil {
-		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
-	}
-	cashback, err := req.UseCases.Cashback.CalculateCashback(context, req.User.AccountName, userGGR)
+	cashback, err := req.UseCases.Cashback.CalculateCashback(context, req.User.AccountName)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}

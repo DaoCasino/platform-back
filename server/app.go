@@ -136,6 +136,7 @@ func NewApp(config *config.Config) (*App, error) {
 	refsUC := referralsUC.NewReferralsUseCase(refsRepo, config.ActiveFeatures.Referrals)
 	cbUC := cashbackUC.NewCashbackUseCase(
 		cbRepo,
+		affStatsRepo,
 		config.Cashback.Ratio,
 		config.Cashback.EthToBetRate,
 		config.ActiveFeatures.Cashback,
