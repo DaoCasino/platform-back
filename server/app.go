@@ -18,6 +18,8 @@ import (
 	authPgRepo "platform-backend/auth/repository/postgres"
 	authUC "platform-backend/auth/usecase"
 	"platform-backend/blockchain"
+	cashbackRepo "platform-backend/cashback/repository/postgres"
+	cashbackUC "platform-backend/cashback/usecase"
 	"platform-backend/config"
 	"platform-backend/contracts"
 	contractsBcRepo "platform-backend/contracts/repository/blockchain"
@@ -121,6 +123,7 @@ func NewApp(config *config.Config) (*App, error) {
 	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
 	refsRepo := referralsRepo.NewReferralPostgresRepo(db.DbPool)
 	affStatsRepo := affiliateStatsRepo.NewAffiliateStatsRepo(config.AffiliateStats.Url, config.ActiveFeatures.Referrals)
+	cbRepo := cashbackRepo.NewCashbackPostgresRepo(db.DbPool)
 
 	repos := repositories.NewRepositories(
 		contractRepo,
@@ -131,6 +134,12 @@ func NewApp(config *config.Config) (*App, error) {
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
 	contractUC := contractsUC.NewContractsUseCase(bc, config.ActiveFeatures.Bonus)
 	refsUC := referralsUC.NewReferralsUseCase(refsRepo, config.ActiveFeatures.Referrals)
+	cbUC := cashbackUC.NewCashbackUseCase(
+		cbRepo,
+		config.Cashback.Ratio,
+		config.Cashback.EthToBetRate,
+		config.ActiveFeatures.Cashback,
+	)
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
@@ -159,6 +168,7 @@ func NewApp(config *config.Config) (*App, error) {
 		),
 		subsUC,
 		refsUC,
+		cbUC,
 	)
 
 	events := make(chan *eventlistener.EventMessage)

@@ -18,3 +18,9 @@ func (r *AffiliateStatsRepoMock) GetStats(
 
 	return args.Get(0).(*models.ReferralStats), args.Error(1)
 }
+
+func (r *AffiliateStatsRepoMock) GetUserGGR(ctx context.Context, accountName string) (map[string]float64, error) {
+	args := r.Called(accountName)
+
+	return args.Get(0).(map[string]float64), args.Error(1)
+}

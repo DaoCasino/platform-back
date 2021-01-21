@@ -25,6 +25,7 @@ type PlayerInfoResponse struct {
 	ReferralID          *string               `json:"referralId,omitempty"`
 	ReferralRevenue     *float64              `json:"referralRevenue,omitempty"`
 	Referral            *ReferralResponse     `json:"referral,omitempty"`
+	Cashback            *float64              `json:"cashback,omitempty"`
 }
 
 type BonusBalanceResponse map[string]BonusBalance
@@ -41,7 +42,11 @@ type ReferralResponse struct {
 }
 
 func toPlayerInfoResponse(
-	p *models.PlayerInfo, u *models.User, ref *models.Referral, refStats *models.ReferralStats,
+	p *models.PlayerInfo,
+	u *models.User,
+	ref *models.Referral,
+	refStats *models.ReferralStats,
+	cashback *float64,
 ) *PlayerInfoResponse {
 	ret := &PlayerInfoResponse{
 		AccountName:         u.AccountName,
@@ -52,6 +57,7 @@ func toPlayerInfoResponse(
 		ActivePermission:    p.ActivePermission,
 		OwnerPermission:     p.OwnerPermission,
 		LinkedCasinos:       make([]*CasinoResponse, len(p.LinkedCasinos)),
+		Cashback:            cashback,
 	}
 	if ref != nil {
 		ret.ReferralID = &ref.ID
@@ -109,5 +115,14 @@ func ProcessAccountInfo(
 		}
 	}
 
-	return toPlayerInfoResponse(player, req.User, ref, refStats), nil
+	userGGR, err := req.Repos.AffiliateStats.GetUserGGR(context, req.User.AccountName)
+	if err != nil {
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+	}
+	cashback, err := req.UseCases.Cashback.CalculateCashback(context, req.User.AccountName, userGGR)
+	if err != nil {
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+	}
+
+	return toPlayerInfoResponse(player, req.User, ref, refStats, cashback), nil
 }

@@ -49,6 +49,11 @@
   },
   "activeFeatures": {
     "bonus": true,
-    "referrals": false
+    "referrals": false,
+    "cashback": true
+  },
+  "cashback": {
+    "ratio": 0.01,
+    "eth_to_bet_rate": 0.000006400
   }
 }

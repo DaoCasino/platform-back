@@ -12,6 +12,7 @@ import (
 )
 
 const statsPath = "/stats"
+const userGGRPath = "/stats/user/ggr"
 
 type AffiliateStatsRepo struct {
 	affiliateStatsURL string
@@ -63,4 +64,25 @@ func (r *AffiliateStatsRepo) GetStats(
 	}
 
 	return stats, nil
+}
+
+func (r *AffiliateStatsRepo) GetUserGGR(ctx context.Context, accountName string) (map[string]float64, error) {
+	resp, err := http.Get(r.affiliateStatsURL + userGGRPath + "?account_name=" + accountName)
+	if err != nil {
+		log.Debug().Msgf("get user ggr request error: %s", err.Error())
+		return nil, fmt.Errorf("get user ggr request error: %w", err)
+	}
+
+	if resp.StatusCode != 200 {
+		log.Debug().Msgf("get user ggr respond with error: %s" + resp.Status)
+		return nil, fmt.Errorf("get user ggr respond with error: %s" + resp.Status)
+	}
+
+	var userGGR map[string]float64
+	if err := json.NewDecoder(resp.Body).Decode(&userGGR); err != nil {
+		log.Debug().Msgf("get user ggr response parsing error: %s", err.Error())
+		return nil, fmt.Errorf("get user ggr response parsing error: %w", err)
+	}
+
+	return userGGR, nil
 }
