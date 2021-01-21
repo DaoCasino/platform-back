@@ -15,6 +15,7 @@ const (
 	selectAffIDByAccNameStmt   = "SELECT affiliate_id FROM affiliates WHERE account_name = $1"
 	insertUserStmt             = "INSERT INTO users VALUES ($1, $2)"
 	insertAffiliateStmt        = "INSERT INTO affiliates VALUES ($1, $2)"
+	insertCashbackUserStmt     = "INSERT INTO cashback(account_name) VALUES($1)"
 	updateUserTokenNonce       = "UPDATE users SET token_nonce = token_nonce + 1 WHERE account_name = $1"
 	invalidateOldestSessions   = "DELETE FROM active_token_nonces WHERE id = (SELECT id FROM active_token_nonces WHERE account_name = $1 ORDER BY id ASC LIMIT 1)"
 	insertActiveSession        = "INSERT INTO active_token_nonces (account_name, token_nonce) VALUES ($1, $2)"
@@ -102,6 +103,12 @@ func (r *UserPostgresRepo) AddUser(ctx context.Context, user *models.User) error
 	}
 
 	_, err = tx.Exec(ctx, insertUserStmt, user.AccountName, user.Email)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+
+	_, err = tx.Exec(ctx, insertCashbackUserStmt, user.AccountName)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return err
