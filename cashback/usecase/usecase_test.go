@@ -31,3 +31,25 @@ func TestCalculateCashback(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedCashback, cashback)
 }
+
+func TestSetEthAddress(t *testing.T) {
+	var (
+		mockCashbackRepo = new(mock.CashbackRepoMock)
+		mockAffStatsRepo = new(mock2.AffiliateStatsRepoMock)
+		cashbackRatio    = 0.1
+		ethToBetRate     = 0.000001
+		accountName      = "daosomeuser"
+		cashbackUC       = NewCashbackUseCase(mockCashbackRepo, mockAffStatsRepo, cashbackRatio, ethToBetRate, true)
+		ctx              = context.Background()
+		ethAddr          = "0x323b5d4c32345ced77393b3530b1eed0f346429d"
+		invalidEthAddr   = "0xXYZb5d4c32345ced77393b3530b1eed0f346429d"
+	)
+
+	mockCashbackRepo.On("SetEthAddress", accountName, ethAddr).Return(nil)
+
+	err := cashbackUC.SetEthAddress(ctx, accountName, invalidEthAddr)
+	assert.EqualError(t, ErrNonValidEthAddr, err.Error())
+
+	err = cashbackUC.SetEthAddress(ctx, accountName, ethAddr)
+	assert.NoError(t, err)
+}

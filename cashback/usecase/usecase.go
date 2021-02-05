@@ -2,10 +2,15 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"platform-backend/affiliatestats"
 	"platform-backend/cashback"
 	"platform-backend/utils"
+)
+
+var (
+	ErrNonValidEthAddr = fmt.Errorf("non valid eth address")
 )
 
 type CashbackUseCase struct {
@@ -32,10 +37,7 @@ func NewCashbackUseCase(
 	}
 }
 
-func (c *CashbackUseCase) CalculateCashback(
-	ctx context.Context,
-	accountName string,
-) (*float64, error) {
+func (c *CashbackUseCase) CalculateCashback(ctx context.Context, accountName string) (*float64, error) {
 	if !c.active {
 		return nil, nil
 	}
@@ -51,4 +53,16 @@ func (c *CashbackUseCase) CalculateCashback(
 	}
 	cb := math.Max(userGGR[utils.DAOBetAssetSymbol]*c.ethToBetRate*c.cashbackRatio-paidCashback, 0)
 	return &cb, nil
+}
+
+func (c *CashbackUseCase) SetEthAddress(ctx context.Context, accountName string, ethAddress string) error {
+	if !c.active {
+		return nil
+	}
+
+	if !utils.IsValidEthAddress(ethAddress) {
+		return ErrNonValidEthAddr
+	}
+
+	return c.cashbackRepo.SetEthAddress(ctx, accountName, ethAddress)
 }

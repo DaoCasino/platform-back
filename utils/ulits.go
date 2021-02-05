@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/eoscanada/eos-go"
+	"regexp"
 	"strconv"
 )
 
@@ -28,4 +29,9 @@ func ExtractAssetValueAndSymbol(asset *eos.Asset) (int64, string, int) {
 	value := int64(asset.Amount)
 	symbol := asset.Symbol
 	return value, symbol.Symbol, int(asset.Precision)
+}
+
+func IsValidEthAddress(v string) bool {
+	re := regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
+	return re.MatchString(v)
 }

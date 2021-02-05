@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"platform-backend/auth"
+	"platform-backend/cashback"
 	"platform-backend/contracts"
 	"platform-backend/models"
 	"platform-backend/server/session_manager"
@@ -21,6 +22,7 @@ import (
 type AuthUseCase struct {
 	userRepo        auth.UserRepository
 	smRepo          session_manager.Repository
+	cashbackRepo    cashback.Repository
 	contractUC      contracts.UseCase
 	jwtSecret       []byte
 	refreshTokenTTL int64
@@ -31,12 +33,13 @@ type AuthUseCase struct {
 	walletClientSecret string
 }
 
-func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository, contractUC contracts.UseCase,
-	jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64,
+func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository, cashbackRepo cashback.Repository,
+	contractUC contracts.UseCase, jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64,
 	walletUrl string, walletClientId int64, walletClientSecret string) *AuthUseCase {
 	return &AuthUseCase{
 		userRepo:        userRepo,
 		smRepo:          smRepo,
+		cashbackRepo:    cashbackRepo,
 		contractUC:      contractUC,
 		jwtSecret:       jwtSecret,
 		accessTokenTTL:  accessTokenTTL,
@@ -112,6 +115,11 @@ func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User, casinoName 
 	if !hasUser {
 		if err := a.userRepo.AddUser(ctx, user); err != nil {
 			log.Debug().Msgf("User add error: %s", err.Error())
+			return "", "", err
+		}
+
+		if err := a.cashbackRepo.AddUser(ctx, user.AccountName); err != nil {
+			log.Debug().Msgf("Cashback user add error: %s", err.Error())
 			return "", "", err
 		}
 
@@ -275,7 +283,26 @@ func (a *AuthUseCase) OptOut(ctx context.Context, accessToken string) error {
 		return err
 	}
 	claims := token.Claims.(jwt.MapClaims)
-	return a.userRepo.DeleteEmail(ctx, claims["account_name"].(string))
+	accountName := claims["account_name"].(string)
+	if err := a.cashbackRepo.DeleteEthAddress(ctx, accountName); err != nil {
+		return err
+	}
+	return a.userRepo.DeleteEmail(ctx, accountName)
+}
+
+func (a *AuthUseCase) AccountNameFromToken(ctx context.Context, accessToken string) (string, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	token, err := a.parseToken(accessToken)
+	if err != nil {
+		return "", err
+	}
+	if err := a.validateAccessToken(ctx, token); err != nil {
+		return "", err
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	return claims["account_name"].(string), nil
 }
 
 func (a *AuthUseCase) validateToken(ctx context.Context, token *jwt.Token) error {

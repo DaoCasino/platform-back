@@ -64,6 +64,11 @@ type OptOutRequest struct {
 	AccessToken string `json:"accessToken"`
 }
 
+type SetEthAddrRequest struct {
+	AccessToken string `json:"accessToken"`
+	EthAddress  string `json:"ethAddress"`
+}
+
 type App struct {
 	httpHandler http.Handler
 	config      *config.Config
@@ -146,6 +151,7 @@ func NewApp(config *config.Config) (*App, error) {
 		authUC.NewAuthUseCase(
 			uRepo,
 			smRepo,
+			cbRepo,
 			contractUC,
 			[]byte(config.Auth.JwtSecret),
 			config.Auth.AccessTokenTTL,
@@ -211,6 +217,10 @@ func NewApp(config *config.Config) (*App, error) {
 		optOutHandler(app, w, r)
 	})
 
+	setEthAddrHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setEthAddrHandler(app, w, r)
+	})
+
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
 
 	requestDurationsMiddleware := func(next http.Handler) http.Handler {
@@ -250,6 +260,7 @@ func NewApp(config *config.Config) (*App, error) {
 	handleFunc("logout", logoutHandler)
 	handleFunc("refresh_token", refreshTokensHandler)
 	handleFunc("optout", optOutHandler)
+	handleFunc("set_eth_addr", setEthAddrHandler)
 	handleFunc("ping", pingHandler)
 	handleFunc("who", whoHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(

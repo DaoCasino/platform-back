@@ -45,3 +45,9 @@ func (m *AuthUseCaseMock) OptOut(ctx context.Context, accessToken string) error 
 
 	return args.Error(0)
 }
+
+func (m *AuthUseCaseMock) AccountNameFromToken(ctx context.Context, accessToken string) (string, error) {
+	args := m.Called(accessToken)
+
+	return args.String(0), args.Error(1)
+}
