@@ -16,7 +16,7 @@ func (m *AuthUseCaseMock) ResolveUser(ctx context.Context, tmpToken string) (*mo
 	return args.Get(0).(*models.User), args.Error(1)
 }
 
-func (m *AuthUseCaseMock) SignUp(ctx context.Context, user *models.User) (string, string, error) {
+func (m *AuthUseCaseMock) SignUp(ctx context.Context, user *models.User, casinoName string) (string, string, error) {
 	args := m.Called(user)
 
 	return args.Get(0).(string), args.Get(1).(string), args.Error(2)

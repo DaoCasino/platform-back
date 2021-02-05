@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"platform-backend/auth/repository/mock"
+	mock2 "platform-backend/cashback/repository/mock"
 	"platform-backend/contracts/usecase"
 	"platform-backend/models"
 	smMockRepo "platform-backend/server/session_manager/repository/mock"
@@ -13,12 +14,14 @@ import (
 
 func TestAuthFlow(t *testing.T) {
 	repo := new(mock.UserStorageMock)
+	cbRepo := new(mock2.CashbackRepoMock)
 	sm := new(smMockRepo.MockRepository)
 	contractUC := new(usecase.ContractsUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
+		cbRepo,
 		contractUC,
 		[]byte("secret"),
 		10,
@@ -50,6 +53,7 @@ func TestAuthFlow(t *testing.T) {
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("AddUser", user).Return(nil)
+	cbRepo.On("AddUser", user.AccountName).Return(nil)
 	contractUC.On("SendBonusToNewPlayer", user.AccountName, casinoName).Return(nil)
 	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
@@ -69,12 +73,14 @@ func TestAuthFlow(t *testing.T) {
 
 func TestTokenRefresh(t *testing.T) {
 	repo := new(mock.UserStorageMock)
+	cbRepo := new(mock2.CashbackRepoMock)
 	sm := new(smMockRepo.MockRepository)
 	contractUC := new(usecase.ContractsUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
+		cbRepo,
 		contractUC,
 		[]byte("secret"),
 		10,
@@ -106,6 +112,7 @@ func TestTokenRefresh(t *testing.T) {
 	// Sign Up (Get auth tokens)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("AddUser", user).Return(nil)
+	cbRepo.On("AddUser", user.AccountName).Return(nil)
 	contractUC.On("SendBonusToNewPlayer", user.AccountName, casinoName).Return(nil)
 	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
@@ -134,11 +141,13 @@ func TestTokenRefresh(t *testing.T) {
 func TestSignUpWithoutAffiliate(t *testing.T) {
 	repo := new(mock.UserStorageMock)
 	sm := new(smMockRepo.MockRepository)
+	cbRepo := new(mock2.CashbackRepoMock)
 	contractUC := new(usecase.ContractsUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
+		cbRepo,
 		contractUC,
 		[]byte("secret"),
 		10,
@@ -168,6 +177,7 @@ func TestSignUpWithoutAffiliate(t *testing.T) {
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("AddUser", user).Return(nil)
+	cbRepo.On("AddUser", user.AccountName).Return(nil)
 	contractUC.On("SendBonusToNewPlayer", user.AccountName, casinoName).Return(nil)
 	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
@@ -178,11 +188,13 @@ func TestSignUpWithoutAffiliate(t *testing.T) {
 func TestOptOut(t *testing.T) {
 	repo := new(mock.UserStorageMock)
 	sm := new(smMockRepo.MockRepository)
+	cbRepo := new(mock2.CashbackRepoMock)
 	contractUC := new(usecase.ContractsUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
+		cbRepo,
 		contractUC,
 		[]byte("secret"),
 		10,
@@ -214,6 +226,7 @@ func TestOptOut(t *testing.T) {
 	// Sign Up (Get auth token)
 	repo.On("HasUser", user.AccountName).Return(false, nil)
 	repo.On("AddUser", user).Return(nil)
+	cbRepo.On("AddUser", user.AccountName).Return(nil)
 	contractUC.On("SendBonusToNewPlayer", user.AccountName, casinoName).Return(nil)
 	repo.On("HasEmail", user.AccountName).Return(true, nil)
 	repo.On("AddNewSession", user.AccountName).Return(nextTokenNonce, nil)
@@ -222,6 +235,7 @@ func TestOptOut(t *testing.T) {
 
 	repo.On("IsSessionActive", user.AccountName, tokenNonce).Return(true, nil)
 	repo.On("DeleteEmail", user.AccountName).Return(nil)
+	cbRepo.On("DeleteEthAddress", user.AccountName).Return(nil)
 	err = uc.OptOut(ctx, accessToken)
 	assert.NoError(t, err)
 
