@@ -18,6 +18,8 @@ import (
 	authPgRepo "platform-backend/auth/repository/postgres"
 	authUC "platform-backend/auth/usecase"
 	"platform-backend/blockchain"
+	cashbackRepo "platform-backend/cashback/repository/postgres"
+	cashbackUC "platform-backend/cashback/usecase"
 	"platform-backend/config"
 	"platform-backend/contracts"
 	contractsBcRepo "platform-backend/contracts/repository/blockchain"
@@ -60,6 +62,11 @@ type AuthRequest struct {
 
 type OptOutRequest struct {
 	AccessToken string `json:"accessToken"`
+}
+
+type SetEthAddrRequest struct {
+	AccessToken string `json:"accessToken"`
+	EthAddress  string `json:"ethAddress"`
 }
 
 type App struct {
@@ -121,6 +128,7 @@ func NewApp(config *config.Config) (*App, error) {
 	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
 	refsRepo := referralsRepo.NewReferralPostgresRepo(db.DbPool)
 	affStatsRepo := affiliateStatsRepo.NewAffiliateStatsRepo(config.AffiliateStats.Url, config.ActiveFeatures.Referrals)
+	cbRepo := cashbackRepo.NewCashbackPostgresRepo(db.DbPool)
 
 	repos := repositories.NewRepositories(
 		contractRepo,
@@ -131,11 +139,19 @@ func NewApp(config *config.Config) (*App, error) {
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
 	contractUC := contractsUC.NewContractsUseCase(bc, config.ActiveFeatures.Bonus)
 	refsUC := referralsUC.NewReferralsUseCase(refsRepo, config.ActiveFeatures.Referrals)
+	cbUC := cashbackUC.NewCashbackUseCase(
+		cbRepo,
+		affStatsRepo,
+		config.Cashback.Ratio,
+		config.Cashback.EthToBetRate,
+		config.ActiveFeatures.Cashback,
+	)
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			uRepo,
 			smRepo,
+			cbRepo,
 			contractUC,
 			[]byte(config.Auth.JwtSecret),
 			config.Auth.AccessTokenTTL,
@@ -159,6 +175,7 @@ func NewApp(config *config.Config) (*App, error) {
 		),
 		subsUC,
 		refsUC,
+		cbUC,
 	)
 
 	events := make(chan *eventlistener.EventMessage)
@@ -200,6 +217,10 @@ func NewApp(config *config.Config) (*App, error) {
 		optOutHandler(app, w, r)
 	})
 
+	setEthAddrHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setEthAddrHandler(app, w, r)
+	})
+
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
 
 	requestDurationsMiddleware := func(next http.Handler) http.Handler {
@@ -239,6 +260,7 @@ func NewApp(config *config.Config) (*App, error) {
 	handleFunc("logout", logoutHandler)
 	handleFunc("refresh_token", refreshTokensHandler)
 	handleFunc("optout", optOutHandler)
+	handleFunc("set_eth_addr", setEthAddrHandler)
 	handleFunc("ping", pingHandler)
 	handleFunc("who", whoHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(

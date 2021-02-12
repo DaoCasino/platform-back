@@ -65,6 +65,12 @@ type AffiliateStatsConfig struct {
 type ActiveFeaturesConfig struct {
 	Bonus     bool `default:"true" json:"bonus"`
 	Referrals bool `default:"true" json:"referrals"`
+	Cashback  bool `default:"true" json:"cashback"`
+}
+
+type CashbackConfig struct {
+	Ratio        float64 `json:"ratio"`
+	EthToBetRate float64 `json:"eth_to_bet_rate"`
 }
 
 type Config struct {
@@ -76,6 +82,7 @@ type Config struct {
 	Signidice       SignidiceConfig      `json:"signidice"`
 	AffiliateStats  AffiliateStatsConfig `json:"affiliateStats"`
 	ActiveFeatures  ActiveFeaturesConfig `json:"activeFeatures"`
+	Cashback        CashbackConfig       `json:"cashback"`
 	LogLevel        string               `json:"loglevel"`
 	Port            string               `json:"port"`
 }

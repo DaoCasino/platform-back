@@ -169,10 +169,35 @@ func optOutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := app.useCases.Auth.OptOut(context.Background(), req.AccessToken)
-	if err != nil {
+	if err := app.useCases.Auth.OptOut(context.Background(), req.AccessToken); err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("Opt-out error: %s", err.Error())
+		return
+	}
+
+	respondOK(w, true)
+}
+
+func setEthAddrHandler(app *App, w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New set eth addr request")
+
+	var req SetEthAddrRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		log.Debug().Msgf("Http body parse error, %s", err.Error())
+		return
+	}
+	ctx := context.Background()
+	accountName, err := app.useCases.Auth.AccountNameFromToken(ctx, req.AccessToken)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		log.Debug().Msgf("Parse token error: %s", err.Error())
+		return
+	}
+
+	if err := app.useCases.Cashback.SetEthAddress(ctx, accountName, req.EthAddress); err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		log.Debug().Msgf("Set eth addr error: %s", err.Error())
 		return
 	}
 
