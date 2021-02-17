@@ -9,6 +9,7 @@ var (
 	SelectPaidCashbackByAccNameStmt = "SELECT paid_cashback FROM cashback where account_name = $1"
 	AddUserStmt                     = "INSERT INTO cashback(account_name) VALUES ($1)"
 	SetEthAddrStmt                  = "UPDATE cashback SET eth_address = $2 WHERE account_name = $1"
+	SelectEthAddrStmt               = "SELECT eth_address from cashback WHERE account_name = $1"
 )
 
 type CashbackPostgresRepo struct {
@@ -65,4 +66,21 @@ func (r *CashbackPostgresRepo) SetEthAddress(ctx context.Context, accountName st
 
 	_, err = conn.Exec(ctx, SetEthAddrStmt, accountName, ethAddress)
 	return err
+}
+
+func (r *CashbackPostgresRepo) GetEthAddress(ctx context.Context, accountName string) (*string, error) {
+	conn, err := r.dbPool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	ethAddr := new(string)
+
+	err = conn.QueryRow(ctx, SelectEthAddrStmt, accountName).Scan(&ethAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	return ethAddr, nil
 }
