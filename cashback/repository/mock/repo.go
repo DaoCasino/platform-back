@@ -32,3 +32,9 @@ func (r *CashbackRepoMock) SetEthAddress(ctx context.Context, accountName string
 
 	return args.Error(0)
 }
+
+func (r *CashbackRepoMock) GetEthAddress(ctx context.Context, accountName string) (*string, error) {
+	args := r.Called(accountName)
+
+	return args.Get(0).(*string), args.Error(1)
+}

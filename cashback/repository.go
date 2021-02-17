@@ -7,4 +7,5 @@ type Repository interface {
 	AddUser(ctx context.Context, accountName string) error
 	DeleteEthAddress(ctx context.Context, accountName string) error
 	SetEthAddress(ctx context.Context, accountName string, ethAddress string) error
+	GetEthAddress(ctx context.Context, accountName string) (*string, error)
 }

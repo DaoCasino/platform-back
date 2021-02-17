@@ -26,6 +26,7 @@ type PlayerInfoResponse struct {
 	ReferralRevenue     *float64              `json:"referralRevenue,omitempty"`
 	Referral            *ReferralResponse     `json:"referral,omitempty"`
 	Cashback            *float64              `json:"cashback,omitempty"`
+	EthAddress          *string               `json:"ethAddress,omitempty"`
 }
 
 type BonusBalanceResponse map[string]BonusBalance
@@ -47,6 +48,7 @@ func toPlayerInfoResponse(
 	ref *models.Referral,
 	refStats *models.ReferralStats,
 	cashback *float64,
+	ethAddr *string,
 ) *PlayerInfoResponse {
 	ret := &PlayerInfoResponse{
 		AccountName:         u.AccountName,
@@ -58,6 +60,7 @@ func toPlayerInfoResponse(
 		OwnerPermission:     p.OwnerPermission,
 		LinkedCasinos:       make([]*CasinoResponse, len(p.LinkedCasinos)),
 		Cashback:            cashback,
+		EthAddress:          ethAddr,
 	}
 	if ref != nil {
 		ret.ReferralID = &ref.ID
@@ -115,10 +118,15 @@ func ProcessAccountInfo(
 		}
 	}
 
+	ethAddr, err := req.Repos.Cashback.GetEthAddress(context, req.User.AccountName)
+	if err != nil {
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+	}
+
 	cashback, err := req.UseCases.Cashback.CalculateCashback(context, req.User.AccountName)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	return toPlayerInfoResponse(player, req.User, ref, refStats, cashback), nil
+	return toPlayerInfoResponse(player, req.User, ref, refStats, cashback, ethAddr), nil
 }

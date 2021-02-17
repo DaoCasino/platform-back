@@ -134,6 +134,7 @@ func NewApp(config *config.Config) (*App, error) {
 		contractRepo,
 		gsRepo,
 		affStatsRepo,
+		cbRepo,
 	)
 
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
