@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"math"
+	"platform-backend/cashback"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
 	"strconv"
@@ -25,7 +26,7 @@ type PlayerInfoResponse struct {
 	ReferralID          *string               `json:"referralId,omitempty"`
 	ReferralRevenue     *float64              `json:"referralRevenue,omitempty"`
 	Referral            *ReferralResponse     `json:"referral,omitempty"`
-	Cashback            *float64              `json:"cashback,omitempty"`
+	Cashback            *cashback.Info        `json:"cashback,omitempty"`
 	EthAddress          *string               `json:"ethAddress,omitempty"`
 }
 
@@ -47,7 +48,7 @@ func toPlayerInfoResponse(
 	u *models.User,
 	ref *models.Referral,
 	refStats *models.ReferralStats,
-	cashback *float64,
+	cashbackInfo *cashback.Info,
 	ethAddr *string,
 ) *PlayerInfoResponse {
 	ret := &PlayerInfoResponse{
@@ -59,7 +60,7 @@ func toPlayerInfoResponse(
 		ActivePermission:    p.ActivePermission,
 		OwnerPermission:     p.OwnerPermission,
 		LinkedCasinos:       make([]*CasinoResponse, len(p.LinkedCasinos)),
-		Cashback:            cashback,
+		Cashback:            cashbackInfo,
 		EthAddress:          ethAddr,
 	}
 	if ref != nil {
@@ -123,10 +124,10 @@ func ProcessAccountInfo(
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	cashback, err := req.UseCases.Cashback.CalculateCashback(context, req.User.AccountName)
+	cashbackInfo, err := req.UseCases.Cashback.CashbackInfo(context, req.User.AccountName)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	return toPlayerInfoResponse(player, req.User, ref, refStats, cashback, ethAddr), nil
+	return toPlayerInfoResponse(player, req.User, ref, refStats, cashbackInfo, ethAddr), nil
 }
