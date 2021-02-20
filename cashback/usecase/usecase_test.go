@@ -4,11 +4,12 @@ import (
 	"context"
 	"github.com/stretchr/testify/assert"
 	mock2 "platform-backend/affiliatestats/repository/mock"
+	cashback2 "platform-backend/cashback"
 	"platform-backend/cashback/repository/mock"
 	"testing"
 )
 
-func TestCalculateCashback(t *testing.T) {
+func TestCashbackInfo(t *testing.T) {
 	var (
 		mockCashbackRepo = new(mock.CashbackRepoMock)
 		mockAffStatsRepo = new(mock2.AffiliateStatsRepoMock)
@@ -17,19 +18,26 @@ func TestCalculateCashback(t *testing.T) {
 		userGGRs         = map[string]float64{
 			"BET": 1234567,
 		}
-		accountName           = "daosomeuser"
-		cashbackUC            = NewCashbackUseCase(mockCashbackRepo, mockAffStatsRepo, cashbackRatio, ethToBetRate, true)
-		ctx                   = context.Background()
-		expectedCashbackValue = 0.1184567
-		expectedCashback      = &expectedCashbackValue
+		paid                 = 0.005
+		accountName          = "daosomeuser"
+		cashbackUC           = NewCashbackUseCase(mockCashbackRepo, mockAffStatsRepo, cashbackRatio, ethToBetRate, true)
+		ctx                  = context.Background()
+		toPay                = 0.1184567
+		expectedCashbackInfo = &cashback2.Info{
+			ToPay:        toPay,
+			Paid:         paid,
+			GGR:          userGGRs["BET"],
+			Ratio:        cashbackRatio,
+			EthToBetRate: ethToBetRate,
+		}
 	)
 
-	mockCashbackRepo.On("GetPaidCashback", accountName).Return(0.005, nil)
+	mockCashbackRepo.On("GetPaidCashback", accountName).Return(paid, nil)
 	mockAffStatsRepo.On("GetUserGGR", accountName).Return(userGGRs, nil)
 
-	cashback, err := cashbackUC.CalculateCashback(ctx, accountName)
+	cashback, err := cashbackUC.CashbackInfo(ctx, accountName)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedCashback, cashback)
+	assert.Equal(t, expectedCashbackInfo, cashback)
 }
 
 func TestSetEthAddress(t *testing.T) {
