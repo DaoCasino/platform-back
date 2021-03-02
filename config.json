@@ -43,7 +43,7 @@
     "walletUrl": "url",
     "walletClientID": 0,
     "walletClientSecret": "secret",
-    "testAccounts": ["daomwzlzmuwz"]
+    "testAccounts": []
   },
   "affiliateStats": {
     "url": "localhost:8899"
