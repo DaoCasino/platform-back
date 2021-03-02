@@ -16,4 +16,6 @@ type UserRepository interface {
 	DeleteEmail(ctx context.Context, accountName string) error
 	HasEmail(ctx context.Context, accountName string) (bool, error)
 	AddEmail(ctx context.Context, user *models.User) error
+	GetTestAccountSalt(ctx context.Context) uint64
+	UpdateTestAccountSalt(ctx context.Context)
 }

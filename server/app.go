@@ -135,6 +135,7 @@ func NewApp(config *config.Config) (*App, error) {
 		gsRepo,
 		affStatsRepo,
 		cbRepo,
+		uRepo,
 	)
 
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
@@ -160,6 +161,7 @@ func NewApp(config *config.Config) (*App, error) {
 			config.Auth.WalletURL,
 			config.Auth.WalletClientID,
 			config.Auth.WalletClientSecret,
+			config.Auth.TestAccounts,
 		),
 		gameSessionUC.NewGameSessionsUseCase(
 			bc,

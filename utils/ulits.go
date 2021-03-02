@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"crypto/rand"
 	"github.com/eoscanada/eos-go"
+	"math"
+	"math/big"
 	"regexp"
 	"strconv"
 )
@@ -34,4 +37,12 @@ func ExtractAssetValueAndSymbol(asset *eos.Asset) (int64, string, int) {
 func IsValidEthAddress(v string) bool {
 	re := regexp.MustCompile("^0x[0-9a-fA-F]{40}$")
 	return re.MatchString(v)
+}
+
+func GetRandomUint64() uint64 {
+	n, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		panic(err) // panics if math.MaxInt64 <= 0, but it's impossible
+	}
+	return n.Uint64()
 }
