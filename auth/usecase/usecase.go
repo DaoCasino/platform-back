@@ -327,6 +327,11 @@ func (a *AuthUseCase) SignInTestAccount(
 		return nil, auth.ErrUserIsNotTest
 	}
 
+	user, err := a.userRepo.GetUser(ctx, accountName)
+	if err != nil {
+		return nil, auth.ErrUserNotFound
+	}
+
 	suid := ctx.Value("suid")
 	if suid == nil {
 		return nil, auth.ErrSessionNotFound
@@ -339,11 +344,6 @@ func (a *AuthUseCase) SignInTestAccount(
 	a.sig.Reset()
 	if hash != saltedAccountNameHash {
 		return nil, auth.ErrInvalidHash
-	}
-
-	user, err := a.userRepo.GetUser(ctx, accountName)
-	if err != nil {
-		return nil, auth.ErrUserNotFound
 	}
 
 	if err = a.smRepo.SetUser(suid.(uuid.UUID), user); err != nil {
