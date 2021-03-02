@@ -29,6 +29,7 @@ func TestAuthFlow(t *testing.T) {
 		"",
 		0,
 		"",
+		[]string{},
 	)
 
 	var (
@@ -88,6 +89,7 @@ func TestTokenRefresh(t *testing.T) {
 		"",
 		0,
 		"",
+		[]string{},
 	)
 
 	var (
@@ -155,6 +157,7 @@ func TestSignUpWithoutAffiliate(t *testing.T) {
 		"",
 		0,
 		"",
+		[]string{},
 	)
 
 	var (
@@ -202,6 +205,7 @@ func TestOptOut(t *testing.T) {
 		"",
 		0,
 		"",
+		[]string{},
 	)
 
 	var (
