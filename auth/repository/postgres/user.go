@@ -6,7 +6,9 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"platform-backend/db"
 	"platform-backend/models"
+	"platform-backend/utils"
 	"strconv"
+	"sync/atomic"
 )
 
 const (
@@ -38,14 +40,18 @@ type UserPostgresRepo struct {
 	dbPool          *pgxpool.Pool
 	maxSessions     int64
 	sessionLifetime int64
+	testAccountSalt *uint64
 }
 
 func NewUserPostgresRepo(dbPool *pgxpool.Pool, maxSessions int64, sessionLifetime int64) *UserPostgresRepo {
-	return &UserPostgresRepo{
+	repo := &UserPostgresRepo{
 		dbPool:          dbPool,
 		maxSessions:     maxSessions,
 		sessionLifetime: sessionLifetime,
+		testAccountSalt: new(uint64),
 	}
+	atomic.StoreUint64(repo.testAccountSalt, utils.GetRandomUint64())
+	return repo
 }
 
 func (r *UserPostgresRepo) HasUser(ctx context.Context, accountName string) (bool, error) {
@@ -243,6 +249,14 @@ func (r *UserPostgresRepo) AddEmail(ctx context.Context, user *models.User) erro
 
 	_, err = conn.Exec(ctx, updateEmailStmt, user.AccountName, user.Email)
 	return err
+}
+
+func (r *UserPostgresRepo) GetTestAccountSalt(ctx context.Context) uint64 {
+	return atomic.LoadUint64(r.testAccountSalt)
+}
+
+func (r *UserPostgresRepo) UpdateTestAccountSalt(ctx context.Context) {
+	atomic.StoreUint64(r.testAccountSalt, utils.GetRandomUint64())
 }
 
 func toModelUser(u *User, affiliateID string) *models.User {

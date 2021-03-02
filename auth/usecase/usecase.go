@@ -2,8 +2,11 @@ package usecase
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	hashpkg "hash"
 	"platform-backend/auth"
 	"platform-backend/cashback"
 	"platform-backend/contracts"
@@ -31,11 +34,18 @@ type AuthUseCase struct {
 	walletGqClient     *graphql.Client
 	walletClientId     int64
 	walletClientSecret string
+
+	sig          hashpkg.Hash
+	testAccounts map[string]struct{}
 }
 
 func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository, cashbackRepo cashback.Repository,
 	contractUC contracts.UseCase, jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64,
-	walletUrl string, walletClientId int64, walletClientSecret string) *AuthUseCase {
+	walletUrl string, walletClientId int64, walletClientSecret string, testAccounts []string) *AuthUseCase {
+	testAccountsMap := make(map[string]struct{})
+	for _, acc := range testAccounts {
+		testAccountsMap[acc] = struct{}{}
+	}
 	return &AuthUseCase{
 		userRepo:        userRepo,
 		smRepo:          smRepo,
@@ -48,6 +58,9 @@ func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Reposit
 		walletGqClient:     graphql.NewClient(walletUrl),
 		walletClientId:     walletClientId,
 		walletClientSecret: walletClientSecret,
+
+		sig:          hmac.New(sha256.New, jwtSecret),
+		testAccounts: testAccountsMap,
 	}
 }
 
@@ -303,6 +316,43 @@ func (a *AuthUseCase) AccountNameFromToken(ctx context.Context, accessToken stri
 	}
 	claims := token.Claims.(jwt.MapClaims)
 	return claims["account_name"].(string), nil
+}
+
+func (a *AuthUseCase) SignInTestAccount(
+	ctx context.Context,
+	accountName string,
+	saltedAccountNameHash string,
+) (*models.User, error) {
+	if _, exist := a.testAccounts[accountName]; !exist {
+		return nil, auth.ErrUserIsNotTest
+	}
+
+	suid := ctx.Value("suid")
+	if suid == nil {
+		return nil, auth.ErrSessionNotFound
+	}
+
+	salt := a.userRepo.GetTestAccountSalt(ctx)
+	saltStr := strconv.FormatUint(salt, 10)
+	a.sig.Write([]byte(accountName + saltStr))
+	hash := hex.EncodeToString(a.sig.Sum(nil))
+	a.sig.Reset()
+	if hash != saltedAccountNameHash {
+		return nil, auth.ErrInvalidHash
+	}
+
+	user, err := a.userRepo.GetUser(ctx, accountName)
+	if err != nil {
+		return nil, auth.ErrUserNotFound
+	}
+
+	if err = a.smRepo.SetUser(suid.(uuid.UUID), user); err != nil {
+		return nil, err
+	}
+
+	a.userRepo.UpdateTestAccountSalt(ctx)
+
+	return user, nil
 }
 
 func (a *AuthUseCase) validateToken(ctx context.Context, token *jwt.Token) error {

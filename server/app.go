@@ -135,6 +135,7 @@ func NewApp(config *config.Config) (*App, error) {
 		gsRepo,
 		affStatsRepo,
 		cbRepo,
+		uRepo,
 	)
 
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
@@ -160,6 +161,7 @@ func NewApp(config *config.Config) (*App, error) {
 			config.Auth.WalletURL,
 			config.Auth.WalletClientID,
 			config.Auth.WalletClientSecret,
+			config.Auth.TestAccounts,
 		),
 		gameSessionUC.NewGameSessionsUseCase(
 			bc,
@@ -320,14 +322,14 @@ func startSessionsCleaner(a *App, ctx context.Context) error {
 func startAuthSessionsCleaner(a *App, ctx context.Context) error {
 	interval := a.config.Auth.CleanerInterval
 	if interval <= 0 {
-		log.Info().Msg("Auth sessions cleaner is disabled")
+		log.Info().Msg("User sessions cleaner is disabled")
 		<-ctx.Done()
 		return nil
 	}
 
-	log.Info().Msg("Auth sessions cleaner is started")
+	log.Info().Msg("User sessions cleaner is started")
 	clean := func() error {
-		log.Info().Msg("Auth sessions cleaner is cleaning sessions...")
+		log.Info().Msg("User sessions cleaner is cleaning sessions...")
 		if err := a.uRepo.InvalidateOldSessions(ctx); err != nil {
 			return err
 		}
@@ -347,7 +349,7 @@ func startAuthSessionsCleaner(a *App, ctx context.Context) error {
 			}
 		case <-ctx.Done():
 			ticker.Stop()
-			log.Info().Msg("Auth Sessions cleaner is stopped")
+			log.Info().Msg("User Sessions cleaner is stopped")
 			return nil
 		}
 	}

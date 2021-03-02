@@ -9,4 +9,6 @@ var (
 	ErrExpiredToken      = errors.New("token is expired")
 	ErrExpiredTokenNonce = errors.New("token nonce is expired")
 	ErrSessionNotFound   = errors.New("user session not found")
+	ErrUserIsNotTest     = errors.New("user is not test")
+	ErrInvalidHash       = errors.New("invalid encrypted hash")
 )

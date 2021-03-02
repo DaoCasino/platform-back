@@ -42,7 +42,8 @@
     "cleanerInterval": 30,
     "walletUrl": "url",
     "walletClientID": 0,
-    "walletClientSecret": "secret"
+    "walletClientSecret": "secret",
+    "testAccounts": ["daomwzlzmuwz"]
   },
   "affiliateStats": {
     "url": "localhost:8899"

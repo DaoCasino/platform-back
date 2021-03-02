@@ -66,3 +66,11 @@ func (s *UserStorageMock) AddEmail(ctx context.Context, user *models.User) error
 
 	return args.Error(0)
 }
+
+func (s *UserStorageMock) GetTestAccountSalt(ctx context.Context) uint64 {
+	args := s.Called()
+
+	return args.Get(0).(uint64)
+}
+
+func (s *UserStorageMock) UpdateTestAccountSalt(ctx context.Context) {}

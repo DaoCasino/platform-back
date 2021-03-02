@@ -55,6 +55,11 @@ var handlersMap = map[string]RequestHandlerInfo{
 		messageType: websocket.TextMessage,
 		needAuth:    false,
 	},
+	"auth_test_account": {
+		handler:     handlers.ProcessAuthTestAccountRequest,
+		messageType: websocket.TextMessage,
+		needAuth:    false,
+	},
 	"account_info": {
 		handler:     handlers.ProcessAccountInfo,
 		messageType: websocket.TextMessage,
@@ -112,6 +117,11 @@ var handlersMap = map[string]RequestHandlerInfo{
 	},
 	"fetch_games_in_casino": {
 		handler:     handlers.ProcessFetchGamesInCasinoRequest,
+		messageType: websocket.TextMessage,
+		needAuth:    false,
+	},
+	"fetch_test_account_salt": {
+		handler:     handlers.ProcessFetchTestAccountSaltRequest,
 		messageType: websocket.TextMessage,
 		needAuth:    false,
 	},

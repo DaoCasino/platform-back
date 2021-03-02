@@ -35,14 +35,15 @@ type BlockchainConfig struct {
 }
 
 type AuthConfig struct {
-	JwtSecret          string `json:"jwtSecret"`
-	AccessTokenTTL     int64  `json:"accessTokenTTL"`
-	RefreshTokenTTL    int64  `json:"refreshTokenTTL"`
-	MaxUserSessions    int64  `default:"20" json:"maxUserSessions"`
-	CleanerInterval    int64  `default:"600" json:"cleanerInterval"`
-	WalletURL          string `json:"walletUrl"`
-	WalletClientID     int64  `json:"walletClientID"`
-	WalletClientSecret string `json:"walletClientSecret"`
+	JwtSecret          string   `json:"jwtSecret"`
+	AccessTokenTTL     int64    `json:"accessTokenTTL"`
+	RefreshTokenTTL    int64    `json:"refreshTokenTTL"`
+	MaxUserSessions    int64    `default:"20" json:"maxUserSessions"`
+	CleanerInterval    int64    `default:"600" json:"cleanerInterval"`
+	WalletURL          string   `json:"walletUrl"`
+	WalletClientID     int64    `json:"walletClientID"`
+	WalletClientSecret string   `json:"walletClientSecret"`
+	TestAccounts       []string `json:"testAccounts"`
 }
 
 // Action monitor config
