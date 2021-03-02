@@ -339,7 +339,11 @@ func (a *AuthUseCase) SignInTestAccount(
 
 	salt := a.userRepo.GetTestAccountSalt(ctx)
 	saltStr := strconv.FormatUint(salt, 10)
-	a.sig.Write([]byte(accountName + saltStr))
+	_, err = a.sig.Write([]byte(accountName + saltStr))
+	if err != nil {
+		return nil, err
+	}
+
 	hash := hex.EncodeToString(a.sig.Sum(nil))
 	a.sig.Reset()
 	if hash != saltedAccountNameHash {
