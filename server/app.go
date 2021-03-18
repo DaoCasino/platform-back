@@ -116,7 +116,7 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 
 	// use cached contract repo if cache enabled
 	if config.Blockchain.ListingCacheTTL > 0 {
-		contractRepo, err = contractsCachedRepo.NewCachedListingRepo(contractRepo, config.Blockchain.ListingCacheTTL)
+		contractRepo, err = contractsCachedRepo.NewCachedListingRepo(ctx, contractRepo, config.Blockchain.ListingCacheTTL)
 		if err != nil {
 			log.Fatal().Msgf("Contracts cached repo creation error, %s", err.Error())
 			return nil, err
