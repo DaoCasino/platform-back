@@ -89,7 +89,7 @@ const (
 	ServiceName      = "platform"
 )
 
-func NewApp(config *config.Config) (*App, error) {
+func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 	logger.InitLogger(config.LogLevel)
 
 	// Create prometheus things
@@ -99,7 +99,7 @@ func NewApp(config *config.Config) (*App, error) {
 
 	registerer.MustRegister(prometheus.NewGoCollector())
 
-	err := db.InitDB(context.Background(), &config.Db, registerer)
+	err := db.InitDB(ctx, &config.Db, registerer)
 	if err != nil {
 		log.Fatal().Msgf("Database init error, %s", err.Error())
 		return nil, err
@@ -368,7 +368,7 @@ func startHttpServer(a *App, ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		timeoutCtx, shutdown := context.WithTimeout(context.Background(), 5*time.Second)
+		timeoutCtx, shutdown := context.WithTimeout(ctx, 5*time.Second)
 		_ = srv.Shutdown(timeoutCtx)
 		shutdown()
 	}()
@@ -423,8 +423,8 @@ func startAmc(a *App, ctx context.Context) error {
 }
 
 // Should log errors by itself
-func (a *App) Run() error {
-	runCtx, cancelRun := context.WithCancel(context.Background())
+func (a *App) Run(ctx context.Context) error {
+	runCtx, cancelRun := context.WithCancel(ctx)
 	errGroup, runCtx := errgroup.WithContext(runCtx)
 
 	errGroup.Go(func() error {
