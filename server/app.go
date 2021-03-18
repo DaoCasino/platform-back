@@ -224,6 +224,10 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 		setEthAddrHandler(app, w, r)
 	})
 
+	claimHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claimHandler(app, w, r)
+	})
+
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
 
 	requestDurationsMiddleware := func(next http.Handler) http.Handler {
@@ -264,6 +268,7 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 	handleFunc("refresh_token", refreshTokensHandler)
 	handleFunc("optout", optOutHandler)
 	handleFunc("set_eth_addr", setEthAddrHandler)
+	handleFunc("claim", claimHandler)
 	handleFunc("ping", pingHandler)
 	handleFunc("who", whoHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(

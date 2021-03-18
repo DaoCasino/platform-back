@@ -1,6 +1,8 @@
 package cashback
 
-import "context"
+import (
+	"context"
+)
 
 type Info struct {
 	ToPay        float64 `json:"toPay"`
@@ -13,4 +15,6 @@ type Info struct {
 type UseCase interface {
 	CashbackInfo(ctx context.Context, accountName string) (*Info, error)
 	SetEthAddress(ctx context.Context, accountName string, ethAddress string) error
+	SetStateAccrued(ctx context.Context, accountName string) error
+	SetStateClaim(ctx context.Context, accountName string) error
 }
