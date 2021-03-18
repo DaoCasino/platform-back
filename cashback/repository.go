@@ -8,4 +8,6 @@ type Repository interface {
 	DeleteEthAddress(ctx context.Context, accountName string) error
 	SetEthAddress(ctx context.Context, accountName string, ethAddress string) error
 	GetEthAddress(ctx context.Context, accountName string) (*string, error)
+	SetStateClaim(ctx context.Context, accountName string) error
+	SetStateAccrued(ctx context.Context, accountName string) error
 }

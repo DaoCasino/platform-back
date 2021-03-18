@@ -10,6 +10,8 @@ var (
 	AddUserStmt                     = "INSERT INTO cashback(account_name) VALUES ($1)"
 	SetEthAddrStmt                  = "UPDATE cashback SET eth_address = $2 WHERE account_name = $1"
 	SelectEthAddrStmt               = "SELECT eth_address from cashback WHERE account_name = $1"
+	SetStateClaimStmt               = "UPDATE cashback SET state = 'claim' WHERE account_name = $1"
+	SetStateAccruedStmt             = "UPDATE cashback SET state = 'accrued' WHERE account_name = $1"
 )
 
 type CashbackPostgresRepo struct {
@@ -83,4 +85,26 @@ func (r *CashbackPostgresRepo) GetEthAddress(ctx context.Context, accountName st
 	}
 
 	return ethAddr, nil
+}
+
+func (r *CashbackPostgresRepo) SetStateClaim(ctx context.Context, accountName string) error {
+	conn, err := r.dbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, SetStateClaimStmt, accountName)
+	return err
+}
+
+func (r *CashbackPostgresRepo) SetStateAccrued(ctx context.Context, accountName string) error {
+	conn, err := r.dbPool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, SetStateAccruedStmt, accountName)
+	return err
 }

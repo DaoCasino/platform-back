@@ -73,3 +73,17 @@ func (c *CashbackUseCase) SetEthAddress(ctx context.Context, accountName string,
 
 	return c.cashbackRepo.SetEthAddress(ctx, accountName, ethAddress)
 }
+
+func (c *CashbackUseCase) SetStateClaim(ctx context.Context, accountName string) error {
+	if !c.active {
+		return nil
+	}
+	return c.cashbackRepo.SetStateClaim(ctx, accountName)
+}
+
+func (c *CashbackUseCase) SetStateAccrued(ctx context.Context, accountName string) error {
+	if !c.active {
+		return nil
+	}
+	return c.cashbackRepo.SetStateAccrued(ctx, accountName)
+}
