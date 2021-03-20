@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"math"
-	"platform-backend/cashback"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
 	"strconv"
@@ -26,7 +25,7 @@ type PlayerInfoResponse struct {
 	ReferralID          *string               `json:"referralId,omitempty"`
 	ReferralRevenue     *float64              `json:"referralRevenue,omitempty"`
 	Referral            *ReferralResponse     `json:"referral,omitempty"`
-	Cashback            *cashback.Info        `json:"cashback,omitempty"`
+	Cashback            *models.CashbackInfo  `json:"cashback,omitempty"`
 	EthAddress          *string               `json:"ethAddress,omitempty"`
 }
 
@@ -48,7 +47,7 @@ func toPlayerInfoResponse(
 	u *models.User,
 	ref *models.Referral,
 	refStats *models.ReferralStats,
-	cashbackInfo *cashback.Info,
+	cashbackInfo *models.CashbackInfo,
 	ethAddr *string,
 ) *PlayerInfoResponse {
 	ret := &PlayerInfoResponse{

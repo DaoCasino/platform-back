@@ -3,6 +3,7 @@ package mock
 import (
 	"context"
 	"github.com/stretchr/testify/mock"
+	"platform-backend/models"
 )
 
 type CashbackRepoMock struct {
@@ -47,4 +48,9 @@ func (r *CashbackRepoMock) SetStateClaim(_ context.Context, accountName string) 
 func (r *CashbackRepoMock) SetStateAccrued(_ context.Context, accountName string) error {
 	args := r.Called(accountName)
 	return args.Error(0)
+}
+
+func (r *CashbackRepoMock) FetchAll(_ context.Context) ([]*models.CashbackRow, error) {
+	args := r.Called()
+	return args.Get(0).([]*models.CashbackRow), args.Error(1)
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/stretchr/testify/assert"
 	mock2 "platform-backend/affiliatestats/repository/mock"
-	cashback2 "platform-backend/cashback"
 	"platform-backend/cashback/repository/mock"
+	"platform-backend/models"
 	"testing"
 )
 
@@ -23,7 +23,7 @@ func TestCashbackInfo(t *testing.T) {
 		cashbackUC           = NewCashbackUseCase(mockCashbackRepo, mockAffStatsRepo, cashbackRatio, ethToBetRate, true)
 		ctx                  = context.Background()
 		toPay                = 0.1184567
-		expectedCashbackInfo = &cashback2.Info{
+		expectedCashbackInfo = &models.CashbackInfo{
 			ToPay:        toPay,
 			Paid:         paid,
 			GGR:          userGGRs["BET"],

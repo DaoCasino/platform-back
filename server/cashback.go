@@ -29,9 +29,21 @@ func claimHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	if err := app.useCases.Cashback.SetStateClaim(ctx, accountName); err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
-		log.Debug().Msgf("Set eth addr error: %s", err.Error())
+		log.Debug().Msgf("Set cashback claim state error: %s", err.Error())
 		return
 	}
 
 	respondOK(w, true)
+}
+
+func cashbacksHandler(app *App, w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New cashbacks request")
+	ctx := r.Context()
+	cashbacks, err := app.useCases.Cashback.GetCashbacksForClaimed(ctx)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		log.Debug().Msgf("get cashbacks error: %s", err.Error())
+		return
+	}
+	respondWithJSON(w, http.StatusOK, cashbacks)
 }

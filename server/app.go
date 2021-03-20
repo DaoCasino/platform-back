@@ -41,6 +41,7 @@ import (
 	"platform-backend/usecases"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -228,6 +229,10 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 		claimHandler(app, w, r)
 	})
 
+	cashbacksHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cashbacksHandler(app, w, r)
+	})
+
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
 
 	requestDurationsMiddleware := func(next http.Handler) http.Handler {
@@ -247,8 +252,9 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 
 	addHistogramVec := func(path string) string {
 		fullPath := "/" + path
+
 		requestDurationHistograms[fullPath] = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "http_" + path + "_ms",
+			Name:    "http_" + strings.ReplaceAll(path, "/", "_") + "_ms",
 			Buckets: commonBuckets,
 		}, []string{"response_code"})
 		return fullPath
@@ -269,6 +275,7 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 	handleFunc("optout", optOutHandler)
 	handleFunc("set_eth_addr", setEthAddrHandler)
 	handleFunc("claim", claimHandler)
+	handleFunc("admin/cashbacks", cashbacksHandler)
 	handleFunc("ping", pingHandler)
 	handleFunc("who", whoHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(
