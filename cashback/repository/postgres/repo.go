@@ -13,7 +13,8 @@ const (
 	selectEthAddrStmt               = "SELECT eth_address from cashback WHERE account_name = $1"
 	setStateClaimStmt               = "UPDATE cashback SET state = 'claim' WHERE account_name = $1"
 	setStateAccruedStmt             = "UPDATE cashback SET state = 'accrued' WHERE account_name = $1"
-	fetchAllStmt                    = "SELECT account_name, eth_address, paid_cashback FROM cashback WHERE state = 'claim'"
+	fetchAllStmt                    = "SELECT account_name, eth_address, paid_cashback, state FROM cashback WHERE state = 'claim'"
+	fetchOneStml                    = "SELECT account_name, eth_address, paid_cashback, state FROM cashback WHERE account_name = $1"
 )
 
 type CashbackPostgresRepo struct {
@@ -123,7 +124,7 @@ func (r *CashbackPostgresRepo) FetchAll(ctx context.Context) ([]*models.Cashback
 	result := make([]*models.CashbackRow, 0)
 	for rows.Next() {
 		data := new(models.CashbackRow)
-		err := rows.Scan(&data.AccountName, &data.EthAddress, &data.PaidCashback)
+		err := rows.Scan(&data.AccountName, &data.EthAddress, &data.PaidCashback, &data.State)
 		if err != nil {
 			return nil, err
 		}
@@ -131,4 +132,19 @@ func (r *CashbackPostgresRepo) FetchAll(ctx context.Context) ([]*models.Cashback
 		result = append(result, data)
 	}
 	return result, rows.Err()
+}
+
+func (r *CashbackPostgresRepo) FetchOne(ctx context.Context, accountName string) (*models.CashbackRow, error) {
+	conn, err := r.dbPool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	data := new(models.CashbackRow)
+	err = conn.QueryRow(ctx, fetchOneStml, accountName).Scan(&data.AccountName, &data.EthAddress, &data.PaidCashback, &data.State)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }

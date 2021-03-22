@@ -12,4 +12,5 @@ type Repository interface {
 	SetStateClaim(ctx context.Context, accountName string) error
 	SetStateAccrued(ctx context.Context, accountName string) error
 	FetchAll(ctx context.Context) ([]*models.CashbackRow, error)
+	FetchOne(ctx context.Context, accountName string) (*models.CashbackRow, error)
 }

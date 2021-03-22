@@ -45,5 +45,5 @@ func cashbacksHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		log.Debug().Msgf("get cashbacks error: %s", err.Error())
 		return
 	}
-	respondWithJSON(w, http.StatusOK, cashbacks)
+	respondOK(w, cashbacks)
 }

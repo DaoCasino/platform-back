@@ -52,17 +52,18 @@ func (c *CashbackUseCase) CashbackInfo(ctx context.Context, accountName string) 
 		return nil, err
 	}
 
-	paid, err := c.cashbackRepo.GetPaidCashback(ctx, accountName)
+	row, err := c.cashbackRepo.FetchOne(ctx, accountName)
 	if err != nil {
 		return nil, err
 	}
 
 	return &models.CashbackInfo{
-		ToPay:        c.toPay(userGGR, paid),
-		Paid:         paid,
+		ToPay:        c.toPay(userGGR, row.PaidCashback),
+		Paid:         row.PaidCashback,
 		GGR:          userGGR[utils.DAOBetAssetSymbol],
 		Ratio:        c.cashbackRatio,
 		EthToBetRate: c.ethToBetRate,
+		State:        row.State,
 	}, nil
 }
 
@@ -104,18 +105,19 @@ func (c *CashbackUseCase) GetCashbacksForClaimed(ctx context.Context) ([]*models
 
 	result := make([]*models.Cashback, 0, len(rows))
 	for _, row := range rows {
-		// TODO: need cache, bad ignore error
-		if userGGR, err := c.affStatsRepo.GetUserGGR(ctx, row.AccountName); err == nil {
-			toPay := c.toPay(userGGR, row.PaidCashback)
-			if toPay > 0 {
-				result = append(result, &models.Cashback{
-					AccountName: row.AccountName,
-					EthAddress:  row.EthAddress,
-					Cashback:    toPay,
-				})
-			}
+		// TODO: need cache, bad ignore error, add GetUsersGGR method
+		userGGR, err := c.affStatsRepo.GetUserGGR(ctx, row.AccountName)
+		if err != nil {
+			return nil, err
 		}
-
+		toPay := c.toPay(userGGR, row.PaidCashback)
+		if toPay > 0 {
+			result = append(result, &models.Cashback{
+				AccountName: row.AccountName,
+				EthAddress:  row.EthAddress,
+				Cashback:    toPay,
+			})
+		}
 	}
 
 	return result, nil

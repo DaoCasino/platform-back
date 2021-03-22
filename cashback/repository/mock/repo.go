@@ -54,3 +54,8 @@ func (r *CashbackRepoMock) FetchAll(_ context.Context) ([]*models.CashbackRow, e
 	args := r.Called()
 	return args.Get(0).([]*models.CashbackRow), args.Error(1)
 }
+
+func (r *CashbackRepoMock) FetchOne(_ context.Context, accountName string) (*models.CashbackRow, error) {
+	args := r.Called(accountName)
+	return args.Get(0).(*models.CashbackRow), args.Error(1)
+}
