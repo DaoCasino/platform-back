@@ -45,8 +45,8 @@ func (r *CashbackRepoMock) SetStateClaim(_ context.Context, accountName string) 
 	return args.Error(0)
 }
 
-func (r *CashbackRepoMock) SetStateAccrued(_ context.Context, accountName string) error {
-	args := r.Called(accountName)
+func (r *CashbackRepoMock) SetStateAccrued(_ context.Context, accountName string, cashback float64) error {
+	args := r.Called(accountName, cashback)
 	return args.Error(0)
 }
 

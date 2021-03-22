@@ -12,7 +12,7 @@ const (
 	setEthAddrStmt                  = "UPDATE cashback SET eth_address = $2 WHERE account_name = $1"
 	selectEthAddrStmt               = "SELECT eth_address from cashback WHERE account_name = $1"
 	setStateClaimStmt               = "UPDATE cashback SET state = 'claim' WHERE account_name = $1"
-	setStateAccruedStmt             = "UPDATE cashback SET state = 'accrued' WHERE account_name = $1"
+	setStateAccruedStmt             = "UPDATE cashback SET state = 'accrued', paid_cashback = paid_cashback + $2 WHERE account_name = $1"
 	fetchAllStmt                    = "SELECT account_name, eth_address, paid_cashback, state FROM cashback WHERE state = 'claim'"
 	fetchOneStml                    = "SELECT account_name, eth_address, paid_cashback, state FROM cashback WHERE account_name = $1"
 )
@@ -101,14 +101,14 @@ func (r *CashbackPostgresRepo) SetStateClaim(ctx context.Context, accountName st
 	return err
 }
 
-func (r *CashbackPostgresRepo) SetStateAccrued(ctx context.Context, accountName string) error {
+func (r *CashbackPostgresRepo) SetStateAccrued(ctx context.Context, accountName string, cashback float64) error {
 	conn, err := r.dbPool.Acquire(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Release()
 
-	_, err = conn.Exec(ctx, setStateAccruedStmt, accountName)
+	_, err = conn.Exec(ctx, setStateAccruedStmt, accountName, cashback)
 	return err
 }
 

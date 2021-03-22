@@ -10,6 +10,10 @@ type CashbackClaimRequest struct {
 	AccessToken string `json:"accessToken"`
 }
 
+type CashbackAccruedRequest struct {
+	AccountName string `json:"accountName"`
+}
+
 func claimHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New cashback claim request")
 
@@ -46,4 +50,29 @@ func cashbacksHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondOK(w, cashbacks)
+}
+
+func cashbackApproveHandler(app *App, w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("New cashback approve request")
+	var req CashbackAccruedRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		log.Debug().Msgf("Http body parse error, %s", err.Error())
+		return
+	}
+	ctx := r.Context()
+	if err := app.useCases.Cashback.PayCashback(ctx, req.AccountName); err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		log.Debug().Msgf("cashback approve error: %s", err.Error())
+		return
+	}
+
+	info, err := app.useCases.Cashback.CashbackInfo(ctx, req.AccountName)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+		log.Debug().Msgf("get cashback info error: %s", err.Error())
+		return
+	}
+
+	respondOK(w, info)
 }

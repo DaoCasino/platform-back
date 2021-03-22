@@ -86,13 +86,6 @@ func (c *CashbackUseCase) SetStateClaim(ctx context.Context, accountName string)
 	return c.cashbackRepo.SetStateClaim(ctx, accountName)
 }
 
-func (c *CashbackUseCase) SetStateAccrued(ctx context.Context, accountName string) error {
-	if !c.active {
-		return nil
-	}
-	return c.cashbackRepo.SetStateAccrued(ctx, accountName)
-}
-
 func (c *CashbackUseCase) GetCashbacksForClaimed(ctx context.Context) ([]*models.Cashback, error) {
 	if !c.active {
 		return nil, nil
@@ -121,4 +114,21 @@ func (c *CashbackUseCase) GetCashbacksForClaimed(ctx context.Context) ([]*models
 	}
 
 	return result, nil
+}
+
+func (c *CashbackUseCase) PayCashback(ctx context.Context, accountName string) error {
+	if !c.active {
+		return nil
+	}
+
+	info, err := c.CashbackInfo(ctx, accountName)
+	if err != nil {
+		return err
+	}
+
+	if info.State == "claim" {
+		return c.cashbackRepo.SetStateAccrued(ctx, accountName, info.ToPay)
+	}
+
+	return fmt.Errorf("state not claim")
 }

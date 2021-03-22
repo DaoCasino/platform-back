@@ -233,6 +233,10 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 		cashbacksHandler(app, w, r)
 	})
 
+	cashbackApproveHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cashbackApproveHandler(app, w, r)
+	})
+
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
 
 	requestDurationsMiddleware := func(next http.Handler) http.Handler {
@@ -276,6 +280,7 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 	handleFunc("set_eth_addr", setEthAddrHandler)
 	handleFunc("claim", claimHandler)
 	handleFunc("admin/cashbacks", cashbacksHandler)
+	handleFunc("admin/cashback_approve", cashbackApproveHandler)
 	handleFunc("ping", pingHandler)
 	handleFunc("who", whoHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(
