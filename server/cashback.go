@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/rs/zerolog/log"
 	"net/http"
@@ -14,7 +15,7 @@ type CashbackAccruedRequest struct {
 	AccountName string `json:"accountName"`
 }
 
-func claimHandler(app *App, w http.ResponseWriter, r *http.Request) {
+func claimHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New cashback claim request")
 
 	var req CashbackClaimRequest
@@ -23,7 +24,6 @@ func claimHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
-	ctx := r.Context()
 	accountName, err := app.useCases.Auth.AccountNameFromToken(ctx, req.AccessToken)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
@@ -40,9 +40,8 @@ func claimHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	respondOK(w, true)
 }
 
-func cashbacksHandler(app *App, w http.ResponseWriter, r *http.Request) {
+func cashbacksHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New cashbacks request")
-	ctx := r.Context()
 	cashbacks, err := app.useCases.Cashback.GetCashbacksForClaimed(ctx)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
@@ -52,7 +51,7 @@ func cashbacksHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	respondOK(w, cashbacks)
 }
 
-func cashbackApproveHandler(app *App, w http.ResponseWriter, r *http.Request) {
+func cashbackApproveHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New cashback approve request")
 	var req CashbackAccruedRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -60,7 +59,6 @@ func cashbackApproveHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
-	ctx := r.Context()
 	if err := app.useCases.Cashback.PayCashback(ctx, req.AccountName); err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("cashback approve error: %s", err.Error())
