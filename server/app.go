@@ -202,39 +202,39 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 	}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		wsClientHandler(app, w, r)
+		wsClientHandler(ctx, app, w, r)
 	})
 
 	authHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHandler(app, w, r)
+		authHandler(ctx, app, w, r)
 	})
 
 	refreshTokensHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		refreshTokensHandler(app, w, r)
+		refreshTokensHandler(ctx, app, w, r)
 	})
 
 	logoutHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logoutHandler(app, w, r)
+		logoutHandler(ctx, app, w, r)
 	})
 
 	optOutHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		optOutHandler(app, w, r)
+		optOutHandler(ctx, app, w, r)
 	})
 
 	setEthAddrHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		setEthAddrHandler(app, w, r)
+		setEthAddrHandler(ctx, app, w, r)
 	})
 
 	claimHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claimHandler(app, w, r)
+		claimHandler(ctx, app, w, r)
 	})
 
 	cashbacksHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cashbacksHandler(app, w, r)
+		cashbacksHandler(ctx, app, w, r)
 	})
 
 	cashbackApproveHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cashbackApproveHandler(app, w, r)
+		cashbackApproveHandler(ctx, app, w, r)
 	})
 
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)

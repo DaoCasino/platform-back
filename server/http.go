@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -24,7 +25,7 @@ type HTTPError struct {
 	Message string `json:"message"`
 }
 
-func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
+func wsClientHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New connect request")
 
 	c, err := app.wsUpgrader.Upgrade(w, r, nil)
@@ -35,7 +36,7 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
 
-	app.smRepo.AddSession(r.Context(), c, app.wsApi)
+	app.smRepo.AddSession(ctx, c, app.wsApi)
 }
 
 func respondOK(w http.ResponseWriter, response interface{}) {
@@ -62,7 +63,7 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	}
 }
 
-func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
+func authHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
 	var (
 		user       *models.User
 		casinoName string
@@ -85,7 +86,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 		log.Debug().Msgf("New auth request with token %s", req.TmpToken)
 
-		user, err = app.useCases.Auth.ResolveUser(r.Context(), req.TmpToken)
+		user, err = app.useCases.Auth.ResolveUser(ctx, req.TmpToken)
 		if err != nil {
 			respondWithError(w, http.StatusUnauthorized, err.Error())
 			log.Warn().Msgf("Token validate error: %s", err.Error())
@@ -94,7 +95,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		user.AffiliateID = req.AffiliateID
 		casinoName = req.CasinoName
 	}
-	refreshToken, accessToken, err := app.useCases.Auth.SignUp(r.Context(), user, casinoName)
+	refreshToken, accessToken, err := app.useCases.Auth.SignUp(ctx, user, casinoName)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, err.Error())
 		log.Warn().Msgf("SignUp error: %s", err.Error())
@@ -109,7 +110,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	respondOK(w, response)
 }
 
-func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
+func logoutHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New logout request")
 
 	var req LogoutRequest
@@ -119,7 +120,7 @@ func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := app.useCases.Auth.Logout(r.Context(), req.AccessToken)
+	err := app.useCases.Auth.Logout(ctx, req.AccessToken)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("RefreshToken error: %s", err.Error())
@@ -129,7 +130,7 @@ func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	respondOK(w, true)
 }
 
-func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
+func refreshTokensHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New refresh_token request")
 
 	var req RefreshRequest
@@ -139,7 +140,7 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(r.Context(), req.RefreshToken)
+	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		log.Warn().Msgf("RefreshToken error: %s", err.Error())
 		if errors.Is(err, auth.ErrExpiredToken) || errors.Is(err, auth.ErrExpiredTokenNonce) {
@@ -158,7 +159,7 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	respondOK(w, response)
 }
 
-func optOutHandler(app *App, w http.ResponseWriter, r *http.Request) {
+func optOutHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New opt-out request")
 
 	var req OptOutRequest
@@ -168,7 +169,7 @@ func optOutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.useCases.Auth.OptOut(r.Context(), req.AccessToken); err != nil {
+	if err := app.useCases.Auth.OptOut(ctx, req.AccessToken); err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("Opt-out error: %s", err.Error())
 		return
@@ -177,7 +178,7 @@ func optOutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 	respondOK(w, true)
 }
 
-func setEthAddrHandler(app *App, w http.ResponseWriter, r *http.Request) {
+func setEthAddrHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("New set eth addr request")
 
 	var req SetEthAddrRequest
@@ -186,7 +187,6 @@ func setEthAddrHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
-	ctx := r.Context()
 	accountName, err := app.useCases.Auth.AccountNameFromToken(ctx, req.AccessToken)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
