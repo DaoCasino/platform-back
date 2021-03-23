@@ -80,7 +80,7 @@ func TestCacheInitialization(t *testing.T) {
 	mockRepo.AddCasino(&testCasino)
 	mockRepo.AddCasinoGames(testCasino.Contract, testCasinoGames)
 
-	cachedMockRepo, err := cached.NewCachedListingRepo(mockRepo, cacheTTL)
+	cachedMockRepo, err := cached.NewCachedListingRepo(context.Background(), mockRepo, cacheTTL)
 	assert.NoError(t, err)
 
 	mockRepo.
@@ -120,7 +120,7 @@ func TestCacheAddNewItem(t *testing.T) {
 	mockRepo.AddCasino(&testCasino)
 	mockRepo.AddCasinoGames(testCasino.Contract, testCasinoGames)
 
-	cachedMockRepo, err := cached.NewCachedListingRepo(mockRepo, cacheTTL)
+	cachedMockRepo, err := cached.NewCachedListingRepo(context.Background(), mockRepo, cacheTTL)
 	assert.NoError(t, err)
 
 	newTestGame := models.Game{
@@ -168,7 +168,7 @@ func TestCacheRemoveItem(t *testing.T) {
 	}
 	mockRepo.AddGame(&newTestGame)
 
-	cachedMockRepo, err := cached.NewCachedListingRepo(mockRepo, cacheTTL)
+	cachedMockRepo, err := cached.NewCachedListingRepo(context.Background(), mockRepo, cacheTTL)
 	assert.NoError(t, err)
 
 	_, err = cachedMockRepo.GetGame(context.Background(), newTestGame.Id)
@@ -197,7 +197,7 @@ func TestCacheUpdateItem(t *testing.T) {
 	mockRepo.AddCasino(&testCasino)
 	mockRepo.AddCasinoGames(testCasino.Contract, testCasinoGames)
 
-	cachedMockRepo, err := cached.NewCachedListingRepo(mockRepo, cacheTTL)
+	cachedMockRepo, err := cached.NewCachedListingRepo(context.Background(), mockRepo, cacheTTL)
 	assert.NoError(t, err)
 
 	// update game
@@ -243,7 +243,7 @@ func TestSortedGames(t *testing.T) {
 	}
 	mockRepo.AddGame(&newTestGame)
 
-	cachedMockRepo, err := cached.NewCachedListingRepo(mockRepo, cacheTTL)
+	cachedMockRepo, err := cached.NewCachedListingRepo(context.Background(), mockRepo, cacheTTL)
 	assert.NoError(t, err)
 
 	games, err := cachedMockRepo.AllGames(context.Background())
@@ -272,7 +272,7 @@ func TestSortedCasinos(t *testing.T) {
 	}
 	mockRepo.AddCasino(&newTestCasino)
 
-	cachedMockRepo, err := cached.NewCachedListingRepo(mockRepo, cacheTTL)
+	cachedMockRepo, err := cached.NewCachedListingRepo(context.Background(), mockRepo, cacheTTL)
 	assert.NoError(t, err)
 
 	casinos, err := cachedMockRepo.AllCasinos(context.Background())

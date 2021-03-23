@@ -66,7 +66,7 @@ func (r *AffiliateStatsRepo) GetStats(
 	return stats, nil
 }
 
-func (r *AffiliateStatsRepo) GetUserGGR(ctx context.Context, accountName string) (map[string]float64, error) {
+func (r *AffiliateStatsRepo) GetUserGGR(_ context.Context, accountName string) (map[string]float64, error) {
 	resp, err := http.Get(r.affiliateStatsURL + userGGRPath + "?account_name=" + accountName)
 	if err != nil {
 		log.Debug().Msgf("get user ggr request error: %s", err.Error())

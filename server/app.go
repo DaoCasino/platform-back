@@ -41,6 +41,7 @@ import (
 	"platform-backend/usecases"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -89,7 +90,7 @@ const (
 	ServiceName      = "platform"
 )
 
-func NewApp(config *config.Config) (*App, error) {
+func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 	logger.InitLogger(config.LogLevel)
 
 	// Create prometheus things
@@ -99,7 +100,7 @@ func NewApp(config *config.Config) (*App, error) {
 
 	registerer.MustRegister(prometheus.NewGoCollector())
 
-	err := db.InitDB(context.Background(), &config.Db, registerer)
+	err := db.InitDB(ctx, &config.Db, registerer)
 	if err != nil {
 		log.Fatal().Msgf("Database init error, %s", err.Error())
 		return nil, err
@@ -116,7 +117,7 @@ func NewApp(config *config.Config) (*App, error) {
 
 	// use cached contract repo if cache enabled
 	if config.Blockchain.ListingCacheTTL > 0 {
-		contractRepo, err = contractsCachedRepo.NewCachedListingRepo(contractRepo, config.Blockchain.ListingCacheTTL)
+		contractRepo, err = contractsCachedRepo.NewCachedListingRepo(ctx, contractRepo, config.Blockchain.ListingCacheTTL)
 		if err != nil {
 			log.Fatal().Msgf("Contracts cached repo creation error, %s", err.Error())
 			return nil, err
@@ -224,6 +225,18 @@ func NewApp(config *config.Config) (*App, error) {
 		setEthAddrHandler(app, w, r)
 	})
 
+	claimHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claimHandler(app, w, r)
+	})
+
+	cashbacksHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cashbacksHandler(app, w, r)
+	})
+
+	cashbackApproveHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cashbackApproveHandler(app, w, r)
+	})
+
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
 
 	requestDurationsMiddleware := func(next http.Handler) http.Handler {
@@ -243,8 +256,9 @@ func NewApp(config *config.Config) (*App, error) {
 
 	addHistogramVec := func(path string) string {
 		fullPath := "/" + path
+
 		requestDurationHistograms[fullPath] = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "http_" + path + "_ms",
+			Name:    "http_" + strings.ReplaceAll(path, "/", "_") + "_ms",
 			Buckets: commonBuckets,
 		}, []string{"response_code"})
 		return fullPath
@@ -264,6 +278,9 @@ func NewApp(config *config.Config) (*App, error) {
 	handleFunc("refresh_token", refreshTokensHandler)
 	handleFunc("optout", optOutHandler)
 	handleFunc("set_eth_addr", setEthAddrHandler)
+	handleFunc("claim", claimHandler)
+	handleFunc("admin/cashbacks", cashbacksHandler)
+	handleFunc("admin/cashback_approve", cashbackApproveHandler)
 	handleFunc("ping", pingHandler)
 	handleFunc("who", whoHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(
@@ -368,7 +385,7 @@ func startHttpServer(a *App, ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		timeoutCtx, shutdown := context.WithTimeout(context.Background(), 5*time.Second)
+		timeoutCtx, shutdown := context.WithTimeout(ctx, 5*time.Second)
 		_ = srv.Shutdown(timeoutCtx)
 		shutdown()
 	}()
@@ -423,8 +440,8 @@ func startAmc(a *App, ctx context.Context) error {
 }
 
 // Should log errors by itself
-func (a *App) Run() error {
-	runCtx, cancelRun := context.WithCancel(context.Background())
+func (a *App) Run(ctx context.Context) error {
+	runCtx, cancelRun := context.WithCancel(ctx)
 	errGroup, runCtx := errgroup.WithContext(runCtx)
 
 	errGroup.Go(func() error {

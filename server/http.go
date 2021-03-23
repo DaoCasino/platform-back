@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -36,7 +35,7 @@ func wsClientHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
 
-	app.smRepo.AddSession(context.Background(), c, app.wsApi)
+	app.smRepo.AddSession(r.Context(), c, app.wsApi)
 }
 
 func respondOK(w http.ResponseWriter, response interface{}) {
@@ -86,7 +85,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 
 		log.Debug().Msgf("New auth request with token %s", req.TmpToken)
 
-		user, err = app.useCases.Auth.ResolveUser(context.Background(), req.TmpToken)
+		user, err = app.useCases.Auth.ResolveUser(r.Context(), req.TmpToken)
 		if err != nil {
 			respondWithError(w, http.StatusUnauthorized, err.Error())
 			log.Warn().Msgf("Token validate error: %s", err.Error())
@@ -95,7 +94,7 @@ func authHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		user.AffiliateID = req.AffiliateID
 		casinoName = req.CasinoName
 	}
-	refreshToken, accessToken, err := app.useCases.Auth.SignUp(context.Background(), user, casinoName)
+	refreshToken, accessToken, err := app.useCases.Auth.SignUp(r.Context(), user, casinoName)
 	if err != nil {
 		respondWithError(w, http.StatusUnauthorized, err.Error())
 		log.Warn().Msgf("SignUp error: %s", err.Error())
@@ -120,7 +119,7 @@ func logoutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := app.useCases.Auth.Logout(context.Background(), req.AccessToken)
+	err := app.useCases.Auth.Logout(r.Context(), req.AccessToken)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("RefreshToken error: %s", err.Error())
@@ -140,7 +139,7 @@ func refreshTokensHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(context.Background(), req.RefreshToken)
+	refreshToken, accessToken, err := app.useCases.Auth.RefreshToken(r.Context(), req.RefreshToken)
 	if err != nil {
 		log.Warn().Msgf("RefreshToken error: %s", err.Error())
 		if errors.Is(err, auth.ErrExpiredToken) || errors.Is(err, auth.ErrExpiredTokenNonce) {
@@ -169,7 +168,7 @@ func optOutHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := app.useCases.Auth.OptOut(context.Background(), req.AccessToken); err != nil {
+	if err := app.useCases.Auth.OptOut(r.Context(), req.AccessToken); err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
 		log.Debug().Msgf("Opt-out error: %s", err.Error())
 		return
@@ -187,7 +186,7 @@ func setEthAddrHandler(app *App, w http.ResponseWriter, r *http.Request) {
 		log.Debug().Msgf("Http body parse error, %s", err.Error())
 		return
 	}
-	ctx := context.Background()
+	ctx := r.Context()
 	accountName, err := app.useCases.Auth.AccountNameFromToken(ctx, req.AccessToken)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
