@@ -10,9 +10,10 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.2
-	github.com/jackc/pgconn v1.4.0
-	github.com/jackc/pgtype v1.2.0
-	github.com/jackc/pgx/v4 v4.5.0
+	github.com/jackc/pgconn v1.8.0
+	github.com/jackc/pgproto3/v2 v2.0.7 // indirect
+	github.com/jackc/pgtype v1.6.2
+	github.com/jackc/pgx/v4 v4.10.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/machinebox/graphql v0.2.2
 	github.com/matryer/is v1.3.0 // indirect
@@ -21,6 +22,8 @@ require (
 	github.com/rs/zerolog v1.18.0
 	github.com/stretchr/testify v1.5.1
 	go.uber.org/atomic v1.6.0
-	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a
+	golang.org/x/text v0.3.5 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )

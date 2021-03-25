@@ -107,7 +107,7 @@ func (c *CashbackUseCase) GetCashbacksForClaimed(ctx context.Context) ([]*models
 		if toPay > 0 {
 			result = append(result, &models.Cashback{
 				AccountName: row.AccountName,
-				EthAddress:  row.EthAddress,
+				EthAddress:  *row.EthAddress,
 				Cashback:    toPay,
 			})
 		}
