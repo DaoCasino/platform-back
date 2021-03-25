@@ -2,7 +2,7 @@ package models
 
 type CashbackRow struct {
 	AccountName  string  `db:"account_name"`
-	EthAddress   string  `db:"eth_address"`
+	EthAddress   *string `db:"eth_address"`
 	PaidCashback float64 `db:"paid_cashback"`
 	State        string  `db:"state"`
 }
