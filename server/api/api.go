@@ -3,18 +3,25 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rs/zerolog/log"
-	"platform-backend/models"
 	"platform-backend/repositories"
 	"platform-backend/server/api/handlers"
 	"platform-backend/server/api/ws_interface"
 	"platform-backend/usecases"
+	"platform-backend/utils"
 	"strconv"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog/log"
+)
+
+var (
+	errInvalidJSON      = errors.New("invalid request JSON format")
+	errInvalidSuid      = errors.New("invalid session suid")
+	errWrongMessageType = errors.New("message type is wrong")
 )
 
 type WsApi struct {
@@ -155,19 +162,23 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 	}
 
 	if messageObj.Id == "" || messageObj.Request == "" {
-		return nil, "", fmt.Errorf("invalid request JSON format")
+		return nil, "", errInvalidJSON
 	}
 
-	suid := context.Value("suid").(uuid.UUID).String()
+	suid, ok := utils.GetContextSUID(context)
+	if !ok {
+		return nil, "", errInvalidSuid
+	}
+
 	log.Info().Msgf("WS started '%s' request from suid: %s, req: %s", messageObj.Request, suid, messageObj.Payload)
 
 	// get user info from context
-	user := context.Value("user").(*models.User)
+	user, _ := utils.GetContextUser(context)
 
 	if handler, found := handlersMap[messageObj.Request]; found {
 		if handler.messageType != messageType {
 			log.Info().Msgf("WS request from: %s has wrong message type: %d", suid, messageType)
-			return nil, "", fmt.Errorf("message type is wrong")
+			return nil, "", errWrongMessageType
 		}
 
 		if handler.needAuth && user == nil {

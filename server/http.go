@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"platform-backend/auth"
 	"platform-backend/models"
+	"platform-backend/utils"
 
 	"github.com/rs/zerolog/log"
 )
@@ -34,7 +35,10 @@ func wsClientHandler(ctx context.Context, app *App, w http.ResponseWriter, r *ht
 		return
 	}
 
-	log.Info().Msgf("Client with ip %q connected", c.RemoteAddr())
+	log.Info().Msgf("Client with ip %s connected", utils.GetIPFromRequest(r))
+
+	// Save IP into context
+	ctx = utils.SetContextRemoteAddr(ctx, utils.GetIPFromRequest(r))
 
 	app.smRepo.AddSession(ctx, c, app.wsApi)
 }

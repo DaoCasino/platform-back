@@ -12,11 +12,11 @@ import (
 	"platform-backend/contracts"
 	"platform-backend/models"
 	"platform-backend/server/session_manager"
+	"platform-backend/utils"
 	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
 	"github.com/machinebox/graphql"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/sha3"
@@ -175,12 +175,12 @@ func (a *AuthUseCase) SignIn(ctx context.Context, accessToken string) (*models.U
 		return nil, auth.ErrUserNotFound
 	}
 
-	suid := ctx.Value("suid")
-	if suid == nil {
+	suid, ok := utils.GetContextSUID(ctx)
+	if !ok {
 		return nil, auth.ErrSessionNotFound
 	}
 
-	err = a.smRepo.SetUser(suid.(uuid.UUID), user)
+	err = a.smRepo.SetUser(suid, user)
 	if err != nil {
 		return nil, err
 	}
@@ -332,8 +332,8 @@ func (a *AuthUseCase) SignInTestAccount(
 		return nil, auth.ErrUserNotFound
 	}
 
-	suid := ctx.Value("suid")
-	if suid == nil {
+	suid, ok := utils.GetContextSUID(ctx)
+	if !ok {
 		return nil, auth.ErrSessionNotFound
 	}
 
@@ -350,7 +350,7 @@ func (a *AuthUseCase) SignInTestAccount(
 		return nil, auth.ErrInvalidHash
 	}
 
-	if err = a.smRepo.SetUser(suid.(uuid.UUID), user); err != nil {
+	if err = a.smRepo.SetUser(suid, user); err != nil {
 		return nil, err
 	}
 

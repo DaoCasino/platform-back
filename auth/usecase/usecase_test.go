@@ -2,14 +2,16 @@ package usecase
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"platform-backend/auth/repository/mock"
 	mock2 "platform-backend/cashback/repository/mock"
 	"platform-backend/contracts/usecase"
 	"platform-backend/models"
 	smMockRepo "platform-backend/server/session_manager/repository/mock"
+	"platform-backend/utils"
 	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAuthFlow(t *testing.T) {
@@ -64,7 +66,7 @@ func TestAuthFlow(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Auth with access token
-	ctx = context.WithValue(ctx, "suid", suid)
+	ctx = utils.SetContextSUID(ctx, suid)
 	repo.On("GetUser", user.AccountName).Return(user, nil)
 	sm.On("SetUser", suid, user).Return(nil)
 	parsedUser, err := uc.SignIn(ctx, accessToken)
@@ -124,7 +126,7 @@ func TestTokenRefresh(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Refresh tokens with refresh token
-	ctx = context.WithValue(ctx, "suid", suid)
+	ctx = utils.SetContextSUID(ctx, suid)
 	repo.On("GetUser", user.AccountName).Return(user, nil)
 	sm.On("SetUser", suid, user).Return(nil)
 	repo.On("GetLastTokenNonce", user.AccountName).Return(tokenNonce+1, nil)
@@ -132,7 +134,7 @@ func TestTokenRefresh(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Auth with access token
-	ctx = context.WithValue(ctx, "suid", suid)
+	ctx = utils.SetContextSUID(ctx, suid)
 	repo.On("GetUser", user.AccountName).Return(user, nil)
 	sm.On("SetUser", suid, user).Return(nil)
 	parsedUser, err := uc.SignIn(ctx, accessToken)
@@ -305,7 +307,7 @@ func TestSignInTestAccount(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Auth with access token
-	ctx = context.WithValue(ctx, "suid", suid)
+	ctx = utils.SetContextSUID(ctx, suid)
 	repo.On("GetUser", user.AccountName).Return(user, nil)
 	sm.On("SetUser", suid, user).Return(nil)
 	repo.On("GetTestAccountSalt").Return(salt)
