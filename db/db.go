@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"database/sql"
+	"platform-backend/config"
+
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -12,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
-	"platform-backend/config"
 )
 
 var DbPool *pgxpool.Pool
@@ -90,4 +91,12 @@ func InitDB(ctx context.Context, config *config.DbConfig, reg prometheus.Registe
 	log.Info().Msgf("Database initialized")
 
 	return nil
+}
+
+func Close() {
+	if DbPool != nil {
+		DbPool.Close()
+		log.Info().Msgf("Database closed")
+	}
+	DbPool = nil
 }

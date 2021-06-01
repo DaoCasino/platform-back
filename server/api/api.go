@@ -170,19 +170,19 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 		return nil, "", errInvalidSuid
 	}
 
-	log.Info().Msgf("WS started '%s' request from suid: %s, req: %s", messageObj.Request, suid, messageObj.Payload)
+	log.Debug().Msgf("WS started '%s' request from suid: %s, req: %s", messageObj.Request, suid, messageObj.Payload)
 
 	// get user info from context
 	user, _ := utils.GetContextUser(context)
 
 	if handler, found := handlersMap[messageObj.Request]; found {
 		if handler.messageType != messageType {
-			log.Info().Msgf("WS request from: %s has wrong message type: %d", suid, messageType)
+			log.Error().Msgf("WS request from: %s has wrong message type: %d", suid, messageType)
 			return nil, "", errWrongMessageType
 		}
 
 		if handler.needAuth && user == nil {
-			log.Info().Msgf("WS request from: %s unauthorized", suid)
+			log.Error().Msgf("WS request from: %s unauthorized", suid)
 			return respondWithError(messageObj.Id, ws_interface.UnauthorizedError), messageObj.Request, nil
 		}
 
@@ -209,10 +209,10 @@ func (api *WsApi) ProcessRawRequest(context context.Context, messageType int, me
 
 		api.eventHistograms[messageObj.Request].WithLabelValues("success").Observe(float64(elapsed.Milliseconds()))
 
-		log.Info().Msgf("WS successfully finished request from suid: %s", suid)
+		log.Debug().Msgf("WS successfully finished request from suid: %s", suid)
 		return respondWithOK(messageObj.Id, wsResp), messageObj.Request, nil
 	}
 
-	log.Info().Msgf("WS request from '%s' has wrong request type: %s", suid, messageObj.Request)
+	log.Error().Msgf("WS request from '%s' has wrong request type: %s", suid, messageObj.Request)
 	return nil, messageObj.Request, fmt.Errorf("unknown request type: %s", messageObj.Request)
 }

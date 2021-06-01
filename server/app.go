@@ -2,14 +2,6 @@ package server
 
 import (
 	"context"
-	"github.com/DaoCasino/platform-action-monitor-client"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/cors"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,6 +21,8 @@ import (
 	"platform-backend/eventprocessor"
 	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
 	gameSessionUC "platform-backend/game_sessions/usecase"
+	locationRepo "platform-backend/location/repository/maxmind"
+	locationUC "platform-backend/location/usecase"
 	"platform-backend/logger"
 	referralsRepo "platform-backend/referrals/repository/postgres"
 	referralsUC "platform-backend/referrals/usecase"
@@ -43,6 +37,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/cors"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
 type JsonResponse = map[string]interface{}
@@ -90,6 +93,8 @@ const (
 	ServiceName      = "platform"
 )
 
+var locRepo *locationRepo.LocationMaxmindRepo
+
 func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 	logger.InitLogger(config.LogLevel)
 
@@ -103,6 +108,12 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 	err := db.InitDB(ctx, &config.Db, registerer)
 	if err != nil {
 		log.Fatal().Msgf("Database init error, %s", err.Error())
+		return nil, err
+	}
+
+	locRepo, err = locationRepo.NewLocationMaxmindRepo("location.mmdb") // TODO hardcode!!!
+	if err != nil {
+		log.Fatal().Msgf("Location database init error %s", err.Error())
 		return nil, err
 	}
 
@@ -137,6 +148,7 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 		affStatsRepo,
 		cbRepo,
 		uRepo,
+		locRepo,
 	)
 
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
@@ -150,12 +162,15 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 		config.ActiveFeatures.Cashback,
 	)
 
+	locUC := locationUC.NewLocationUseCase(locRepo)
+
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			uRepo,
 			smRepo,
 			cbRepo,
 			contractUC,
+			locUC,
 			[]byte(config.Auth.JwtSecret),
 			config.Auth.AccessTokenTTL,
 			config.Auth.RefreshTokenTTL,
@@ -180,6 +195,7 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 		subsUC,
 		refsUC,
 		cbUC,
+		locUC,
 	)
 
 	events := make(chan *eventlistener.EventMessage)
@@ -443,6 +459,11 @@ func startAmc(a *App, ctx context.Context) error {
 func (a *App) Run(ctx context.Context) error {
 	runCtx, cancelRun := context.WithCancel(ctx)
 	errGroup, runCtx := errgroup.WithContext(runCtx)
+
+	defer func() {
+		_ = locationRepo.DeleteLocationMaxmindRepo(locRepo) // close location database
+		db.Close()                                          // Add database pool close
+	}()
 
 	errGroup.Go(func() error {
 		defer cancelRun()

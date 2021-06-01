@@ -5,6 +5,7 @@ import (
 	"platform-backend/auth/repository/mock"
 	mock2 "platform-backend/cashback/repository/mock"
 	"platform-backend/contracts/usecase"
+	locationUC "platform-backend/location/usecase"
 	"platform-backend/models"
 	smMockRepo "platform-backend/server/session_manager/repository/mock"
 	"platform-backend/utils"
@@ -19,12 +20,14 @@ func TestAuthFlow(t *testing.T) {
 	cbRepo := new(mock2.CashbackRepoMock)
 	sm := new(smMockRepo.MockRepository)
 	contractUC := new(usecase.ContractsUseCaseMock)
+	locUC := new(locationUC.LocationUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
 		cbRepo,
 		contractUC,
+		locUC,
 		[]byte("secret"),
 		10,
 		10,
@@ -67,6 +70,7 @@ func TestAuthFlow(t *testing.T) {
 
 	// Auth with access token
 	ctx = utils.SetContextSUID(ctx, suid)
+	ctx = utils.SetContextRemoteAddr(ctx, "::1")
 	repo.On("GetUser", user.AccountName).Return(user, nil)
 	sm.On("SetUser", suid, user).Return(nil)
 	parsedUser, err := uc.SignIn(ctx, accessToken)
@@ -79,12 +83,14 @@ func TestTokenRefresh(t *testing.T) {
 	cbRepo := new(mock2.CashbackRepoMock)
 	sm := new(smMockRepo.MockRepository)
 	contractUC := new(usecase.ContractsUseCaseMock)
+	locUC := new(locationUC.LocationUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
 		cbRepo,
 		contractUC,
+		locUC,
 		[]byte("secret"),
 		10,
 		10,
@@ -127,6 +133,7 @@ func TestTokenRefresh(t *testing.T) {
 
 	// Refresh tokens with refresh token
 	ctx = utils.SetContextSUID(ctx, suid)
+	ctx = utils.SetContextRemoteAddr(ctx, "::1")
 	repo.On("GetUser", user.AccountName).Return(user, nil)
 	sm.On("SetUser", suid, user).Return(nil)
 	repo.On("GetLastTokenNonce", user.AccountName).Return(tokenNonce+1, nil)
@@ -147,12 +154,14 @@ func TestSignUpWithoutAffiliate(t *testing.T) {
 	sm := new(smMockRepo.MockRepository)
 	cbRepo := new(mock2.CashbackRepoMock)
 	contractUC := new(usecase.ContractsUseCaseMock)
+	locUC := new(locationUC.LocationUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
 		cbRepo,
 		contractUC,
+		locUC,
 		[]byte("secret"),
 		10,
 		10,
@@ -195,12 +204,14 @@ func TestOptOut(t *testing.T) {
 	sm := new(smMockRepo.MockRepository)
 	cbRepo := new(mock2.CashbackRepoMock)
 	contractUC := new(usecase.ContractsUseCaseMock)
+	locUC := new(locationUC.LocationUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
 		cbRepo,
 		contractUC,
+		locUC,
 		[]byte("secret"),
 		10,
 		10,
@@ -258,12 +269,14 @@ func TestSignInTestAccount(t *testing.T) {
 	cbRepo := new(mock2.CashbackRepoMock)
 	sm := new(smMockRepo.MockRepository)
 	contractUC := new(usecase.ContractsUseCaseMock)
+	locUC := new(locationUC.LocationUseCaseMock)
 
 	uc := NewAuthUseCase(
 		repo,
 		sm,
 		cbRepo,
 		contractUC,
+		locUC,
 		[]byte("secret"),
 		10,
 		10,
