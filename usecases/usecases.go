@@ -3,7 +3,8 @@ package usecases
 import (
 	"platform-backend/auth"
 	"platform-backend/cashback"
-	"platform-backend/game_sessions"
+	gamesessions "platform-backend/game_sessions"
+	"platform-backend/location"
 	"platform-backend/referrals"
 	"platform-backend/signidice"
 	"platform-backend/subscription"
@@ -16,6 +17,7 @@ type UseCases struct {
 	Subscriptions subscription.UseCase
 	Referrals     referrals.UseCase
 	Cashback      cashback.UseCase
+	Location      location.UseCase
 }
 
 func NewUseCases(
@@ -25,6 +27,7 @@ func NewUseCases(
 	subscriptions subscription.UseCase,
 	referrals referrals.UseCase,
 	cashback cashback.UseCase,
+	location location.UseCase,
 ) *UseCases {
 	return &UseCases{
 		Auth:          auth,
@@ -33,5 +36,6 @@ func NewUseCases(
 		Subscriptions: subscriptions,
 		Referrals:     referrals,
 		Cashback:      cashback,
+		Location:      location,
 	}
 }

@@ -9,5 +9,6 @@ FROM alpine:latest
 WORKDIR /root/
 COPY --from=builder /app/app .
 COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /app/location.mmdb ./location.mmdb
 EXPOSE 8080
 ENTRYPOINT ["./app"]

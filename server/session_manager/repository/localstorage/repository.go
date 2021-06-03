@@ -3,14 +3,15 @@ package localstorage
 import (
 	"context"
 	"errors"
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rs/zerolog/log"
 	"platform-backend/models"
 	"platform-backend/server/api"
 	"platform-backend/server/session"
 	"sync"
+
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rs/zerolog/log"
 )
 
 type LocalRepository struct {
@@ -51,7 +52,7 @@ func (r *LocalRepository) AddSession(context context.Context, wsConn *websocket.
 	r.Lock()
 	r.sessionById[sess.Uuid] = sess
 
-	log.Debug().Msgf("New sess started, uid: %s", sess.Uuid.String())
+	log.Info().Msgf("New sess started, uid: %s", sess.Uuid.String())
 }
 
 func (r *LocalRepository) removeSession(uid uuid.UUID) {
@@ -71,7 +72,7 @@ func (r *LocalRepository) removeSession(uid uuid.UUID) {
 	// remove from main map
 	delete(r.sessionById, uid)
 
-	log.Debug().Msgf("Session closed, uid: %s", uid)
+	log.Info().Msgf("Session closed, uid: %s", uid)
 }
 
 func (r *LocalRepository) HasSessionByUser(accountName string) bool {

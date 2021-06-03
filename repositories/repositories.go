@@ -5,7 +5,8 @@ import (
 	"platform-backend/auth"
 	"platform-backend/cashback"
 	"platform-backend/contracts"
-	"platform-backend/game_sessions"
+	gamesessions "platform-backend/game_sessions"
+	"platform-backend/location"
 )
 
 type Repos struct {
@@ -14,6 +15,7 @@ type Repos struct {
 	AffiliateStats affiliatestats.Repository
 	Cashback       cashback.Repository
 	User           auth.UserRepository
+	Location       location.Repository
 }
 
 func NewRepositories(
@@ -22,6 +24,7 @@ func NewRepositories(
 	AffiliateStats affiliatestats.Repository,
 	Cashback cashback.Repository,
 	User auth.UserRepository,
+	Location location.Repository,
 ) *Repos {
 	return &Repos{
 		Contracts:      Contracts,
@@ -29,5 +32,6 @@ func NewRepositories(
 		AffiliateStats: AffiliateStats,
 		Cashback:       Cashback,
 		User:           User,
+		Location:       Location,
 	}
 }

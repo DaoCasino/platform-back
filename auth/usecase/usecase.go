@@ -10,13 +10,14 @@ import (
 	"platform-backend/auth"
 	"platform-backend/cashback"
 	"platform-backend/contracts"
+	"platform-backend/location"
 	"platform-backend/models"
 	"platform-backend/server/session_manager"
+	"platform-backend/utils"
 	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
 	"github.com/machinebox/graphql"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/sha3"
@@ -27,6 +28,7 @@ type AuthUseCase struct {
 	smRepo          session_manager.Repository
 	cashbackRepo    cashback.Repository
 	contractUC      contracts.UseCase
+	locationUC      location.UseCase
 	jwtSecret       []byte
 	refreshTokenTTL int64
 	accessTokenTTL  int64
@@ -40,7 +42,7 @@ type AuthUseCase struct {
 }
 
 func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository, cashbackRepo cashback.Repository,
-	contractUC contracts.UseCase, jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64,
+	contractUC contracts.UseCase, locationUC location.UseCase, jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64,
 	walletUrl string, walletClientId int64, walletClientSecret string, testAccounts []string) *AuthUseCase {
 	testAccountsMap := make(map[string]struct{})
 	for _, acc := range testAccounts {
@@ -51,6 +53,7 @@ func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Reposit
 		smRepo:          smRepo,
 		cashbackRepo:    cashbackRepo,
 		contractUC:      contractUC,
+		locationUC:      locationUC,
 		jwtSecret:       jwtSecret,
 		accessTokenTTL:  accessTokenTTL,
 		refreshTokenTTL: refreshTokenTTL,
@@ -158,6 +161,23 @@ func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User, casinoName 
 	return a.generateTokens(ctx, user.AccountName)
 }
 
+// TODO DPM-1063
+func (a *AuthUseCase) logAuthUser(ctx context.Context, accountName string) error {
+	ip, ok := utils.GetContextRemoteAddr(ctx)
+	if !ok {
+		return auth.ErrIPNotFound
+	}
+
+	info, err := a.locationUC.GetLocationFromIP(ctx, ip)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Str("account_name", accountName).Str("ip", ip).Str("iso_code", info.Country.IsoCode).Float64("latitude", info.Location.Latitude).Float64("longitude", info.Location.Longitude).Msg("authenticated-user-info")
+
+	return nil
+}
+
 func (a *AuthUseCase) SignIn(ctx context.Context, accessToken string) (*models.User, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -175,12 +195,16 @@ func (a *AuthUseCase) SignIn(ctx context.Context, accessToken string) (*models.U
 		return nil, auth.ErrUserNotFound
 	}
 
-	suid := ctx.Value("suid")
-	if suid == nil {
+	if err := a.logAuthUser(ctx, user.AccountName); err != nil {
+		return nil, err
+	}
+
+	suid, ok := utils.GetContextSUID(ctx)
+	if !ok {
 		return nil, auth.ErrSessionNotFound
 	}
 
-	err = a.smRepo.SetUser(suid.(uuid.UUID), user)
+	err = a.smRepo.SetUser(suid, user)
 	if err != nil {
 		return nil, err
 	}
@@ -332,8 +356,8 @@ func (a *AuthUseCase) SignInTestAccount(
 		return nil, auth.ErrUserNotFound
 	}
 
-	suid := ctx.Value("suid")
-	if suid == nil {
+	suid, ok := utils.GetContextSUID(ctx)
+	if !ok {
 		return nil, auth.ErrSessionNotFound
 	}
 
@@ -350,7 +374,7 @@ func (a *AuthUseCase) SignInTestAccount(
 		return nil, auth.ErrInvalidHash
 	}
 
-	if err = a.smRepo.SetUser(suid.(uuid.UUID), user); err != nil {
+	if err = a.smRepo.SetUser(suid, user); err != nil {
 		return nil, err
 	}
 

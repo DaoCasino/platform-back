@@ -2,9 +2,10 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/kelseyhightower/envconfig"
 	"io/ioutil"
 	"os"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
 type DbConfig struct {
