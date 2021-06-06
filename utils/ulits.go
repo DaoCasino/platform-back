@@ -49,11 +49,11 @@ func GetRandomUint64() uint64 {
 	return n.Uint64()
 }
 
-func StripQueryString(inputUrl string) string {
+func StripQueryString(inputUrl string) (string, error) {
 	u, err := url.Parse(inputUrl)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	u.RawQuery = ""
-	return u.String()
+	return u.String(), nil
 }

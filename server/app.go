@@ -262,18 +262,21 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 
 	requestDurationsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			path := utils.StripQueryString(r.RequestURI)
-			if durationHistogram, ok := requestDurationHistograms[path]; ok {
-				start := time.Now()
-				next.ServeHTTP(w, r)
-				t := time.Now()
-				elapsed := t.Sub(start)
-				code := reflect.Indirect(reflect.ValueOf(w)).FieldByName("status").Int()
-				durationHistogram.WithLabelValues(strconv.FormatInt(code, 10)).Observe(float64(elapsed.Milliseconds()))
-			} else {
-				log.Warn().Str("path", path).Msg("no path in requestDurationHistograms")
-				next.ServeHTTP(w, r)
+			if path, err := utils.StripQueryString(r.RequestURI); err == nil {
+				if durationHistogram, ok := requestDurationHistograms[path]; ok {
+					start := time.Now()
+					next.ServeHTTP(w, r)
+					t := time.Now()
+					elapsed := t.Sub(start)
+					code := reflect.Indirect(reflect.ValueOf(w)).FieldByName("status").Int()
+					durationHistogram.WithLabelValues(strconv.FormatInt(code, 10)).Observe(float64(elapsed.Milliseconds()))
+					return
+				} else {
+					log.Error().Str("path", path).Msg("not exists in requestDurationHistograms")
+				}
 			}
+
+			next.ServeHTTP(w, r)
 		})
 	}
 
