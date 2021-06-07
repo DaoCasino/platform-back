@@ -2,14 +2,15 @@ package cached
 
 import (
 	"context"
-	"github.com/eoscanada/eos-go"
-	"github.com/rs/zerolog/log"
-	"go.uber.org/atomic"
 	"platform-backend/contracts"
 	"platform-backend/models"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/eoscanada/eos-go"
+	"github.com/rs/zerolog/log"
+	"go.uber.org/atomic"
 )
 
 type CachedListingRepo struct {
@@ -25,7 +26,7 @@ type CachedListingRepo struct {
 	casinoGames map[string][]*models.CasinoGame
 }
 
-func NewCachedListingRepo(origRepo contracts.Repository, cacheTTL int64) (*CachedListingRepo, error) {
+func NewCachedListingRepo(ctx context.Context, origRepo contracts.Repository, cacheTTL int64) (*CachedListingRepo, error) {
 	repo := CachedListingRepo{
 		origRepo: origRepo,
 		cacheTTL: cacheTTL,
@@ -35,7 +36,8 @@ func NewCachedListingRepo(origRepo contracts.Repository, cacheTTL int64) (*Cache
 		casinoGames: make(map[string][]*models.CasinoGame),
 	}
 
-	err := repo.initCache()
+	// TODO: need to deal with the context
+	err := repo.initCache(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -43,19 +45,19 @@ func NewCachedListingRepo(origRepo contracts.Repository, cacheTTL int64) (*Cache
 	return &repo, nil
 }
 
-func (r *CachedListingRepo) _refreshCache(needLock bool) error {
+func (r *CachedListingRepo) _refreshCache(ctx context.Context, needLock bool) error {
 	// fetch all data to local variables
-	games, err := r.origRepo.AllGames(context.Background())
+	games, err := r.origRepo.AllGames(ctx)
 	if err != nil {
 		return err
 	}
-	casinos, err := r.origRepo.AllCasinos(context.Background())
+	casinos, err := r.origRepo.AllCasinos(ctx)
 	if err != nil {
 		return err
 	}
 	casinoGames := map[string][]*models.CasinoGame{}
 	for _, cas := range casinos {
-		casGames, err := r.origRepo.GetCasinoGames(context.Background(), cas.Contract)
+		casGames, err := r.origRepo.GetCasinoGames(ctx, cas.Contract)
 		if err != nil {
 			return err
 		}
@@ -90,17 +92,17 @@ func (r *CachedListingRepo) _refreshCache(needLock bool) error {
 }
 
 // synchronously obtain initial cache data
-func (r *CachedListingRepo) initCache() error {
+func (r *CachedListingRepo) initCache(ctx context.Context) error {
 	// get full lock to initialize cache
 	defer r.cacheMutex.Unlock()
 	r.cacheMutex.Lock()
 
 	// no need to lock because we already have full write lock
-	return r._refreshCache(false)
+	return r._refreshCache(ctx, false)
 }
 
 // NOTE: function creates go routine for cache updating
-func (r *CachedListingRepo) tryUpdateCache() {
+func (r *CachedListingRepo) tryUpdateCache(ctx context.Context) {
 	// if cache already updating just skip
 	if r.cacheUpdating.Load() {
 		return
@@ -117,7 +119,7 @@ func (r *CachedListingRepo) tryUpdateCache() {
 		defer r.cacheUpdating.Store(false)
 
 		// update data with soft write lock
-		err := r._refreshCache(true)
+		err := r._refreshCache(ctx, true)
 		if err != nil {
 			log.Warn().Msgf("Listing cached updating fail: %s", err.Error())
 			return
@@ -130,7 +132,7 @@ func (r *CachedListingRepo) tryUpdateCache() {
 func (r *CachedListingRepo) AllCasinos(ctx context.Context) ([]*models.Casino, error) {
 	defer func() {
 		// try to update cache on demand
-		r.tryUpdateCache()
+		r.tryUpdateCache(ctx)
 		r.cacheMutex.RUnlock()
 	}()
 	r.cacheMutex.RLock()
@@ -151,7 +153,7 @@ func (r *CachedListingRepo) AllCasinos(ctx context.Context) ([]*models.Casino, e
 func (r *CachedListingRepo) GetCasino(ctx context.Context, casinoId uint64) (*models.Casino, error) {
 	defer func() {
 		// try to update cache on demand
-		r.tryUpdateCache()
+		r.tryUpdateCache(ctx)
 		r.cacheMutex.RUnlock()
 	}()
 	r.cacheMutex.RLock()
@@ -167,7 +169,7 @@ func (r *CachedListingRepo) GetCasino(ctx context.Context, casinoId uint64) (*mo
 func (r *CachedListingRepo) GetCasinoGames(ctx context.Context, casinoName string) ([]*models.CasinoGame, error) {
 	defer func() {
 		// try to update cache on demand
-		r.tryUpdateCache()
+		r.tryUpdateCache(ctx)
 		r.cacheMutex.RUnlock()
 	}()
 	r.cacheMutex.RLock()
@@ -190,7 +192,7 @@ func (r *CachedListingRepo) GetCasinoGames(ctx context.Context, casinoName strin
 func (r *CachedListingRepo) AllGames(ctx context.Context) ([]*models.Game, error) {
 	defer func() {
 		// try to update cache on demand
-		r.tryUpdateCache()
+		r.tryUpdateCache(ctx)
 		r.cacheMutex.RUnlock()
 	}()
 	r.cacheMutex.RLock()
@@ -211,7 +213,7 @@ func (r *CachedListingRepo) AllGames(ctx context.Context) ([]*models.Game, error
 func (r *CachedListingRepo) GetGame(ctx context.Context, gameId uint64) (*models.Game, error) {
 	defer func() {
 		// try to update cache on demand
-		r.tryUpdateCache()
+		r.tryUpdateCache(ctx)
 		r.cacheMutex.RUnlock()
 	}()
 	r.cacheMutex.RLock()
@@ -242,8 +244,13 @@ func (r *CachedListingRepo) GetPlayerInfo(ctx context.Context, accountName strin
 		return nil, err
 	}
 
+	customTokenBalances, err := r.GetCustomTokenBalances(casinos[0].Contract, accountName)
+	if err != nil {
+		return nil, err
+	}
+
 	info := &models.PlayerInfo{}
-	contracts.FillPlayerInfoFromRaw(info, rawAccount, casinos, bonusBalances)
+	contracts.FillPlayerInfoFromRaw(info, rawAccount, casinos, bonusBalances, customTokenBalances)
 
 	return info, nil
 }
@@ -255,6 +262,10 @@ func (r *CachedListingRepo) GetRawAccount(accountName string) (*eos.AccountResp,
 
 func (r *CachedListingRepo) GetBonusBalances(casinos []*models.Casino, accountName string) ([]*models.BonusBalance, error) {
 	return r.origRepo.GetBonusBalances(casinos, accountName)
+}
+
+func (r *CachedListingRepo) GetCustomTokenBalances(casino string, accountName string) (map[string]eos.Asset, error) {
+	return r.origRepo.GetCustomTokenBalances(casino, accountName)
 }
 
 // return sorted games map keys

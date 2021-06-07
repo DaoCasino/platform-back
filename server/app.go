@@ -2,14 +2,6 @@ package server
 
 import (
 	"context"
-	"github.com/DaoCasino/platform-action-monitor-client"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/cors"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +10,8 @@ import (
 	authPgRepo "platform-backend/auth/repository/postgres"
 	authUC "platform-backend/auth/usecase"
 	"platform-backend/blockchain"
+	cashbackRepo "platform-backend/cashback/repository/postgres"
+	cashbackUC "platform-backend/cashback/usecase"
 	"platform-backend/config"
 	"platform-backend/contracts"
 	contractsBcRepo "platform-backend/contracts/repository/blockchain"
@@ -27,6 +21,8 @@ import (
 	"platform-backend/eventprocessor"
 	gameSessionPgRepo "platform-backend/game_sessions/repository/postgres"
 	gameSessionUC "platform-backend/game_sessions/usecase"
+	locationRepo "platform-backend/location/repository/maxmind"
+	locationUC "platform-backend/location/usecase"
 	"platform-backend/logger"
 	referralsRepo "platform-backend/referrals/repository/postgres"
 	referralsUC "platform-backend/referrals/usecase"
@@ -37,9 +33,20 @@ import (
 	signidiceUC "platform-backend/signidice/usecase"
 	subscriptionUc "platform-backend/subscription/usecase"
 	"platform-backend/usecases"
+	"platform-backend/utils"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
+
+	eventlistener "github.com/DaoCasino/platform-action-monitor-client"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/cors"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
 type JsonResponse = map[string]interface{}
@@ -62,6 +69,11 @@ type OptOutRequest struct {
 	AccessToken string `json:"accessToken"`
 }
 
+type SetEthAddrRequest struct {
+	AccessToken string `json:"accessToken"`
+	EthAddress  string `json:"ethAddress"`
+}
+
 type App struct {
 	httpHandler http.Handler
 	config      *config.Config
@@ -82,7 +94,9 @@ const (
 	ServiceName      = "platform"
 )
 
-func NewApp(config *config.Config) (*App, error) {
+var locRepo *locationRepo.LocationMaxmindRepo
+
+func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 	logger.InitLogger(config.LogLevel)
 
 	// Create prometheus things
@@ -92,9 +106,15 @@ func NewApp(config *config.Config) (*App, error) {
 
 	registerer.MustRegister(prometheus.NewGoCollector())
 
-	err := db.InitDB(context.Background(), &config.Db, registerer)
+	err := db.InitDB(ctx, &config.Db, registerer)
 	if err != nil {
 		log.Fatal().Msgf("Database init error, %s", err.Error())
+		return nil, err
+	}
+
+	locRepo, err = locationRepo.NewLocationMaxmindRepo("location.mmdb") // TODO hardcode!!!
+	if err != nil {
+		log.Fatal().Msgf("Location database init error %s", err.Error())
 		return nil, err
 	}
 
@@ -109,7 +129,7 @@ func NewApp(config *config.Config) (*App, error) {
 
 	// use cached contract repo if cache enabled
 	if config.Blockchain.ListingCacheTTL > 0 {
-		contractRepo, err = contractsCachedRepo.NewCachedListingRepo(contractRepo, config.Blockchain.ListingCacheTTL)
+		contractRepo, err = contractsCachedRepo.NewCachedListingRepo(ctx, contractRepo, config.Blockchain.ListingCacheTTL)
 		if err != nil {
 			log.Fatal().Msgf("Contracts cached repo creation error, %s", err.Error())
 			return nil, err
@@ -121,28 +141,44 @@ func NewApp(config *config.Config) (*App, error) {
 	uRepo := authPgRepo.NewUserPostgresRepo(db.DbPool, config.Auth.MaxUserSessions, config.Auth.RefreshTokenTTL)
 	refsRepo := referralsRepo.NewReferralPostgresRepo(db.DbPool)
 	affStatsRepo := affiliateStatsRepo.NewAffiliateStatsRepo(config.AffiliateStats.Url, config.ActiveFeatures.Referrals)
+	cbRepo := cashbackRepo.NewCashbackPostgresRepo(db.DbPool)
 
 	repos := repositories.NewRepositories(
 		contractRepo,
 		gsRepo,
 		affStatsRepo,
+		cbRepo,
+		uRepo,
+		locRepo,
 	)
 
 	subsUC := subscriptionUc.NewSubscriptionUseCase()
 	contractUC := contractsUC.NewContractsUseCase(bc, config.ActiveFeatures.Bonus)
 	refsUC := referralsUC.NewReferralsUseCase(refsRepo, config.ActiveFeatures.Referrals)
+	cbUC := cashbackUC.NewCashbackUseCase(
+		cbRepo,
+		affStatsRepo,
+		config.Cashback.Ratio,
+		config.Cashback.EthToBetRate,
+		config.ActiveFeatures.Cashback,
+	)
+
+	locUC := locationUC.NewLocationUseCase(locRepo)
 
 	useCases := usecases.NewUseCases(
 		authUC.NewAuthUseCase(
 			uRepo,
 			smRepo,
+			cbRepo,
 			contractUC,
+			locUC,
 			[]byte(config.Auth.JwtSecret),
 			config.Auth.AccessTokenTTL,
 			config.Auth.RefreshTokenTTL,
 			config.Auth.WalletURL,
 			config.Auth.WalletClientID,
 			config.Auth.WalletClientSecret,
+			config.Auth.TestAccounts,
 		),
 		gameSessionUC.NewGameSessionsUseCase(
 			bc,
@@ -159,6 +195,8 @@ func NewApp(config *config.Config) (*App, error) {
 		),
 		subsUC,
 		refsUC,
+		cbUC,
+		locUC,
 	)
 
 	events := make(chan *eventlistener.EventMessage)
@@ -181,35 +219,64 @@ func NewApp(config *config.Config) (*App, error) {
 	}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		wsClientHandler(app, w, r)
+		wsClientHandler(ctx, app, w, r)
 	})
 
 	authHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHandler(app, w, r)
+		authHandler(ctx, app, w, r)
 	})
 
 	refreshTokensHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		refreshTokensHandler(app, w, r)
+		refreshTokensHandler(ctx, app, w, r)
 	})
 
 	logoutHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logoutHandler(app, w, r)
+		logoutHandler(ctx, app, w, r)
 	})
 
 	optOutHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		optOutHandler(app, w, r)
+		optOutHandler(ctx, app, w, r)
+	})
+
+	setEthAddrHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setEthAddrHandler(ctx, app, w, r)
+	})
+
+	claimHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claimHandler(ctx, app, w, r)
+	})
+
+	cashbacksHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cashbacksHandler(ctx, app, w, r)
+	})
+
+	cashbackApproveHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cashbackApproveHandler(ctx, app, w, r)
+	})
+
+	locationHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		locationHandler(ctx, app, w, r)
 	})
 
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
 
 	requestDurationsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
+			if path, err := utils.StripQueryString(r.RequestURI); err == nil {
+				if durationHistogram, ok := requestDurationHistograms[path]; ok {
+					start := time.Now()
+					next.ServeHTTP(w, r)
+					t := time.Now()
+					elapsed := t.Sub(start)
+					code := reflect.Indirect(reflect.ValueOf(w)).FieldByName("status").Int()
+					durationHistogram.WithLabelValues(strconv.FormatInt(code, 10)).Observe(float64(elapsed.Milliseconds()))
+					return
+				} else {
+					log.Error().Str("path", path).Msg("not exists in requestDurationHistograms")
+				}
+			}
+
 			next.ServeHTTP(w, r)
-			t := time.Now()
-			elapsed := t.Sub(start)
-			code := reflect.Indirect(reflect.ValueOf(w)).FieldByName("status").Int()
-			requestDurationHistograms[r.RequestURI].WithLabelValues(strconv.FormatInt(code, 10)).Observe(float64(elapsed.Milliseconds()))
 		})
 	}
 
@@ -219,8 +286,9 @@ func NewApp(config *config.Config) (*App, error) {
 
 	addHistogramVec := func(path string) string {
 		fullPath := "/" + path
+
 		requestDurationHistograms[fullPath] = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "http_" + path + "_ms",
+			Name:    "http_" + strings.ReplaceAll(path, "/", "_") + "_ms",
 			Buckets: commonBuckets,
 		}, []string{"response_code"})
 		return fullPath
@@ -239,8 +307,13 @@ func NewApp(config *config.Config) (*App, error) {
 	handleFunc("logout", logoutHandler)
 	handleFunc("refresh_token", refreshTokensHandler)
 	handleFunc("optout", optOutHandler)
+	handleFunc("set_eth_addr", setEthAddrHandler)
+	handleFunc("claim", claimHandler)
+	handleFunc("admin/cashbacks", cashbacksHandler)
+	handleFunc("admin/cashback_approve", cashbackApproveHandler)
 	handleFunc("ping", pingHandler)
 	handleFunc("who", whoHandler)
+	handleFunc("location", locationHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(
 		registerer, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 	))
@@ -343,7 +416,7 @@ func startHttpServer(a *App, ctx context.Context) error {
 
 	go func() {
 		<-ctx.Done()
-		timeoutCtx, shutdown := context.WithTimeout(context.Background(), 5*time.Second)
+		timeoutCtx, shutdown := context.WithTimeout(ctx, 5*time.Second)
 		_ = srv.Shutdown(timeoutCtx)
 		shutdown()
 	}()
@@ -398,9 +471,14 @@ func startAmc(a *App, ctx context.Context) error {
 }
 
 // Should log errors by itself
-func (a *App) Run() error {
-	runCtx, cancelRun := context.WithCancel(context.Background())
+func (a *App) Run(ctx context.Context) error {
+	runCtx, cancelRun := context.WithCancel(ctx)
 	errGroup, runCtx := errgroup.WithContext(runCtx)
+
+	defer func() {
+		_ = locationRepo.DeleteLocationMaxmindRepo(locRepo) // close location database
+		db.Close()                                          // Add database pool close
+	}()
 
 	errGroup.Go(func() error {
 		defer cancelRun()

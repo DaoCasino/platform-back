@@ -2,17 +2,22 @@ package usecase
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	hashpkg "hash"
 	"platform-backend/auth"
+	"platform-backend/cashback"
 	"platform-backend/contracts"
+	"platform-backend/location"
 	"platform-backend/models"
 	"platform-backend/server/session_manager"
+	"platform-backend/utils"
 	"strconv"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/google/uuid"
 	"github.com/machinebox/graphql"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/sha3"
@@ -21,7 +26,9 @@ import (
 type AuthUseCase struct {
 	userRepo        auth.UserRepository
 	smRepo          session_manager.Repository
+	cashbackRepo    cashback.Repository
 	contractUC      contracts.UseCase
+	locationUC      location.UseCase
 	jwtSecret       []byte
 	refreshTokenTTL int64
 	accessTokenTTL  int64
@@ -29,15 +36,24 @@ type AuthUseCase struct {
 	walletGqClient     *graphql.Client
 	walletClientId     int64
 	walletClientSecret string
+
+	sig          hashpkg.Hash
+	testAccounts map[string]struct{}
 }
 
-func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository, contractUC contracts.UseCase,
-	jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64,
-	walletUrl string, walletClientId int64, walletClientSecret string) *AuthUseCase {
+func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Repository, cashbackRepo cashback.Repository,
+	contractUC contracts.UseCase, locationUC location.UseCase, jwtSecret []byte, accessTokenTTL int64, refreshTokenTTL int64,
+	walletUrl string, walletClientId int64, walletClientSecret string, testAccounts []string) *AuthUseCase {
+	testAccountsMap := make(map[string]struct{})
+	for _, acc := range testAccounts {
+		testAccountsMap[acc] = struct{}{}
+	}
 	return &AuthUseCase{
 		userRepo:        userRepo,
 		smRepo:          smRepo,
+		cashbackRepo:    cashbackRepo,
 		contractUC:      contractUC,
+		locationUC:      locationUC,
 		jwtSecret:       jwtSecret,
 		accessTokenTTL:  accessTokenTTL,
 		refreshTokenTTL: refreshTokenTTL,
@@ -45,6 +61,9 @@ func NewAuthUseCase(userRepo auth.UserRepository, smRepo session_manager.Reposit
 		walletGqClient:     graphql.NewClient(walletUrl),
 		walletClientId:     walletClientId,
 		walletClientSecret: walletClientSecret,
+
+		sig:          hmac.New(sha256.New, jwtSecret),
+		testAccounts: testAccountsMap,
 	}
 }
 
@@ -115,6 +134,11 @@ func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User, casinoName 
 			return "", "", err
 		}
 
+		if err := a.cashbackRepo.AddUser(ctx, user.AccountName); err != nil {
+			log.Debug().Msgf("Cashback user add error: %s", err.Error())
+			return "", "", err
+		}
+
 		go func() {
 			if err := a.contractUC.SendBonusToNewPlayer(ctx, user.AccountName, casinoName); err != nil {
 				log.Warn().Msgf("Send new player to casino error: %s", err.Error())
@@ -137,6 +161,23 @@ func (a *AuthUseCase) SignUp(ctx context.Context, user *models.User, casinoName 
 	return a.generateTokens(ctx, user.AccountName)
 }
 
+// TODO DPM-1063
+func (a *AuthUseCase) logAuthUser(ctx context.Context, accountName string) error {
+	ip, ok := utils.GetContextRemoteAddr(ctx)
+	if !ok {
+		return auth.ErrIPNotFound
+	}
+
+	info, err := a.locationUC.GetLocationFromIP(ctx, ip)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Str("account_name", accountName).Str("ip", ip).Str("iso_code", info.Country.IsoCode).Float64("latitude", info.Location.Latitude).Float64("longitude", info.Location.Longitude).Msg("authenticated-user-info")
+
+	return nil
+}
+
 func (a *AuthUseCase) SignIn(ctx context.Context, accessToken string) (*models.User, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -154,12 +195,16 @@ func (a *AuthUseCase) SignIn(ctx context.Context, accessToken string) (*models.U
 		return nil, auth.ErrUserNotFound
 	}
 
-	suid := ctx.Value("suid")
-	if suid == nil {
+	if err := a.logAuthUser(ctx, user.AccountName); err != nil {
+		return nil, err
+	}
+
+	suid, ok := utils.GetContextSUID(ctx)
+	if !ok {
 		return nil, auth.ErrSessionNotFound
 	}
 
-	err = a.smRepo.SetUser(suid.(uuid.UUID), user)
+	err = a.smRepo.SetUser(suid, user)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +320,67 @@ func (a *AuthUseCase) OptOut(ctx context.Context, accessToken string) error {
 		return err
 	}
 	claims := token.Claims.(jwt.MapClaims)
-	return a.userRepo.DeleteEmail(ctx, claims["account_name"].(string))
+	accountName := claims["account_name"].(string)
+	if err := a.cashbackRepo.DeleteEthAddress(ctx, accountName); err != nil {
+		return err
+	}
+	return a.userRepo.DeleteEmail(ctx, accountName)
+}
+
+func (a *AuthUseCase) AccountNameFromToken(ctx context.Context, accessToken string) (string, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	token, err := a.parseToken(accessToken)
+	if err != nil {
+		return "", err
+	}
+	if err := a.validateAccessToken(ctx, token); err != nil {
+		return "", err
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	return claims["account_name"].(string), nil
+}
+
+func (a *AuthUseCase) SignInTestAccount(
+	ctx context.Context,
+	accountName string,
+	saltedAccountNameHash string,
+) (*models.User, error) {
+	if _, exist := a.testAccounts[accountName]; !exist {
+		return nil, auth.ErrUserIsNotTest
+	}
+
+	user, err := a.userRepo.GetUser(ctx, accountName)
+	if err != nil {
+		return nil, auth.ErrUserNotFound
+	}
+
+	suid, ok := utils.GetContextSUID(ctx)
+	if !ok {
+		return nil, auth.ErrSessionNotFound
+	}
+
+	salt := a.userRepo.GetTestAccountSalt(ctx)
+	saltStr := strconv.FormatUint(salt, 10)
+	_, err = a.sig.Write([]byte(accountName + saltStr))
+	if err != nil {
+		return nil, err
+	}
+
+	hash := hex.EncodeToString(a.sig.Sum(nil))
+	a.sig.Reset()
+	if hash != saltedAccountNameHash {
+		return nil, auth.ErrInvalidHash
+	}
+
+	if err = a.smRepo.SetUser(suid, user); err != nil {
+		return nil, err
+	}
+
+	a.userRepo.UpdateTestAccountSalt(ctx)
+
+	return user, nil
 }
 
 func (a *AuthUseCase) validateToken(ctx context.Context, token *jwt.Token) error {

@@ -2,27 +2,31 @@ package handlers
 
 import (
 	"context"
-	"github.com/eoscanada/eos-go"
 	"math"
 	"platform-backend/models"
 	"platform-backend/server/api/ws_interface"
 	"strconv"
 	"time"
+
+	"github.com/eoscanada/eos-go"
 )
 
 var refStatsFromTime = time.Time{}.Add(time.Second)
 
 type PlayerInfoResponse struct {
-	AccountName      string                `json:"accountName"`
-	Email            string                `json:"email"`
-	Balance          eos.Asset             `json:"balance"`
-	BonusBalances    *BonusBalanceResponse `json:"bonusBalances,omitempty"`
-	ActivePermission eos.Authority         `json:"activePermission"`
-	OwnerPermission  eos.Authority         `json:"ownerPermission"`
-	LinkedCasinos    []*CasinoResponse     `json:"linkedCasinos"`
-	ReferralID       *string               `json:"referralId,omitempty"`
-	ReferralRevenue  *float64              `json:"referralRevenue,omitempty"`
-	Referral         *ReferralResponse     `json:"referral,omitempty"`
+	AccountName         string                `json:"accountName"`
+	Email               string                `json:"email"`
+	Balance             eos.Asset             `json:"balance"`
+	BonusBalances       *BonusBalanceResponse `json:"bonusBalances,omitempty"`
+	CustomTokenBalances map[string]eos.Asset  `json:"customTokenBalances"`
+	ActivePermission    eos.Authority         `json:"activePermission"`
+	OwnerPermission     eos.Authority         `json:"ownerPermission"`
+	LinkedCasinos       []*CasinoResponse     `json:"linkedCasinos"`
+	ReferralID          *string               `json:"referralId,omitempty"`
+	ReferralRevenue     *float64              `json:"referralRevenue,omitempty"`
+	Referral            *ReferralResponse     `json:"referral,omitempty"`
+	Cashback            *models.CashbackInfo  `json:"cashback,omitempty"`
+	EthAddress          *string               `json:"ethAddress,omitempty"`
 }
 
 type BonusBalanceResponse map[string]BonusBalance
@@ -32,30 +36,47 @@ type BonusBalance struct {
 }
 
 type ReferralResponse struct {
-	ID      string  `json:"id"`
-	Revenue float64 `json:"revenue"`
+	ID            string               `json:"id"`
+	Revenue       float64              `json:"revenue"`
+	TotalReferred int                  `json:"totalReferred"`
+	RevenueToken  map[string]eos.Asset `json:"revenueToken"`
 }
 
 func toPlayerInfoResponse(
-	p *models.PlayerInfo, u *models.User, refID string, refStats *models.ReferralStats,
+	p *models.PlayerInfo,
+	u *models.User,
+	ref *models.Referral,
+	refStats *models.ReferralStats,
+	cashbackInfo *models.CashbackInfo,
+	ethAddr *string,
 ) *PlayerInfoResponse {
 	ret := &PlayerInfoResponse{
-		AccountName:      u.AccountName,
-		Email:            u.Email,
-		Balance:          p.Balance,
-		BonusBalances:    toBonusBalanceResponse(p.BonusBalances),
-		ActivePermission: p.ActivePermission,
-		OwnerPermission:  p.OwnerPermission,
-		LinkedCasinos:    make([]*CasinoResponse, len(p.LinkedCasinos)),
+		AccountName:         u.AccountName,
+		Email:               u.Email,
+		Balance:             p.Balance,
+		BonusBalances:       toBonusBalanceResponse(p.BonusBalances),
+		CustomTokenBalances: p.CustomTokenBalances,
+		ActivePermission:    p.ActivePermission,
+		OwnerPermission:     p.OwnerPermission,
+		LinkedCasinos:       make([]*CasinoResponse, len(p.LinkedCasinos)),
+		Cashback:            cashbackInfo,
+		EthAddress:          ethAddr,
 	}
-	if refID != "" {
-		ret.ReferralID = &refID
-		ret.Referral = &ReferralResponse{ID: refID}
+	if ref != nil {
+		ret.ReferralID = &ref.ID
+		ret.Referral = &ReferralResponse{ID: ref.ID, TotalReferred: ref.TotalReferred}
 	}
 	if refStats != nil {
+		ret.Referral.RevenueToken = make(map[string]eos.Asset)
 		refStats.ProfitSum = math.Max(0, refStats.ProfitSum)
 		ret.ReferralRevenue = &refStats.ProfitSum
 		ret.Referral.Revenue = refStats.ProfitSum
+		for key := range refStats.Data {
+			ret.Referral.RevenueToken[key] = eos.Asset{
+				Amount: eos.Int64(math.Max(0, float64(refStats.Data[key].ProfitSumAsset.Amount))),
+				Symbol: refStats.Data[key].ProfitSumAsset.Symbol,
+			}
+		}
 	}
 	for i, casino := range p.LinkedCasinos {
 		ret.LinkedCasinos[i] = toCasinoResponse(casino)
@@ -77,21 +98,35 @@ func toBonusBalanceResponse(bb []*models.BonusBalance) *BonusBalanceResponse {
 	return &bbr
 }
 
-func ProcessAccountInfo(context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
+func ProcessAccountInfo(
+	context context.Context, req *ws_interface.ApiRequest) (interface{}, *ws_interface.HandlerError) {
 	player, err := req.Repos.Contracts.GetPlayerInfo(context, req.User.AccountName)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	refID, err := req.UseCases.Referrals.GetOrCreateReferralID(context, req.User.AccountName)
+	ref, err := req.UseCases.Referrals.GetOrCreateReferral(context, req.User.AccountName)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	refStats, err := req.Repos.AffiliateStats.GetStats(context, refID, refStatsFromTime, time.Now())
+	var refStats *models.ReferralStats
+	if ref != nil {
+		refStats, err = req.Repos.AffiliateStats.GetStats(context, ref.ID, refStatsFromTime, time.Now())
+		if err != nil {
+			return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+		}
+	}
+
+	ethAddr, err := req.Repos.Cashback.GetEthAddress(context, req.User.AccountName)
 	if err != nil {
 		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
 	}
 
-	return toPlayerInfoResponse(player, req.User, refID, refStats), nil
+	cashbackInfo, err := req.UseCases.Cashback.CashbackInfo(context, req.User.AccountName)
+	if err != nil {
+		return nil, ws_interface.NewHandlerError(ws_interface.InternalError, err)
+	}
+
+	return toPlayerInfoResponse(player, req.User, ref, refStats, cashbackInfo, ethAddr), nil
 }

@@ -6,7 +6,9 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"platform-backend/db"
 	"platform-backend/models"
+	"platform-backend/utils"
 	"strconv"
+	"sync/atomic"
 )
 
 const (
@@ -15,6 +17,7 @@ const (
 	selectAffIDByAccNameStmt   = "SELECT affiliate_id FROM affiliates WHERE account_name = $1"
 	insertUserStmt             = "INSERT INTO users VALUES ($1, $2)"
 	insertAffiliateStmt        = "INSERT INTO affiliates VALUES ($1, $2)"
+	insertCashbackUserStmt     = "INSERT INTO cashback(account_name) VALUES($1)"
 	updateUserTokenNonce       = "UPDATE users SET token_nonce = token_nonce + 1 WHERE account_name = $1"
 	invalidateOldestSessions   = "DELETE FROM active_token_nonces WHERE id = (SELECT id FROM active_token_nonces WHERE account_name = $1 ORDER BY id ASC LIMIT 1)"
 	insertActiveSession        = "INSERT INTO active_token_nonces (account_name, token_nonce) VALUES ($1, $2)"
@@ -37,14 +40,18 @@ type UserPostgresRepo struct {
 	dbPool          *pgxpool.Pool
 	maxSessions     int64
 	sessionLifetime int64
+	testAccountSalt *uint64
 }
 
 func NewUserPostgresRepo(dbPool *pgxpool.Pool, maxSessions int64, sessionLifetime int64) *UserPostgresRepo {
-	return &UserPostgresRepo{
+	repo := &UserPostgresRepo{
 		dbPool:          dbPool,
 		maxSessions:     maxSessions,
 		sessionLifetime: sessionLifetime,
+		testAccountSalt: new(uint64),
 	}
+	atomic.StoreUint64(repo.testAccountSalt, utils.GetRandomUint64())
+	return repo
 }
 
 func (r *UserPostgresRepo) HasUser(ctx context.Context, accountName string) (bool, error) {
@@ -102,6 +109,12 @@ func (r *UserPostgresRepo) AddUser(ctx context.Context, user *models.User) error
 	}
 
 	_, err = tx.Exec(ctx, insertUserStmt, user.AccountName, user.Email)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+
+	_, err = tx.Exec(ctx, insertCashbackUserStmt, user.AccountName)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return err
@@ -236,6 +249,14 @@ func (r *UserPostgresRepo) AddEmail(ctx context.Context, user *models.User) erro
 
 	_, err = conn.Exec(ctx, updateEmailStmt, user.AccountName, user.Email)
 	return err
+}
+
+func (r *UserPostgresRepo) GetTestAccountSalt(ctx context.Context) uint64 {
+	return atomic.LoadUint64(r.testAccountSalt)
+}
+
+func (r *UserPostgresRepo) UpdateTestAccountSalt(ctx context.Context) {
+	atomic.StoreUint64(r.testAccountSalt, utils.GetRandomUint64())
 }
 
 func toModelUser(u *User, affiliateID string) *models.User {

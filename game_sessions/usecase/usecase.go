@@ -466,9 +466,9 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 		log.Debug().Msgf("%s", err.Error())
 		return err
 	}
-
 	totalDeposit := gs.Deposit.Add(*asset)
-	err = a.repo.UpdateSessionDeposit(ctx, sessionId, totalDeposit.String())
+	depositValue, tkn, precision := utils.ExtractAssetValueAndSymbol(&totalDeposit)
+	err = a.repo.UpdateSessionDeposit(ctx, sessionId, totalDeposit.String(), depositValue, tkn, precision)
 	if err != nil {
 		log.Error().Msgf("Failed to update session deposit, "+
 			"sesID: %d, trxID: %s, reason: %s", sessionId, trxID.String(), err.Error())
@@ -480,6 +480,42 @@ func (a *GameSessionsUseCase) GameActionWithDeposit(
 		return err
 	}
 	return nil
+}
+
+func (a *GameSessionsUseCase) getTokenContract(asset *eos.Asset) (*eos.AccountName, error) {
+	symbolCode := asset.Symbol.MustSymbolCode().String()
+	tokenPK, err := eos.ExtendedStringToName(symbolCode)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := a.bc.Api.GetTableRows(eos.GetTableRowsRequest{
+		Code:       a.platformContract,
+		Scope:      a.platformContract,
+		Table:      "token",
+		LowerBound: strconv.FormatUint(tokenPK, 10),
+		UpperBound: strconv.FormatUint(tokenPK, 10),
+		Limit:      1,
+		JSON:       true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var tokens []struct {
+		TokenName string          `json:"token_name"`
+		Contract  eos.AccountName `json:"contract"`
+	}
+	err = resp.JSONToStructs(&tokens)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(tokens) != 1 {
+		return nil, fmt.Errorf("platform tokens %s must be length 1", symbolCode)
+	}
+
+	return &tokens[0].Contract, nil
 }
 
 func (a *GameSessionsUseCase) getTransferAction(
@@ -494,10 +530,24 @@ func (a *GameSessionsUseCase) getTransferAction(
 
 	memo := strconv.FormatUint(sessionID, 10) // IMPORTANT!
 
+	tokenContract, err := a.getTokenContract(amount)
+	if err != nil {
+		return nil, err
+	}
+
 	// Add transfer deposit action
-	transferAction := token.NewTransfer(from, to, *amount, memo)
-	transferAction.Authorization = []eos.PermissionLevel{
-		{Actor: from, Permission: eos.PN(casinoName)},
+	transferAction := &eos.Action{
+		Account: *tokenContract,
+		Name:    eos.ActN("transfer"),
+		Authorization: []eos.PermissionLevel{
+			{Actor: from, Permission: eos.PN(casinoName)},
+		},
+		ActionData: eos.NewActionData(token.Transfer{
+			From:     from,
+			To:       to,
+			Quantity: *amount,
+			Memo:     memo,
+		}),
 	}
 
 	return transferAction, nil
@@ -553,30 +603,44 @@ func (a *GameSessionsUseCase) trxByCasino(casino *models.Casino, trx *eos.Transa
 	return trxID, nil
 }
 
-func (a *GameSessionsUseCase) getAssets(asset *eos.Asset, playerInfo *models.PlayerInfo, casinoId uint64) (*eos.Asset, *eos.Asset, error) {
+func (a *GameSessionsUseCase) getAssets(asset *eos.Asset, playerInfo *models.PlayerInfo,
+	casinoID uint64) (*eos.Asset, *eos.Asset, error) {
 	bonusBalance := &models.BonusBalance{
 		Balance: eos.Asset{
 			Amount: 0,
 			Symbol: asset.Symbol,
 		},
-		CasinoId: casinoId,
+		CasinoId: casinoID,
 	}
 
-	for _, bb := range playerInfo.BonusBalances {
-		if bb.CasinoId == casinoId {
-			bonusBalance = bb
-			break
+	assetType := asset.Symbol.Symbol
+	playerBalance := playerInfo.Balance
+
+	if assetType != contracts.CoreSymbol {
+		var ok bool
+		playerBalance, ok = playerInfo.CustomTokenBalances[assetType]
+		if !ok {
+			return nil, nil, fmt.Errorf("invalid custom token")
 		}
 	}
 
-	if playerInfo.Balance.Amount+bonusBalance.Balance.Amount < asset.Amount {
+	if assetType == contracts.CoreSymbol {
+		for _, bb := range playerInfo.BonusBalances {
+			if bb.CasinoId == casinoID {
+				bonusBalance = bb
+				break
+			}
+		}
+	}
+
+	if playerBalance.Amount+bonusBalance.Balance.Amount < asset.Amount {
 		return nil, nil, fmt.Errorf("not enough tokens")
 	}
 
 	realAsset := &eos.Asset{Amount: 0, Symbol: asset.Symbol}
 	bonusAsset := &eos.Asset{Amount: 0, Symbol: asset.Symbol}
 
-	if playerInfo.Balance.Amount < asset.Amount {
+	if playerBalance.Amount < asset.Amount {
 		bonusAsset.Amount = asset.Amount - playerInfo.Balance.Amount
 		realAsset.Amount = playerInfo.Balance.Amount
 	} else {

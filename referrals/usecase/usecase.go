@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"github.com/rs/zerolog/log"
+	"platform-backend/models"
 	"platform-backend/referrals"
 )
 
@@ -17,22 +18,22 @@ func NewReferralsUseCase(repo referrals.Repository, active bool) *ReferralsUseCa
 	return &ReferralsUseCase{repo: repo, active: active}
 }
 
-func (r *ReferralsUseCase) GetOrCreateReferralID(ctx context.Context, accountName string) (string, error) {
+func (r *ReferralsUseCase) GetOrCreateReferral(ctx context.Context, accountName string) (*models.Referral, error) {
 	if !r.active {
-		return "", nil
+		return nil, nil
 	}
 
 	refID, err := r.repo.GetReferralID(ctx, accountName)
 	if err != nil {
 		log.Debug().Msgf("Referral ID get error: %s", err.Error())
-		return "", err
+		return nil, err
 	}
 
 	if refID == "" {
 		refID, err := referrals.GenerateRandomString(ReferralIDLen)
 		if err != nil {
 			log.Debug().Msgf("Referral ID generate error: %s", err.Error())
-			return "", err
+			return nil, err
 		}
 
 		refID = "REF" + refID
@@ -40,11 +41,15 @@ func (r *ReferralsUseCase) GetOrCreateReferralID(ctx context.Context, accountNam
 		err = r.repo.AddReferralID(ctx, accountName, refID)
 		if err != nil {
 			log.Debug().Msgf("Referral ID add error: %s", err.Error())
-			return "", err
+			return nil, err
 		}
-
-		return refID, nil
 	}
 
-	return refID, nil
+	totalReferred, err := r.repo.GetTotalReferred(ctx, refID)
+	if err != nil {
+		log.Debug().Msgf("Total referred get error: %s", err.Error())
+		return nil, err
+	}
+
+	return &models.Referral{ID: refID, TotalReferred: totalReferred}, nil
 }

@@ -3,13 +3,15 @@ package session
 import (
 	"context"
 	"encoding/json"
+	"platform-backend/models"
+	"platform-backend/server/api"
+	"platform-backend/utils"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
-	"platform-backend/models"
-	"platform-backend/server/api"
-	"time"
 )
 
 const (
@@ -83,10 +85,10 @@ func (s *Session) readLoop() {
 			}
 
 			// add session id into context
-			ctx = context.WithValue(ctx, "suid", s.Uuid)
+			ctx = utils.SetContextSUID(ctx, s.Uuid)
 
 			// add user info into context
-			ctx = context.WithValue(ctx, "user", s.User)
+			ctx = utils.SetContextUser(ctx, s.User)
 
 			resp, request, err := s.wsApi.ProcessRawRequest(ctx, messageType, message)
 			if err != nil {

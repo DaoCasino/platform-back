@@ -1,8 +1,13 @@
 package contracts
 
 import (
-	"github.com/eoscanada/eos-go"
 	"platform-backend/models"
+
+	"github.com/eoscanada/eos-go"
+)
+
+const (
+	CoreSymbol = "BET"
 )
 
 func CasinoLinked(permissions *[]eos.Permission, casinoName string) bool {
@@ -29,6 +34,7 @@ func FillPlayerInfoFromRaw(
 	sourceRaw *eos.AccountResp,
 	casinos []*models.Casino,
 	bonusBalances []*models.BonusBalance,
+	customTokenBalances map[string]eos.Asset,
 ) {
 	for _, perm := range sourceRaw.Permissions {
 		if perm.PermName == "owner" {
@@ -44,4 +50,5 @@ func FillPlayerInfoFromRaw(
 	destInfo.Balance = sourceRaw.CoreLiquidBalance
 	destInfo.BonusBalances = bonusBalances
 	destInfo.LinkedCasinos = casinos
+	destInfo.CustomTokenBalances = customTokenBalances
 }

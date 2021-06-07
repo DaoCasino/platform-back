@@ -2,9 +2,10 @@ package config
 
 import (
 	"encoding/json"
-	"github.com/kelseyhightower/envconfig"
 	"io/ioutil"
 	"os"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
 type DbConfig struct {
@@ -35,14 +36,15 @@ type BlockchainConfig struct {
 }
 
 type AuthConfig struct {
-	JwtSecret          string `json:"jwtSecret"`
-	AccessTokenTTL     int64  `json:"accessTokenTTL"`
-	RefreshTokenTTL    int64  `json:"refreshTokenTTL"`
-	MaxUserSessions    int64  `default:"20" json:"maxUserSessions"`
-	CleanerInterval    int64  `default:"600" json:"cleanerInterval"`
-	WalletURL          string `json:"walletUrl"`
-	WalletClientID     int64  `json:"walletClientID"`
-	WalletClientSecret string `json:"walletClientSecret"`
+	JwtSecret          string   `json:"jwtSecret"`
+	AccessTokenTTL     int64    `json:"accessTokenTTL"`
+	RefreshTokenTTL    int64    `json:"refreshTokenTTL"`
+	MaxUserSessions    int64    `default:"20" json:"maxUserSessions"`
+	CleanerInterval    int64    `default:"600" json:"cleanerInterval"`
+	WalletURL          string   `json:"walletUrl"`
+	WalletClientID     int64    `json:"walletClientID"`
+	WalletClientSecret string   `json:"walletClientSecret"`
+	TestAccounts       []string `json:"testAccounts"`
 }
 
 // Action monitor config
@@ -65,6 +67,12 @@ type AffiliateStatsConfig struct {
 type ActiveFeaturesConfig struct {
 	Bonus     bool `default:"true" json:"bonus"`
 	Referrals bool `default:"true" json:"referrals"`
+	Cashback  bool `default:"true" json:"cashback"`
+}
+
+type CashbackConfig struct {
+	Ratio        float64 `json:"ratio"`
+	EthToBetRate float64 `json:"eth_to_bet_rate"`
 }
 
 type Config struct {
@@ -76,6 +84,7 @@ type Config struct {
 	Signidice       SignidiceConfig      `json:"signidice"`
 	AffiliateStats  AffiliateStatsConfig `json:"affiliateStats"`
 	ActiveFeatures  ActiveFeaturesConfig `json:"activeFeatures"`
+	Cashback        CashbackConfig       `json:"cashback"`
 	LogLevel        string               `json:"loglevel"`
 	Port            string               `json:"port"`
 }

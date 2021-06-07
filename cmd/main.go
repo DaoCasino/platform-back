@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"platform-backend/config"
@@ -19,12 +20,13 @@ func main() {
 	}
 
 	var app *server.App
-	app, err = server.NewApp(appConfig)
+	ctx := context.Background()
+	app, err = server.NewApp(appConfig, ctx)
 	if err != nil {
 		log.Fatalf("%s", err.Error())
 	}
 
-	if err := app.Run(); err != nil {
+	if err := app.Run(ctx); err != nil {
 		log.Fatalf("%s", err.Error())
 	}
 }
