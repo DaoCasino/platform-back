@@ -33,6 +33,7 @@ import (
 	signidiceUC "platform-backend/signidice/usecase"
 	subscriptionUc "platform-backend/subscription/usecase"
 	"platform-backend/usecases"
+	"platform-backend/utils"
 	"reflect"
 	"strconv"
 	"strings"
@@ -253,16 +254,29 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 		cashbackApproveHandler(ctx, app, w, r)
 	})
 
+	locationHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		locationHandler(ctx, app, w, r)
+	})
+
 	requestDurationHistograms := make(map[string]*prometheus.HistogramVec)
 
 	requestDurationsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
+			if path, err := utils.StripQueryString(r.RequestURI); err == nil {
+				if durationHistogram, ok := requestDurationHistograms[path]; ok {
+					start := time.Now()
+					next.ServeHTTP(w, r)
+					t := time.Now()
+					elapsed := t.Sub(start)
+					code := reflect.Indirect(reflect.ValueOf(w)).FieldByName("status").Int()
+					durationHistogram.WithLabelValues(strconv.FormatInt(code, 10)).Observe(float64(elapsed.Milliseconds()))
+					return
+				} else {
+					log.Error().Str("path", path).Msg("not exists in requestDurationHistograms")
+				}
+			}
+
 			next.ServeHTTP(w, r)
-			t := time.Now()
-			elapsed := t.Sub(start)
-			code := reflect.Indirect(reflect.ValueOf(w)).FieldByName("status").Int()
-			requestDurationHistograms[r.RequestURI].WithLabelValues(strconv.FormatInt(code, 10)).Observe(float64(elapsed.Milliseconds()))
 		})
 	}
 
@@ -299,6 +313,7 @@ func NewApp(config *config.Config, ctx context.Context) (*App, error) {
 	handleFunc("admin/cashback_approve", cashbackApproveHandler)
 	handleFunc("ping", pingHandler)
 	handleFunc("who", whoHandler)
+	handleFunc("location", locationHandler)
 	handle("metrics", promhttp.InstrumentMetricHandler(
 		registerer, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 	))

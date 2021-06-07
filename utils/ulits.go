@@ -2,11 +2,13 @@ package utils
 
 import (
 	"crypto/rand"
-	"github.com/eoscanada/eos-go"
 	"math"
 	"math/big"
+	"net/url"
 	"regexp"
 	"strconv"
+
+	"github.com/eoscanada/eos-go"
 )
 
 const (
@@ -45,4 +47,13 @@ func GetRandomUint64() uint64 {
 		panic(err) // panics if math.MaxInt64 <= 0, but it's impossible
 	}
 	return n.Uint64()
+}
+
+func StripQueryString(inputUrl string) (string, error) {
+	u, err := url.Parse(inputUrl)
+	if err != nil {
+		return "", err
+	}
+	u.RawQuery = ""
+	return u.String(), nil
 }

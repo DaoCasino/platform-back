@@ -67,6 +67,18 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	}
 }
 
+func locationHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
+	ip := utils.GetIPFromRequest(r)
+	info, err := app.useCases.Location.GetLocationFromIP(ctx, ip)
+	if err != nil {
+		log.Error().Err(err).Str("ip", ip).Msg("GET ip location request")
+		respondWithError(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+
+	respondOK(w, info)
+}
+
 func authHandler(ctx context.Context, app *App, w http.ResponseWriter, r *http.Request) {
 	var (
 		user       *models.User
